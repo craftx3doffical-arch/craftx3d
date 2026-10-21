@@ -1,0 +1,110 @@
+{% extends 'store/base.html' %}
+{% block title %}My Addresses — CraftX3D{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:32px auto;padding:0 16px 48px;">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;font-weight:800;">My Addresses</h1>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-top:4px;">{{ addresses.count }} saved address{{ addresses.count|pluralize:"es" }}</p>
+    </div>
+    <a href="{% url 'store:add_address' %}" class="btn-primary" style="font-size:0.88rem;padding:10px 20px;">+ Add New Address</a>
+  </div>
+
+  {% if messages %}
+  {% for m in messages %}<div class="alert alert-{{ m.tags }}" style="margin-bottom:16px;">{{ m }}</div>{% endfor %}
+  {% endif %}
+
+  {% if addresses %}
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    {% for addr in addresses %}
+    <div class="addr-saved-card {% if addr.is_default %}addr-default{% endif %}" id="addrCard{{ addr.id }}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:0.95rem;margin-bottom:2px;">
+            {{ addr.full_name }}
+            {% if addr.is_default %}<span class="addr-default-badge">Default</span>{% endif %}
+          </div>
+          <div style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;">
+            {{ addr.address_line1 }}{% if addr.address_line2 %}, {{ addr.address_line2 }}{% endif %}<br>
+            {% if addr.landmark %}Near {{ addr.landmark }},{% endif %}
+            {{ addr.city }}, {{ addr.state }} — {{ addr.pincode }}<br>
+            📞 {{ addr.phone }}{% if addr.alternate_phone %} / {{ addr.alternate_phone }}{% endif %}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;margin-top:2px;">
+          <a href="{% url 'store:edit_address' addr.id %}" class="addr-action-btn">Edit</a>
+          <button class="addr-action-btn addr-delete-btn" onclick="deleteAddress({{ addr.id }})">Remove</button>
+        </div>
+      </div>
+      {% if not addr.is_default %}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-border);">
+        <button class="addr-set-default-btn" onclick="setDefault({{ addr.id }})">Set as default</button>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:48px 24px;background:#fff;border:1.5px solid var(--cream-border);border-radius:var(--radius);">
+    <div style="font-size:3rem;margin-bottom:12px;">📍</div>
+    <div style="font-weight:700;font-size:1.05rem;margin-bottom:8px;">No saved addresses yet</div>
+    <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:20px;">Add a delivery address for faster checkout.</p>
+    <a href="{% url 'store:add_address' %}" class="btn-primary">+ Add Your First Address</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.addr-saved-card {
+  background:#fff;border:1.5px solid var(--cream-border);border-radius:var(--radius);padding:18px 20px;
+  transition:box-shadow 0.2s;
+}
+.addr-saved-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.07); }
+.addr-default { border-color:var(--teal);box-shadow:0 0 0 1px var(--teal); }
+.addr-default-badge {
+  display:inline-block;margin-left:8px;font-size:0.7rem;font-weight:700;
+  padding:2px 8px;background:#e0f8ef;color:var(--teal);border-radius:20px;
+}
+.addr-action-btn {
+  font-size:0.82rem;font-weight:600;color:var(--teal);background:none;border:none;
+  cursor:pointer;text-decoration:none;padding:4px 8px;border-radius:6px;font-family:inherit;
+  transition:background 0.15s;
+}
+.addr-action-btn:hover { background:var(--teal-light);color:var(--teal); }
+.addr-delete-btn { color:var(--red); }
+.addr-delete-btn:hover { background:#ffebee;color:var(--red); }
+.addr-set-default-btn {
+  font-size:0.82rem;font-weight:600;color:var(--text-muted);background:none;border:none;
+  cursor:pointer;font-family:inherit;padding:0;transition:color 0.15s;
+}
+.addr-set-default-btn:hover { color:var(--teal); }
+</style>
+<script>
+function deleteAddress(id) {
+  if (!confirm('Remove this address?')) return;
+  fetch('/addresses/' + id + '/delete/', {
+    method:'POST',
+    headers:{'X-CSRFToken':document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken')}
+  }).then(function(r){return r.json();}).then(function(d){
+    if (d.success) document.getElementById('addrCard' + id)?.remove();
+  });
+}
+function setDefault(id) {
+  fetch('/addresses/' + id + '/set-default/', {
+    method:'POST',
+    headers:{'X-CSRFToken':document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken')}
+  }).then(function(r){return r.json();}).then(function(d){
+    if (d.success) window.location.reload();
+  });
+}
+function getCookie(name) {
+  return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith(name+'='))?.split('=')[1]||'';
+}
+</script>
+{% csrf_token %}
+{% endblock %}

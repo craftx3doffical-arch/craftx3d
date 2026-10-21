@@ -1,0 +1,69 @@
+{% extends 'manage/base.html' %}
+{% block title %}Enquiries — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Community{% endblock %}
+{% block breadcrumb_current %}Enquiries{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Enquiries</h1><p class="page-sub">{{ enquiries.count }} enquiries</p></div>
+  <a href="{% url 'manage:export_enquiries' %}" class="m-btn m-btn-outline">⬇ Export</a>
+</div>
+<div class="tab-filters-wrap" style="display:flex;gap:4px;margin-bottom:16px;">
+  <a href="{% url 'manage:enquiries' %}" class="tab-filter {% if not status_filter %}active{% endif %}">All</a>
+  <a href="?status=new" class="tab-filter {% if status_filter == 'new' %}active{% endif %}">🆕 New</a>
+  <a href="?status=in_progress" class="tab-filter {% if status_filter == 'in_progress' %}active{% endif %}">⏳ In Progress</a>
+  <a href="?status=resolved" class="tab-filter {% if status_filter == 'resolved' %}active{% endif %}">✅ Resolved</a>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>FROM</th><th>SUBJECT</th><th>DATE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for e in enquiries %}
+        <tr>
+          <td><div style="font-weight:600;">{{ e.full_name }}</div><div style="font-size:0.72rem;color:var(--m-muted);">{{ e.email }}</div></td>
+          <td><div style="font-size:0.85rem;font-weight:600;">{{ e.subject|truncatechars:50 }}</div><div style="font-size:0.75rem;color:var(--m-muted);">{{ e.message|truncatechars:60 }}</div></td>
+          <td style="font-size:0.75rem;color:var(--m-muted);">{{ e.created_at|date:"d M Y" }}</td>
+          <td><select class="filter-select" style="padding:4px 8px;font-size:0.72rem;" onchange="updateEnquiry({{ e.pk }}, this.value)" aria-label="Update status"><option value="new" {% if e.status == 'new' %}selected{% endif %}>New</option><option value="in_progress" {% if e.status == 'in_progress' %}selected{% endif %}>In Progress</option><option value="resolved" {% if e.status == 'resolved' %}selected{% endif %}>Resolved</option></select></td>
+          <td><div style="display:flex;gap:4px;"><button class="m-btn-icon" onclick="viewEnquiry('{{ e.full_name|escapejs }}','{{ e.email|escapejs }}','{{ e.phone|escapejs }}','{{ e.subject|escapejs }}','{{ e.message|escapejs }}','{% if e.image %}{{ e.image.url }}{% endif %}')" title="View">👁️</button><button class="m-btn-icon" onclick="deleteEnquiry({{ e.pk }})" title="Delete">🗑️</button></div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--m-muted);">No enquiries yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<!-- View Modal -->
+<div class="m-modal-overlay" id="viewModal" role="dialog" aria-modal="true">
+  <div class="m-modal" style="max-width:480px;">
+    <div class="m-modal-header"><span class="m-modal-title">Enquiry Details</span><button class="m-modal-close" onclick="document.getElementById('viewModal').classList.remove('show')">✕</button></div>
+    <div class="m-modal-body">
+      <div style="margin-bottom:12px;"><strong id="eqName"></strong> · <span id="eqEmail" style="color:var(--m-muted);font-size:0.85rem;"></span></div>
+      <div style="margin-bottom:8px;font-size:0.82rem;color:var(--m-muted);">📱 <span id="eqPhone"></span></div>
+      <div style="font-weight:700;margin-bottom:8px;" id="eqSubject"></div>
+      <div style="color:var(--m-muted);font-size:0.9rem;line-height:1.7;white-space:pre-wrap;" id="eqMessage"></div>
+      <div id="eqImage" style="display:none"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function viewEnquiry(name, email, phone, subject, message, imgUrl) {
+  document.getElementById('eqName').textContent=name; document.getElementById('eqEmail').textContent=email;
+  document.getElementById('eqPhone').textContent=phone||'—'; document.getElementById('eqSubject').textContent=subject;
+  document.getElementById('eqMessage').textContent=message;
+  var imgDiv = document.getElementById('eqImage');
+  if (imgDiv) { if (imgUrl) { imgDiv.innerHTML = '<a href="'+imgUrl+'" download target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--m-bg);border:1.5px solid var(--m-border);border-radius:8px;font-size:0.82rem;font-weight:600;margin-top:12px;text-decoration:none;color:var(--m-text)">⬇ Download Attachment</a>'; imgDiv.style.display='block'; } else { imgDiv.style.display='none'; } }
+  document.getElementById('viewModal').classList.add('show');
+}
+function updateEnquiry(pk, status) {
+  fetch(`/manage/enquiries/${pk}/status/`, {method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/x-www-form-urlencoded'},body:`status=${status}`});
+}
+function deleteEnquiry(pk) {
+  if(!confirm('Delete this enquiry?')) return;
+  const f=document.createElement('form');f.method='POST';f.action=`/manage/enquiries/${pk}/delete/`;f.innerHTML='<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">';document.body.appendChild(f);f.submit();
+}
+document.querySelectorAll('.m-modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');}));
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'store/base.html' %}
+{% block title %}Privacy Policy — CraftX3D{% endblock %}
+{% block content %}
+<div class="policy-hero">
+  <h1>Privacy Policy</h1>
+  <p>Your privacy matters to us. Here’s how we handle your data.</p>
+</div>
+<div class="policy-page">
+  {% if terms %}
+  <aside class="policy-toc">
+    <div class="policy-toc-label">On this page</div>
+    <ul>
+      {% for t in terms %}<li><a href="#section-{{ t.pk }}">{{ t.title }}</a></li>{% endfor %}
+    </ul>
+  </aside>
+  {% endif %}
+  <div class="policy-content">
+    {% for t in terms %}
+    <div class="policy-section" id="section-{{ t.pk }}">
+      <h2>{{ t.title }}</h2>
+      <div class="policy-body">{{ t.content }}</div>
+    </div>
+    {% empty %}
+    <div class="policy-empty">Our privacy policy will be published here soon.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

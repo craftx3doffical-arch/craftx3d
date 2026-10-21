@@ -1,0 +1,235 @@
+{% extends 'manage/base.html' %}
+{% block title %}{% if banner %}Edit{% else %}Add{% endif %} Banner — CraftX3D Staff{% endblock %}
+{% block breadcrumb_parent %}Banners{% endblock %}
+{% block breadcrumb_current %}{% if banner %}Edit{% else %}Add{% endif %} Banner{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if banner %}Edit Banner{% else %}Add Banner{% endif %}</h1>
+    <p style="color:var(--m-muted);font-size:0.84rem;margin-top:4px;">
+      Pick a product from the list — upload its photo(s) in the Images section below.
+    </p>
+  </div>
+  <a href="{% url 'manage:banners' %}" class="m-btn m-btn-outline">← Back</a>
+</div>
+
+<form method="post"
+      action="{% if banner %}{% url 'manage:banner_edit' banner.pk %}{% else %}{% url 'manage:banner_add' %}{% endif %}"
+      enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="banner-form-grid">
+
+    <!-- LEFT -->
+    <div>
+
+      <!-- Product picker -->
+      <div class="form-section-card">
+        <div class="form-section-header">📦 Select a Product</div>
+        <div class="form-section-body">
+          <p style="font-size:0.83rem;color:var(--m-muted);margin-bottom:14px;">
+            Choosing a product auto-fills the link URL. Then upload that product's image(s) below.
+          </p>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Product (sets the banner link URL)</label>
+            <select id="productPicker" class="m-field" onchange="onProductPick(this)">
+              <option value="">— Choose a product —</option>
+              {% for p in products %}
+              <option value="{{ p.pk }}"
+                      data-url="/products/{{ p.slug }}/"
+                      data-img="{% if p.main_image %}{{ p.main_image.image.url }}{% endif %}"
+                      data-name="{{ p.name }}"
+                      data-price="₹{{ p.base_price }}">
+                {{ p.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Live product card -->
+          <div id="productCard" style="display:none;margin-top:14px;padding:12px;background:var(--m-bg);border-radius:10px;border:1px solid var(--m-border);display:none;align-items:center;gap:12px;">
+            <img id="pcImg" src="" alt="" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;">
+            <div>
+              <div id="pcName" style="font-weight:700;font-size:0.9rem;"></div>
+              <div id="pcPrice" style="font-size:0.8rem;color:var(--m-muted);margin-top:2px;"></div>
+              <div id="pcUrl" style="font-size:0.75rem;color:var(--m-primary);margin-top:2px;font-family:monospace;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- URLs & text -->
+      <div class="form-section-card">
+        <div class="form-section-header">🔗 Link & Button</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Banner Link URL</label>
+            <input type="text" name="cta_url" id="ctaUrl" class="m-field"
+                   value="{{ banner.cta_url|default:'/products/' }}"
+                   placeholder="/products/your-product-slug/">
+            <p class="m-form-hint" style="margin-top:4px;">Auto-filled when you pick a product above. Or type any URL.</p>
+          </div>
+          <div class="m-form-row">
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Button Text</label>
+              <input type="text" name="cta_text" class="m-field"
+                     value="{{ banner.cta_text|default:'Shop Now' }}" placeholder="Shop Now">
+            </div>
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Display Order</label>
+              <input type="number" name="display_order" class="m-field"
+                     value="{{ banner.display_order|default:10 }}" min="1">
+            </div>
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Internal Label <small style="font-weight:400;color:var(--m-muted);">(for staff only)</small></label>
+            <input type="text" name="title" class="m-field"
+                   value="{{ banner.title|default:'' }}" placeholder="e.g. Summer product banner">
+          </div>
+          <div class="m-form-group-light" style="margin-top:12px;">
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="bannerActive" name="is_active"
+                     {% if banner.is_active or not banner %}checked{% endif %}>
+              <label class="toggle-track" for="bannerActive"></label>
+              <span class="toggle-label">Active (visible on home page)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image upload -->
+      <div class="form-section-card">
+        <div class="form-section-header">🖼️ Banner Images</div>
+        <div class="form-section-body">
+          <p style="font-size:0.83rem;color:var(--m-muted);margin-bottom:12px;">
+            Upload the selected product's photo(s). Multiple images will swipe left–right.
+            Recommended: <strong>1600 × 700 px, landscape</strong>.
+          </p>
+          <div class="img-upload-grid" id="bannerImgGrid">
+            {% if banner %}
+            {% for img in banner.gallery_images.all %}
+            <div class="img-slot has-image" style="position:relative;" id="bSlot{{ img.pk }}">
+              <span class="img-slot-label">{{ forloop.counter }}</span>
+              <img src="{{ img.image.url }}" alt="" loading="lazy">
+              <button type="button" class="img-slot-remove" onclick="delImg({{ img.pk }},this)" title="Remove">✕</button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            <label class="img-slot" for="newBannerImages" title="Upload images">
+              <input type="file" id="newBannerImages" name="images" multiple accept="image/*"
+                     style="display:none;" onchange="previewImgs(this)">
+              <span class="img-slot-icon">+</span>
+              <span class="img-slot-main">Upload</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /left -->
+
+    <!-- RIGHT: preview + save -->
+    <div>
+      <div class="form-section-card" style="position:sticky;top:72px;">
+        <div class="form-section-header">👁️ Home Page Preview</div>
+        <div class="form-section-body">
+          <div id="previewBox" style="background:#111;border-radius:10px;overflow:hidden;position:relative;min-height:110px;display:flex;align-items:center;justify-content:center;">
+            {% if banner and banner.gallery_images.first %}
+            <img id="previewBannerImg" src="{{ banner.gallery_images.first.image.url }}"
+                 style="width:100%;max-height:180px;object-fit:cover;display:block;">
+            {% else %}
+            <span id="previewBannerImg" style="color:rgba(255,255,255,0.3);font-size:0.82rem;">Upload an image to preview</span>
+            {% endif %}
+            <div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);pointer-events:none;white-space:nowrap;">
+              <span style="display:inline-block;padding:7px 16px;background:#FFB800;color:#1C1C1E;font-weight:800;font-size:0.78rem;border-radius:999px;">
+                {% if banner %}{{ banner.cta_text|default:"Shop Now" }}{% else %}Shop Now{% endif %} →
+              </span>
+            </div>
+          </div>
+          <p style="font-size:0.73rem;color:var(--m-muted);margin-top:8px;text-align:center;">This is how the banner looks on the home page.</p>
+        </div>
+      </div>
+      <button type="submit" class="m-btn m-btn-primary"
+              style="width:100%;padding:14px;justify-content:center;margin-top:16px;">
+        💾 Save Banner
+      </button>
+      {% if banner %}
+      <div style="margin-top:12px;text-align:center;">
+        <button type="button" onclick="confirmDelete({{ banner.pk }})"
+                class="m-btn" style="background:none;color:var(--m-danger);border:1px solid var(--m-danger);width:100%;padding:10px;justify-content:center;">
+          🗑️ Delete Banner
+        </button>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</form>
+
+<script>
+/* ── Product picker — auto-fills cta_url field ─────────────────────────── */
+function onProductPick(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var card = document.getElementById('productCard');
+  if (!opt.value) { card.style.display = 'none'; return; }
+  var url   = opt.getAttribute('data-url');
+  var img   = opt.getAttribute('data-img');
+  var name  = opt.getAttribute('data-name');
+  var price = opt.getAttribute('data-price');
+  // Auto-fill the URL field
+  document.getElementById('ctaUrl').value = url;
+  // Show product card
+  document.getElementById('pcImg').src = img || '';
+  document.getElementById('pcImg').style.display = img ? '' : 'none';
+  document.getElementById('pcName').textContent  = name;
+  document.getElementById('pcPrice').textContent = price;
+  document.getElementById('pcUrl').textContent   = url;
+  card.style.display = 'flex';
+}
+
+/* ── Image upload preview ──────────────────────────────────────────────── */
+function previewImgs(input) {
+  var grid = document.getElementById('bannerImgGrid');
+  var addBtn = grid.querySelector('label.img-slot:last-child');
+  var previewBox = document.getElementById('previewBannerImg');
+  Array.from(input.files).forEach(function(file, i) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var slot = document.createElement('div');
+      slot.className = 'img-slot has-image';
+      slot.style.position = 'relative';
+      slot.innerHTML = '<img src="' + e.target.result + '" style="object-fit:cover;width:100%;height:100%;">';
+      grid.insertBefore(slot, addBtn);
+      // Update preview with first uploaded image
+      if (i === 0 && previewBox && previewBox.tagName === 'SPAN') {
+        var newImg = document.createElement('img');
+        newImg.id = 'previewBannerImg';
+        newImg.src = e.target.result;
+        newImg.style.cssText = 'width:100%;max-height:180px;object-fit:cover;display:block;';
+        previewBox.replaceWith(newImg);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ── Remove existing image via AJAX ───────────────────────────────────── */
+function delImg(pk, btn) {
+  if (!confirm('Remove this image?')) return;
+  fetch('/manage/banner-image/' + pk + '/delete/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.success) document.getElementById('bSlot' + pk)?.remove();
+  });
+}
+
+/* ── Delete whole banner ──────────────────────────────────────────────── */
+function confirmDelete(pk) {
+  if (confirm('Delete this banner? This cannot be undone.')) {
+    fetch('/manage/banners/' + pk + '/delete/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+    }).then(function(){ window.location = '/manage/banners/'; });
+  }
+}
+</script>
+{% endblock %}

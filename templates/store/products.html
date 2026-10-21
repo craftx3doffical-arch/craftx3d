@@ -1,0 +1,127 @@
+{% extends 'store/base.html' %}
+{% load static store_extras %}
+
+{% block title %}Products — CraftX3D{% endblock %}
+
+{% block content %}
+<div style="background:var(--charcoal);padding:40px 24px 32px;color:#fff;">
+  <div class="container">
+    <div class="section-eyebrow" style="color:rgba(255,255,255,0.5);">Our Collection</div>
+    <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:2.2rem;font-weight:800;margin-bottom:8px;">{% if bestseller_filter %}⭐ Bestsellers{% else %}All Products{% endif %}</h1>
+    <p style="color:rgba(255,255,255,0.6);">Precision-crafted 3D printed products, made to order.</p>
+  </div>
+</div>
+
+<div class="container section">
+  <!-- Filters Bar -->
+  <div class="pfbar">
+    <form method="get" action="{% url 'store:products' %}" class="pfbar-form" id="pfbarForm">
+      <!-- Search -->
+      <div class="filter-search-wrap pfbar-search">
+        <span class="filter-search-icon">🔍</span>
+        <input type="text" name="q" value="{{ search }}" placeholder="Search products..." class="form-input filter-search-input" aria-label="Search products">
+      </div>
+
+      <div class="pfbar-controls">
+        <div class="pfbar-group">
+          <span class="pfbar-label">Filter:</span>
+          <!-- Category filter (replaces "Availability") -->
+          <select name="category" class="pfbar-select" onchange="document.getElementById('pfbarForm').submit()" aria-label="Filter by category">
+            <option value="">Category</option>
+            {% for cat in categories %}
+            <option value="{{ cat.slug }}" {% if selected_category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="pfbar-group pfbar-sort-group">
+          <span class="pfbar-label">Sort by:</span>
+          <!-- Price high/low lives here too (unchanged from before). Which
+               option this opens on by default is staff-configurable:
+               Manage Portal → Settings → Products page default sort. -->
+          <select name="sort" class="pfbar-select pfbar-sort-select" onchange="document.getElementById('pfbarForm').submit()" aria-label="Sort by">
+            <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest First</option>
+            <option value="popular" {% if sort == 'popular' %}selected{% endif %}>Best Selling</option>
+            <option value="price_low" {% if sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+            <option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+          </select>
+        </div>
+
+        <span class="pfbar-count">{{ products.count }} product{{ products.count|pluralize }}</span>
+      </div>
+
+      {% if search or selected_category %}
+      <div class="filter-actions">
+        <a href="{% url 'store:products' %}" class="btn-outline filter-clear-btn">Clear ✕</a>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+
+  {% if search %}
+  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:20px;">
+    Results for "<strong>{{ search }}</strong>"
+  </div>
+  {% endif %}
+
+    <!-- Products Grid — 2-column card style -->
+  {% if products %}
+  <div class="products-grid">
+    {% for product in products %}
+    <div class="product-card{% if not product.is_in_stock %} product-card-oos{% endif %}">
+      <a href="{% url 'store:product_detail' product.slug %}" aria-label="{{ product.name }}">
+        <div class="product-img-wrap" data-images="{% for img in product.images.all %}{{ img.image.url }}{% if not forloop.last %}|{% endif %}{% endfor %}">
+          {% if product.main_image %}
+            <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" loading="lazy" class="prod-cycle-img">
+          {% else %}<div style="font-size:3.5rem;">📦</div>{% endif %}
+          {% if not product.is_in_stock %}
+          <div class="oos-overlay"><span class="oos-badge">🔔 Coming Soon</span></div>
+          {% elif product.discount_percent %}
+          <span class="discount-badge">-{{ product.discount_percent }}%</span>
+          {% endif %}
+          {% if product.is_in_stock %}
+          <a href="{% url 'store:product_detail' product.slug %}" class="quick-view-btn" onclick="event.stopPropagation();">Quick view <span class="qv-eye">👁</span></a>
+          {% endif %}
+        </div>
+      </a>
+      <button type="button" class="fav-btn{% if product.pk in favorite_product_ids %} is-favorited{% endif %}" onclick="toggleFavorite({{ product.pk }}, this, event)" aria-pressed="{% if product.pk in favorite_product_ids %}true{% else %}false{% endif %}" aria-label="{% if product.pk in favorite_product_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-6.7-4.35-9.3-8.1C.9 10.1 1.4 6.6 4.2 4.9c2.4-1.5 5.3-.8 7 1.2l.8 1 .8-1c1.7-2 4.6-2.7 7-1.2 2.8 1.7 3.3 5.2 1.5 8-2.6 3.75-9.3 8.1-9.3 8.1z"/></svg>
+      </button>
+      <div class="product-body">
+        {% if product.category %}
+        <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">{{ product.category.name }}</div>
+        {% endif %}
+        <div class="product-name">{{ product.name }}</div>
+        {% if product.rating_count %}
+        <div class="product-rating-row">
+          <span class="stars-mini">{% for i in "12345" %}<span class="star-mini{% if forloop.counter <= product.avg_rating|round_int %} filled{% endif %}">★</span>{% endfor %}</span>
+          <span class="rating-count">({{ product.rating_count }})</span>
+        </div>
+        {% elif product.is_new %}
+        <div class="product-rating-row"><span class="yml-new-chip">✦ New</span></div>
+        {% endif %}
+        <div class="product-price-row">
+          {% if product.compare_price %}<span class="price-original">₹{{ product.compare_price }}</span>{% endif %}
+          <span class="price-current">₹{{ product.base_price }}</span>
+        </div>
+        {% if not product.is_in_stock %}
+        <a href="{% url 'store:product_detail' product.slug %}" class="btn-add-cart btn-coming-soon">🔔 Coming Soon</a>
+        {% elif product.customization_type == 'none' %}
+        <button type="button" class="btn-add-cart" onclick="quickAddToCart({{ product.pk }}, this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Add to Cart</button>
+        {% else %}
+        <a href="{% url 'store:product_detail' product.slug %}" class="btn-add-cart"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Choose options</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:80px 20px;">
+    <div style="font-size:3rem;margin-bottom:16px;">🔍</div>
+    <h3 style="font-size:1.2rem;font-weight:700;margin-bottom:8px;">No products found</h3>
+    <p style="color:var(--text-muted);margin-bottom:24px;">Try adjusting your search or filters</p>
+    <a href="{% url 'store:products' %}" class="btn-primary">Clear Filters</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'store/base.html' %}
+{% block title %}Help & Support — CraftX3D{% endblock %}
+{% block content %}
+
+<div style="background:linear-gradient(135deg,var(--forest) 0%,var(--forest-light) 100%);padding:48px 24px;color:#fff;text-align:center;">
+  <div class="container">
+    <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:12px;">We're Here to Help</div>
+    <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:2.2rem;font-weight:800;margin-bottom:8px;">Help & Support</h1>
+    <p style="color:rgba(255,255,255,0.7);">We respond to every message within 24 hours.</p>
+  </div>
+</div>
+
+<div class="container section">
+  <div class="help-layout">
+    <!-- Contact Form -->
+    <div>
+      <div class="help-form-card">
+        <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:4px;">Get in Touch</h2>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;">Fill all fields — then the Send button will unlock.</p>
+
+        {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate id="helpForm">
+          {% csrf_token %}
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="full_name">Full Name <span style="color:var(--red)">*</span></label>
+              <input type="text" id="full_name" name="full_name" class="form-input" required placeholder="Your full name" value="{{ form.full_name.value|default:'' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="phone">Phone Number <span style="color:var(--red)">*</span></label>
+              <input type="tel" id="phone" name="phone" class="form-input" required placeholder="Mobile number" value="{{ form.phone.value|default:'' }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address <span style="color:var(--red)">*</span></label>
+            <input type="email" id="email" name="email" class="form-input" required placeholder="your@email.com" value="{{ form.email.value|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="subject">Subject <span style="color:var(--red)">*</span></label>
+            <input type="text" id="subject" name="subject" class="form-input" required placeholder="What can we help you with?" value="{{ form.subject.value|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="message">Your Message <span style="color:var(--red)">*</span></label>
+            <textarea id="message" name="message" class="form-input" rows="5" required placeholder="Describe your issue in detail…">{{ form.message.value|default:'' }}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Attach Image <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+            <label for="image" class="help-img-upload" id="helpFileArea">
+              <input type="file" id="image" name="image" accept="image/*" onchange="previewHelpImg(this)">
+              <div id="helpImgPreview" class="help-img-inner">
+                <span style="font-size:1.8rem;">📎</span>
+                <div>
+                  <div style="font-size:0.88rem;font-weight:600;color:var(--charcoal);">Click to attach an image</div>
+                  <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">JPG, PNG up to 5MB (optional)</div>
+                </div>
+              </div>
+            </label>
+          </div>
+          <button type="submit" class="btn-primary" id="helpSubmitBtn" style="width:100%;padding:14px;justify-content:center;opacity:0.45;cursor:not-allowed" disabled>
+            Send Message →
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- FAQs -->
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:20px;">Frequently Asked Questions</h2>
+      <div class="faq-list">
+        {% for faq in faqs %}
+        <div class="faq-item">
+          <button class="faq-question" type="button">{{ faq.question }}<span class="faq-arrow">▼</span></button>
+          <div class="faq-answer"><div class="faq-answer-content">{{ faq.answer }}</div></div>
+        </div>
+        {% empty %}<p style="color:var(--text-muted);">No FAQs yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewHelpImg(input) {
+  var div = document.getElementById('helpImgPreview');
+  if (div && input.files && input.files[0]) {
+    var f = input.files[0];
+    var url = URL.createObjectURL(f);
+    div.innerHTML = '<img src="' + url + '" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">' +
+      '<div><div style="font-size:0.88rem;font-weight:600;color:var(--teal);">' + f.name + '</div>' +
+      '<div style="font-size:0.75rem;color:var(--text-muted);">' + (f.size/1024).toFixed(0) + ' KB</div></div>';
+    var area = document.getElementById('helpFileArea');
+    if (area) area.style.borderColor = 'var(--teal)';
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'manage/base.html' %}
+{% block title %}Help FAQs — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}Help FAQs{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Help FAQs</h1><p class="page-sub">Manage customer-facing FAQs</p></div>
+  <button class="m-btn m-btn-primary" onclick="document.getElementById('addFaqModal').classList.add('show')">+ Add FAQ</button>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>#</th><th>QUESTION</th><th class="hide-mobile">ANSWER</th><th>ACTIVE</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for faq in faqs %}
+        <tr>
+          <td style="color:var(--m-muted);">{{ faq.display_order }}</td>
+          <td style="font-weight:600;font-size:0.88rem;">{{ faq.question|truncatechars:60 }}</td>
+          <td style="font-size:0.8rem;color:var(--m-muted);">{{ faq.answer|truncatechars:80 }}</td>
+          <td><span class="m-badge {% if faq.is_active %}badge-success{% else %}badge-muted{% endif %}">{{ faq.is_active|yesno:"Yes,No" }}</span></td>
+          <td><div class="btn-group"><button class="m-btn-icon" onclick="editFaq({{ faq.pk }},'{{ faq.question|escapejs }}','{{ faq.answer|escapejs }}',{{ faq.display_order }},{{ faq.is_active|yesno:'true,false' }})" title="Edit">✏️</button><button class="m-btn-icon" onclick="deleteFaq({{ faq.pk }})" title="Delete">🗑️</button></div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--m-muted);">No FAQs yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="m-modal-overlay" id="addFaqModal" role="dialog" aria-modal="true">
+  <div class="m-modal"><div class="m-modal-header"><span class="m-modal-title" id="faqModalTitle">Add FAQ</span><button class="m-modal-close" onclick="closeFaqModal()">✕</button></div>
+  <div class="m-modal-body">
+    <form method="post" id="faqForm" action="{% url 'manage:faq_add' %}">
+      {% csrf_token %}
+      <input type="hidden" name="_faq_id" id="faqId">
+      <div class="m-form-group-light"><label class="m-form-label-light">Question <span class="req">*</span></label><input type="text" name="question" id="faqQ" class="m-field" required placeholder="Customer question" aria-required="true"></div>
+      <div class="m-form-group-light"><label class="m-form-label-light">Answer <span class="req">*</span></label><textarea name="answer" id="faqA" class="m-field m-field-textarea" rows="4" required placeholder="Answer" aria-required="true"></textarea></div>
+      <div class="m-form-row">
+        <div class="m-form-group-light"><label class="m-form-label-light">Display Order</label><input type="number" name="display_order" id="faqOrder" class="m-field" value="10"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Active</label><div class="toggle-switch" style="margin-top:10px;"><input type="checkbox" class="toggle-input" id="faqActive" name="is_active" checked><label class="toggle-track" for="faqActive"></label></div></div>
+      </div>
+      <div class="m-modal-footer" style="padding:0;margin-top:16px;"><button type="button" class="m-btn m-btn-outline" onclick="closeFaqModal()">Cancel</button><button type="submit" class="m-btn m-btn-primary" id="faqSubmitBtn">Add FAQ</button></div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function closeFaqModal() { document.getElementById('addFaqModal').classList.remove('show'); }
+function editFaq(pk, q, a, order, active) {
+  document.getElementById('faqModalTitle').textContent = 'Edit FAQ';
+  document.getElementById('faqForm').action = `/manage/faqs/${pk}/edit/`;
+  document.getElementById('faqQ').value = q; document.getElementById('faqA').value = a;
+  document.getElementById('faqOrder').value = order; document.getElementById('faqActive').checked = active;
+  document.getElementById('faqSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('addFaqModal').classList.add('show');
+}
+function deleteFaq(pk) {
+  if(!confirm('Delete this FAQ?')) return;
+  const f=document.createElement('form');f.method='POST';f.action=`/manage/faqs/${pk}/delete/`;f.innerHTML='<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">';document.body.appendChild(f);f.submit();
+}
+document.getElementById('addFaqModal').addEventListener('click',e=>{if(e.target.id==='addFaqModal')closeFaqModal();});
+</script>
+{% endblock %}

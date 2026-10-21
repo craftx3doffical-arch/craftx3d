@@ -1,0 +1,74 @@
+{% extends 'manage/base.html' %}
+{% block title %}Privacy Policy — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}Privacy Policy{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Privacy Policy</h1><p class="page-sub">Shown to customers on the Privacy Policy page</p></div>
+  <button class="m-btn m-btn-primary" onclick="openPrivacyModal()">+ Add Section</button>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>#</th><th>TITLE</th><th class="hide-mobile">CONTENT</th><th>ACTIVE</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for t in terms %}
+        <tr>
+          <td style="color:var(--m-muted);">{{ t.display_order }}</td>
+          <td style="font-weight:600;font-size:0.88rem;">{{ t.title|truncatechars:60 }}</td>
+          <td style="font-size:0.8rem;color:var(--m-muted);">{{ t.content|truncatechars:80 }}</td>
+          <td><span class="m-badge {% if t.is_active %}badge-success{% else %}badge-muted{% endif %}">{{ t.is_active|yesno:"Yes,No" }}</span></td>
+          <td><div class="btn-group"><button class="m-btn-icon" onclick="editPrivacy({{ t.pk }},'{{ t.title|escapejs }}',`{{ t.content|escapejs }}`,{{ t.display_order }},{{ t.is_active|yesno:'true,false' }})" title="Edit">✏️</button><button class="m-btn-icon" onclick="deletePrivacy({{ t.pk }})" title="Delete">🗑️</button></div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--m-muted);">No privacy policy sections yet. Add sections to build your Privacy Policy page.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="m-modal-overlay" id="privacyModal" role="dialog" aria-modal="true">
+  <div class="m-modal"><div class="m-modal-header"><span class="m-modal-title" id="privacyModalTitle">Add Section</span><button class="m-modal-close" onclick="closePrivacyModal()">✕</button></div>
+  <div class="m-modal-body">
+    <form method="post" id="privacyForm" action="{% url 'manage:privacy_add' %}">
+      {% csrf_token %}
+      <div class="m-form-group-light"><label class="m-form-label-light">Title <span class="req">*</span></label><input type="text" name="title" id="privacyTitle" class="m-field" required placeholder="e.g. 1. Information We Collect" aria-required="true"></div>
+      <div class="m-form-group-light"><label class="m-form-label-light">Content <span class="req">*</span></label><textarea name="content" id="privacyContent" class="m-field m-field-textarea" rows="6" required placeholder="Section text..." aria-required="true"></textarea></div>
+      <div class="m-form-row">
+        <div class="m-form-group-light"><label class="m-form-label-light">Display Order</label><input type="number" name="display_order" id="privacyOrder" class="m-field" value="10"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Active</label><div class="toggle-switch" style="margin-top:10px;"><input type="checkbox" class="toggle-input" id="privacyActive" name="is_active" checked><label class="toggle-track" for="privacyActive"></label></div></div>
+      </div>
+      <div class="m-modal-footer" style="padding:0;margin-top:16px;"><button type="button" class="m-btn m-btn-outline" onclick="closePrivacyModal()">Cancel</button><button type="submit" class="m-btn m-btn-primary" id="privacySubmitBtn">Add Section</button></div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function openPrivacyModal() {
+  document.getElementById('privacyModalTitle').textContent = 'Add Section';
+  document.getElementById('privacyForm').action = "{% url 'manage:privacy_add' %}";
+  document.getElementById('privacyTitle').value = '';
+  document.getElementById('privacyContent').value = '';
+  document.getElementById('privacyOrder').value = 10;
+  document.getElementById('privacyActive').checked = true;
+  document.getElementById('privacySubmitBtn').textContent = 'Add Section';
+  document.getElementById('privacyModal').classList.add('show');
+}
+function closePrivacyModal() { document.getElementById('privacyModal').classList.remove('show'); }
+function editPrivacy(pk, title, content, order, active) {
+  document.getElementById('privacyModalTitle').textContent = 'Edit Section';
+  document.getElementById('privacyForm').action = `/manage/privacy/${pk}/edit/`;
+  document.getElementById('privacyTitle').value = title;
+  document.getElementById('privacyContent').value = content;
+  document.getElementById('privacyOrder').value = order;
+  document.getElementById('privacyActive').checked = active;
+  document.getElementById('privacySubmitBtn').textContent = 'Save Changes';
+  document.getElementById('privacyModal').classList.add('show');
+}
+function deletePrivacy(pk) {
+  if(!confirm('Delete this privacy policy section?')) return;
+  const f=document.createElement('form');f.method='POST';f.action=`/manage/privacy/${pk}/delete/`;f.innerHTML='<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">';document.body.appendChild(f);f.submit();
+}
+</script>
+{% endblock %}

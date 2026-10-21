@@ -1,0 +1,103 @@
+{% extends 'manage/base.html' %}
+{% block title %}Orders — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Sales{% endblock %}
+{% block breadcrumb_current %}Orders{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Orders</h1>
+    <p class="page-sub">{{ orders.count }} orders total</p>
+  </div>
+  <a href="{% url 'manage:export_orders' %}" class="m-btn m-btn-outline">⬇ Export CSV</a>
+</div>
+
+<!-- Tab Filters -->
+<div class="tab-filters-wrap" style="display:flex;gap:4px;margin-bottom:20px;">
+  <a href="{% url 'manage:orders' %}" class="tab-filter {% if not status_filter %}active{% endif %}">All</a>
+  <a href="?status=pending" class="tab-filter {% if status_filter == 'pending' %}active{% endif %}">⏳ Pending</a>
+  <a href="?status=printing" class="tab-filter {% if status_filter == 'printing' %}active{% endif %}">🖨️ Printing</a>
+  <a href="?status=shipped" class="tab-filter {% if status_filter == 'shipped' %}active{% endif %}">🚚 Shipped</a>
+  <a href="?status=delivered" class="tab-filter {% if status_filter == 'delivered' %}active{% endif %}">✅ Delivered</a>
+  <a href="?status=cancelled" class="tab-filter {% if status_filter == 'cancelled' %}active{% endif %}">❌ Cancelled</a>
+</div>
+
+<!-- Search -->
+<div class="filter-row" style="margin-bottom:16px;">
+  <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;">
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <div class="filter-search-wrap">
+      <span class="filter-search-icon">🔍</span>
+      <input type="text" name="q" value="{{ search }}" placeholder="Order ID, customer name..." class="filter-search" aria-label="Search orders">
+    </div>
+    <button type="submit" class="m-btn m-btn-primary m-btn-sm">Search</button>
+    {% if search %}<a href="?{% if status_filter %}status={{ status_filter }}{% endif %}" class="m-btn m-btn-outline m-btn-sm">✕</a>{% endif %}
+  </form>
+</div>
+
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead>
+        <tr>
+          <th>ORDER</th>
+          <th>CUSTOMER</th>
+          <th class="hide-mobile">ITEMS</th>
+          <th>TOTAL</th>
+          <th>PAYMENT</th>
+          <th>STATUS</th>
+          <th class="hide-mobile">DATE</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td><a href="{% url 'manage:order_detail' order.order_id %}" style="color:var(--m-accent);font-weight:700;">#{{ order.order_id }}</a></td>
+          <td>
+            <div style="font-weight:600;">{{ order.full_name }}</div>
+            <div style="font-size:0.72rem;color:var(--m-muted);">{{ order.phone }}</div>
+          </td>
+          <td>{{ order.items.count }}</td>
+          <td style="font-weight:700;">₹{{ order.total }}</td>
+          <td><span class="m-badge {% if order.payment_status == 'paid' %}badge-success{% elif order.payment_status == 'failed' %}badge-danger{% else %}badge-warning{% endif %}">{% if order.payment_status == 'paid' %}✅ PAID{% elif order.payment_status == 'failed' %}❌ FAILED{% else %}⏳ PENDING{% endif %}</span></td>
+          <td>
+            <select class="filter-select" style="padding:4px 8px;font-size:0.72rem;" onchange="updateStatus('{{ order.order_id }}', this.value)" aria-label="Update status for {{ order.order_id }}">
+              {% for val, label in order_statuses %}
+              <option value="{{ val }}" {% if order.status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td style="font-size:0.78rem;color:var(--m-muted);">{{ order.created_at|date:"d M, g:i A" }}</td>
+          <td>
+            <a href="{% url 'manage:order_detail' order.order_id %}" class="m-btn-icon" title="View">👁️</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--m-muted);">No orders found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateStatus(orderId, status) {
+  fetch(`/manage/orders/${orderId}/status/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `status=${status}`
+  }).then(r => r.json()).then(d => {
+    showMToast(d.success ? `Order updated to ${status}` : 'Error updating', d.success ? 'success' : 'error');
+  });
+}
+function showMToast(msg, type='info') {
+  const c = document.getElementById('mToastContainer');
+  const t = document.createElement('div');
+  t.style.cssText = 'background:#1A1A2E;color:#fff;padding:10px 16px;border-radius:8px;font-size:0.82rem;display:flex;gap:8px;border-left:3px solid '+(type==='success'?'#1A9B77':type==='error'?'#D9534F':'#F5A623')+';min-width:240px;';
+  t.textContent = msg; c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0';t.style.transition='opacity 0.3s';setTimeout(()=>t.remove(),300); }, 3000);
+}
+</script>
+{% endblock %}

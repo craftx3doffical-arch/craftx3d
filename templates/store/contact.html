@@ -1,0 +1,57 @@
+{% extends 'store/base.html' %}
+{% block title %}Contact Us — CraftX3D{% endblock %}
+{% block content %}
+<div class="policy-hero">
+  <h1>Contact Us</h1>
+  <p>We'd love to hear from you — reach out anytime.</p>
+</div>
+<div class="contact-page">
+  <div class="contact-cards">
+    {% if info.email %}
+    <div class="contact-card">
+      <div class="contact-card-icon">✉️</div>
+      <div class="contact-card-label">Email</div>
+      <a href="mailto:{{ info.email }}">{{ info.email }}</a>
+    </div>
+    {% endif %}
+    {% if info.phone %}
+    <div class="contact-card">
+      <div class="contact-card-icon">📞</div>
+      <div class="contact-card-label">Phone</div>
+      <a href="tel:{{ info.phone }}">{{ info.phone }}</a>
+    </div>
+    {% endif %}
+    {% if info.whatsapp_number %}
+    <div class="contact-card">
+      <div class="contact-card-icon">💬</div>
+      <div class="contact-card-label">WhatsApp</div>
+      <a href="https://wa.me/{{ info.whatsapp_number }}" target="_blank" rel="noopener">Chat with us</a>
+    </div>
+    {% endif %}
+    {% if info.business_hours %}
+    <div class="contact-card">
+      <div class="contact-card-icon">🕐</div>
+      <div class="contact-card-label">Business Hours</div>
+      <span>{{ info.business_hours }}</span>
+    </div>
+    {% endif %}
+    {% if info.address_line %}
+    <div class="contact-card contact-card-wide">
+      <div class="contact-card-icon">📍</div>
+      <div class="contact-card-label">Address</div>
+      <span style="white-space:pre-line;">{{ info.address_line }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if info.map_embed_url %}
+  <div class="contact-map">
+    <iframe src="{{ info.map_embed_url }}" width="100%" height="320" style="border:0;border-radius:var(--radius);" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+  {% endif %}
+
+  {% if not info %}
+  <div class="policy-empty">Contact details will be published here soon.</div>
+  {% endif %}
+</div>
+{% endblock %}

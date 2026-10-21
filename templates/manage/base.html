@@ -1,0 +1,229 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Staff Portal — CraftX3D{% endblock %}</title>
+  <!-- Favicon / app icons -->
+  <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32.png' %}">
+  <link rel="icon" type="image/png" sizes="48x48" href="{% static 'img/favicon-48.png' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/favicon-16.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/manage.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<div class="manage-layout">
+  <!-- SIDEBAR -->
+  <aside class="manage-sidebar" role="navigation" aria-label="Staff portal navigation">
+    <div class="sidebar-header">
+      {% if store_settings.logo %}
+      <img src="{{ store_settings.logo.url }}" alt="{{ store_settings.store_name|default:'CraftX3D' }}" class="sidebar-logo-img">
+      {% else %}
+      <div class="sidebar-logo">🖨️</div>
+      {% endif %}
+      <div class="sidebar-brand-text">
+        <div class="sidebar-brand-name">{{ store_settings.store_name|default:"CraftX3D" }}</div>
+        <div class="sidebar-brand-sub">Staff Portal</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">OVERVIEW</div>
+      <a href="{% url 'manage:dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <span class="sidebar-icon">📊</span> Dashboard
+      </a>
+
+      <div class="sidebar-section" style="margin-top:8px;">CATALOGUE</div>
+      <a href="{% url 'manage:products' %}" class="sidebar-link {% if 'product' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">📦</span> Products
+      </a>
+      <a href="{% url 'manage:categories' %}" class="sidebar-link {% if 'categor' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">🗂️</span> Categories
+      </a>
+      <a href="{% url 'manage:inventory' %}" class="sidebar-link {% if 'inventor' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">📋</span> Inventory
+      </a>
+
+      <div class="sidebar-section" style="margin-top:8px;">SALES</div>
+      <a href="{% url 'manage:orders' %}" class="sidebar-link {% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
+        <span class="sidebar-icon">🛒</span> Orders
+        {% if pending_orders_count %}<span class="sidebar-badge">{{ pending_orders_count }}</span>{% endif %}
+      </a>
+      <a href="{% url 'manage:coupons' %}" class="sidebar-link {% if 'coupon' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">🏷️</span> Coupons
+      </a>
+      <a href="{% url 'manage:delivered_orders' %}" class="sidebar-link {% if request.resolver_match.url_name == 'delivered_orders' %}active{% endif %}">
+        <span class="sidebar-icon">✅</span> Delivered Orders
+      </a>
+      <a href="{% url 'manage:cancelled_orders' %}" class="sidebar-link {% if request.resolver_match.url_name == 'cancelled_orders' %}active{% endif %}">
+        <span class="sidebar-icon">❌</span> Cancelled Orders
+      </a>
+
+      <div class="sidebar-section" style="margin-top:8px;">COMMUNITY</div>
+      <a href="{% url 'manage:customers' %}" class="sidebar-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">👥</span> Customers
+      </a>
+      <a href="{% url 'manage:reviews' %}" class="sidebar-link {% if 'review' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">⭐</span> Reviews
+        {% if pending_reviews_count %}<span class="sidebar-badge gold">{{ pending_reviews_count }}</span>{% endif %}
+      </a>
+      <a href="{% url 'manage:enquiries' %}" class="sidebar-link {% if 'enquir' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">💬</span> Enquiries
+        {% if new_enquiries_count %}<span class="sidebar-badge">{{ new_enquiries_count }}</span>{% endif %}
+      </a>
+
+      <div class="sidebar-section" style="margin-top:8px;">CONFIG</div>
+      <a href="{% url 'manage:faqs' %}" class="sidebar-link {% if 'faq' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">❓</span> Help FAQs
+      </a>
+      <a href="{% url 'manage:banners' %}" class="sidebar-link {% if 'banner' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">🖼️</span> Banners
+      </a>
+      <a href="{% url 'manage:about_page' %}" class="sidebar-link {% if 'about' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">📖</span> About Page
+      </a>
+      <a href="{% url 'manage:manage_logins' %}" class="sidebar-link {% if 'login' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">🔐</span> Manage Login
+      </a>
+      <a href="{% url 'manage:settings' %}" class="sidebar-link {% if 'setting' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">⚙️</span> Settings
+      </a>
+
+      <div class="sidebar-section" style="margin-top:8px;">LEGAL &amp; POLICIES</div>
+      <a href="{% url 'manage:terms' %}" class="sidebar-link {% if request.resolver_match.url_name == 'terms' or request.resolver_match.url_name == 'terms_add' or request.resolver_match.url_name == 'terms_edit' or request.resolver_match.url_name == 'terms_delete' %}active{% endif %}">
+        <span class="sidebar-icon">📜</span> Terms &amp; Conditions
+      </a>
+      <a href="{% url 'manage:privacy' %}" class="sidebar-link {% if 'privacy' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">🔒</span> Privacy Policy
+      </a>
+      <a href="{% url 'manage:refund' %}" class="sidebar-link {% if 'refund' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">💰</span> Refund Policy
+      </a>
+      <a href="{% url 'manage:shipping' %}" class="sidebar-link {% if 'shipping' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">🚚</span> Shipping Policy
+      </a>
+      <a href="{% url 'manage:custom_order_policy' %}" class="sidebar-link {% if 'custom_order_policy' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">🛠️</span> Custom Order Policy
+      </a>
+      <a href="{% url 'manage:product_disclaimer' %}" class="sidebar-link {% if 'product_disclaimer' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">⚠️</span> Product Disclaimer
+      </a>
+      <a href="{% url 'manage:contact_info' %}" class="sidebar-link {% if 'contact' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="sidebar-icon">📞</span> Contact Info
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="staff-avatar-row">
+        <div class="staff-avatar">{{ request.session.staff_username|first|upper|default:"S" }}</div>
+        <div>
+          <div class="staff-name">{{ request.session.staff_username|default:"Staff" }}</div>
+          <div class="staff-role">⚡ {{ request.session.staff_role|title|default:"Staff" }}</div>
+        </div>
+        <a href="{% url 'manage:logout' %}" title="Logout" style="margin-left:auto;color:rgba(255,255,255,0.3);font-size:0.85rem;">↩</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="manage-main">
+    <!-- Topbar -->
+    <header class="manage-topbar">
+      <button class="m-nav-toggle" id="mNavToggle" aria-label="Toggle sidebar" title="Menu">☰</button>
+      <div class="topbar-breadcrumb">
+        <span>{% block breadcrumb_parent %}Staff Portal{% endblock %}</span>
+        <span>›</span>
+        <span class="current">{% block breadcrumb_current %}Overview{% endblock %}</span>
+      </div>
+
+      <div class="topbar-search">
+        <span class="topbar-search-icon">🔍</span>
+        <input type="text" placeholder="Search products, orders, customers..." class="topbar-search-input" aria-label="Search">
+      </div>
+
+      <div class="topbar-actions">
+        <button class="topbar-icon-btn" title="Analytics">📊</button>
+        <button class="topbar-icon-btn" title="Notifications" style="position:relative;">
+          🔔<span class="notif-dot"></span>
+        </button>
+        <button class="topbar-icon-btn" title="Settings" onclick="window.location='{% url 'manage:settings' %}'">⚙️</button>
+        <a href="/admin/" class="topbar-icon-btn" title="Django Admin" target="_blank">🛡️</a>
+      </div>
+    </header>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div style="padding:0 28px;margin-top:16px;">
+      {% for message in messages %}
+      <div class="m-alert m-alert-{{ message.tags }}">
+        {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}❌{% else %}ℹ️{% endif %}
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Content -->
+    <div class="manage-content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div class="m-sidebar-overlay" id="mSidebarOverlay"></div>
+
+<!-- TOAST -->
+<div id="mToastContainer" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;" aria-live="polite"></div>
+
+<script src="{% static 'js/manage.js' %}"></script>
+{% block extra_js %}{% endblock %}
+
+<script>
+// Mobile sidebar toggle
+var mNavToggle = document.getElementById('mNavToggle');
+var mSidebar = document.querySelector('.manage-sidebar');
+var mOverlay = document.getElementById('mSidebarOverlay');
+if (mNavToggle && mSidebar) {
+  mNavToggle.addEventListener('click', function() {
+    mSidebar.classList.toggle('open');
+    mOverlay.classList.toggle('show');
+  });
+}
+if (mOverlay) {
+  mOverlay.addEventListener('click', function() {
+    mSidebar.classList.remove('open');
+    mOverlay.classList.remove('show');
+  });
+}
+// Close sidebar on nav link click (drawer mode only, ≤768px)
+document.querySelectorAll('.sidebar-link').forEach(function(link) {
+  link.addEventListener('click', function() {
+    if (window.innerWidth <= 768) {
+      mSidebar && mSidebar.classList.remove('open');
+      mOverlay && mOverlay.classList.remove('show');
+    }
+  });
+});
+
+// Auto-dismiss messages
+setTimeout(() => {
+  document.querySelectorAll('.m-alert').forEach(el => {
+    el.style.transition = 'opacity 0.5s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 500);
+  });
+}, 4000);
+
+// Staff counts for sidebar badges
+{% block sidebar_counts %}{% endblock %}
+</script>
+</body>
+</html>

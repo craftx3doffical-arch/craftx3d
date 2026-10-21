@@ -1,0 +1,215 @@
+{% extends 'store/base.html' %}
+{% block title %}{% if action == 'edit' %}Edit Address{% else %}Add New Address{% endif %} — CraftX3D{% endblock %}
+
+{% block content %}
+<div style="max-width:600px;margin:28px auto;padding:0 16px 48px;">
+
+  <!-- Back -->
+  <a href="{% if next %}{{ next }}{% else %}{% url 'store:manage_addresses' %}{% endif %}"
+     style="display:inline-flex;align-items:center;gap:6px;color:var(--text-muted);font-size:0.88rem;margin-bottom:16px;text-decoration:none;">
+    ← Back
+  </a>
+
+  <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:1.45rem;font-weight:800;margin-bottom:20px;">
+    {% if action == 'edit' %}Edit your address{% else %}Add a new delivery address{% endif %}
+  </h1>
+
+  <form method="post" id="addrForm">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <!-- ── Card 1 · Location ─────────────────────────────────────── -->
+    <div class="addr-card">
+      <div class="addr-card-head"><span class="addr-step">1</span> Location</div>
+
+      <div class="addr-grid-2">
+        <div class="addr-field-group">
+          <label class="addr-label">Pincode <span class="req">*</span></label>
+          <input type="text" name="pincode" id="pincode" class="addr-input"
+                 value="{% if address %}{{ address.pincode }}{% endif %}"
+                 placeholder="6-digit pincode" maxlength="6" pattern="\d{6}" required
+                 inputmode="numeric" oninput="handlePincodeInput(this.value)">
+          <span id="pincodeStatus" class="addr-pin-status"></span>
+        </div>
+        <div class="addr-field-group">
+          <label class="addr-label">Town / City <span class="req">*</span></label>
+          <input type="text" name="city" id="city" class="addr-input"
+                 value="{% if address %}{{ address.city }}{% endif %}"
+                 placeholder="e.g. Chennai" required>
+        </div>
+      </div>
+
+      <div class="addr-field-group" style="margin-bottom:0;">
+        <label class="addr-label">State <span class="req">*</span></label>
+        <div style="position:relative;">
+          <select name="state" id="state" class="addr-input" required style="appearance:none;padding-right:32px;">
+            <option value="">Select state…</option>
+            {% for s in indian_states %}
+            <option value="{{ s }}" {% if address and address.state == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-muted);">▾</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Card 2 · Address details ──────────────────────────────── -->
+    <div class="addr-card">
+      <div class="addr-card-head"><span class="addr-step">2</span> Address details</div>
+
+      <div class="addr-field-group">
+        <label class="addr-label">Flat, House no., Building, Apartment <span class="req">*</span></label>
+        <input type="text" name="address_line1" id="address_line1" class="addr-input"
+               value="{% if address %}{{ address.address_line1 }}{% endif %}"
+               placeholder="e.g. 12B, Sunrise Apartments" required>
+      </div>
+
+      <div class="addr-field-group">
+        <label class="addr-label">Area, Street, Sector, Village</label>
+        <input type="text" name="address_line2" id="address_line2" class="addr-input"
+               value="{% if address %}{{ address.address_line2 }}{% endif %}"
+               placeholder="e.g. Anna Nagar">
+      </div>
+
+      <div class="addr-field-group" style="margin-bottom:0;">
+        <label class="addr-label">Landmark <span class="opt">(Optional)</span></label>
+        <input type="text" name="landmark" id="landmark" class="addr-input"
+               value="{% if address %}{{ address.landmark }}{% endif %}"
+               placeholder="e.g. Near City Mall">
+      </div>
+    </div>
+
+    <!-- ── Card 3 · Contact ──────────────────────────────────────── -->
+    <div class="addr-card">
+      <div class="addr-card-head"><span class="addr-step">3</span> Contact</div>
+
+      <div class="addr-field-group">
+        <label class="addr-label">Full Name <span class="req">*</span></label>
+        <input type="text" name="full_name" class="addr-input"
+               value="{% if address %}{{ address.full_name }}{% else %}{{ initial_name }}{% endif %}"
+               placeholder="Name on delivery label" required>
+      </div>
+
+      <div class="addr-grid-2">
+        <div class="addr-field-group">
+          <label class="addr-label">Mobile Number <span class="req">*</span></label>
+          <div class="input-icon-wrap">
+            <span class="phone-prefix">🇮🇳 +91</span>
+            <input type="tel" name="phone" class="addr-input input-with-prefix"
+                   value="{% if address %}{{ address.phone }}{% else %}{{ initial_phone }}{% endif %}"
+                   placeholder="10-digit number" maxlength="10" pattern="\d{10}" required inputmode="numeric">
+          </div>
+        </div>
+        <div class="addr-field-group">
+          <label class="addr-label">Alternate Phone <span class="opt">(Optional)</span></label>
+          <div class="input-icon-wrap">
+            <span class="phone-prefix">🇮🇳 +91</span>
+            <input type="tel" name="alternate_phone" class="addr-input input-with-prefix"
+                   value="{% if address %}{{ address.alternate_phone }}{% endif %}"
+                   placeholder="10-digit number" maxlength="10" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
+      <label class="addr-default-row">
+        <input type="checkbox" name="is_default" id="isDefault"
+               {% if address and address.is_default %}checked{% elif not address %}checked{% endif %}
+               style="width:18px;height:18px;accent-color:var(--teal);flex-shrink:0;">
+        <div>
+          <div style="font-weight:600;font-size:0.9rem;">Make this my default address</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">This address will be pre-selected at checkout</div>
+        </div>
+      </label>
+    </div>
+
+    <button type="submit" class="btn-addr-save">
+      {% if action == 'edit' %}Use this address{% else %}Save address{% endif %}
+    </button>
+  </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.addr-card {
+  background:#fff;border:1.5px solid #ECEAE5;border-radius:16px;
+  padding:20px;margin-bottom:16px;
+  box-shadow:0 1px 2px rgba(0,0,0,0.03), 0 5px 18px rgba(0,0,0,0.04);
+}
+.addr-card-head {
+  display:flex;align-items:center;gap:9px;
+  font-weight:800;font-size:0.98rem;color:var(--charcoal);margin-bottom:16px;
+}
+.addr-step {
+  width:24px;height:24px;border-radius:50%;background:var(--teal-light,#E4F5EE);color:var(--forest);
+  display:inline-flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0;
+}
+.addr-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+@media (max-width:480px){ .addr-grid-2 { grid-template-columns:1fr; gap:0; } }
+.addr-field-group { margin-bottom:14px;position:relative; }
+.addr-label { display:block;font-weight:600;font-size:0.85rem;margin-bottom:6px;color:var(--charcoal); }
+.addr-label .req { color:#C0392B; }
+.addr-label .opt { color:var(--text-muted);font-weight:400;font-size:0.78rem; }
+.addr-input {
+  width:100%;padding:12px 14px;border:1.5px solid #E6E3DC;border-radius:10px;
+  font-size:0.92rem;font-family:inherit;outline:none;background:#fff;
+  transition:border-color .18s, box-shadow .18s;box-sizing:border-box;
+}
+.addr-input:focus { border-color:var(--teal);box-shadow:0 0 0 3px rgba(26,155,119,0.10); }
+.addr-pin-status {
+  display:none;margin-top:7px;font-size:0.78rem;font-weight:700;color:var(--forest);
+  background:#EAF7F1;border:1px solid #CBE9DB;border-radius:999px;padding:4px 11px;width:fit-content;
+}
+.addr-pin-status.err { color:#B3261E;background:#FDECEA;border-color:#F5C6C0; }
+.addr-default-row {
+  display:flex;align-items:center;gap:10px;padding:13px 12px;cursor:pointer;
+  background:#FAF8F4;border:1.5px solid #EFECE5;border-radius:12px;margin-top:2px;
+}
+.btn-addr-save {
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:16px;margin-top:6px;
+  background:linear-gradient(180deg,var(--forest-light) 0%,var(--forest) 100%);
+  color:#fff;font-size:1rem;font-weight:800;letter-spacing:.01em;
+  border:none;border-radius:14px;cursor:pointer;
+  box-shadow:0 3px 12px rgba(27,67,50,0.26);
+  transition:transform .12s, box-shadow .18s;
+}
+.btn-addr-save:hover { transform:translateY(-1px);box-shadow:0 6px 18px rgba(27,67,50,0.30); }
+.btn-addr-save:active { transform:translateY(1px); }
+</style>
+<script>
+var _pincodeTimer;
+function handlePincodeInput(val) {
+  clearTimeout(_pincodeTimer);
+  var st = document.getElementById('pincodeStatus');
+  if (val.length !== 6 || !/^\d{6}$/.test(val)) { if (st) st.style.display = 'none'; return; }
+  st.style.display = 'inline-block'; st.classList.remove('err'); st.textContent = 'Looking up…';
+  _pincodeTimer = setTimeout(function() {
+    fetch('/api/pincode/' + val + '/')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          var cityEl = document.getElementById('city');
+          var stateEl = document.getElementById('state');
+          if (cityEl && !cityEl.value) cityEl.value = data.city;
+          // State is determined by the pincode — always sync it so a stale
+          // selection (e.g. "Haryana" for a Tamil Nadu pincode) can't stick.
+          if (stateEl && data.state) {
+            for (var i = 0; i < stateEl.options.length; i++) {
+              if (stateEl.options[i].value.toLowerCase() === data.state.toLowerCase()) {
+                stateEl.value = stateEl.options[i].value;
+                break;
+              }
+            }
+          }
+          st.textContent = data.city ? '✓ ' + data.city + ', ' + data.state : '✓ Found';
+        } else {
+          st.classList.add('err'); st.textContent = 'Pincode not found';
+        }
+      })
+      .catch(function(){ st.style.display='none'; });
+  }, 400);
+}
+</script>
+{% endblock %}

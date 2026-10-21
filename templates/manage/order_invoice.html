@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice #{{ order.order_id }} — CraftX3D</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Dancing+Script&family=Playfair+Display:wght@400;700&family=Cinzel&family=Great+Vibes&family=Oleo+Script&family=Bungee&family=Raleway&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:#f0f2f5; color:#1a1a1a; }
+
+  .invoice-wrapper { max-width:860px; margin:32px auto; padding:0 16px 40px; }
+
+  /* Print button bar */
+  .no-print { text-align:right; margin-bottom:20px; display:flex; gap:10px; justify-content:flex-end; }
+  .btn-print { padding:10px 20px; background:#1A4332; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:0.88rem; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .btn-back  { padding:10px 20px; background:#fff; color:#1a1a1a; border:1.5px solid #ddd; border-radius:8px; cursor:pointer; font-size:0.88rem; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:6px; }
+
+  /* Invoice card */
+  .invoice { background:#fff; border-radius:16px; box-shadow:0 4px 32px rgba(0,0,0,0.1); overflow:hidden; }
+
+  /* Header */
+  .inv-header { background:linear-gradient(135deg,#1A4332 0%,#2D6A4F 100%); color:#fff; padding:36px 40px; display:flex; justify-content:space-between; align-items:flex-start; }
+  .brand-name { font-size:1.5rem; font-weight:800; letter-spacing:-0.02em; }
+  .brand-tag  { font-size:0.75rem; opacity:0.65; font-weight:500; margin-top:2px; }
+  .inv-title  { text-align:right; }
+  .inv-word   { font-size:2rem; font-weight:800; letter-spacing:-0.03em; opacity:0.9; }
+  .inv-id     { font-size:0.9rem; opacity:0.65; margin-top:4px; }
+  .inv-date   { font-size:0.85rem; opacity:0.65; margin-top:2px; }
+
+  /* Status ribbon */
+  .status-ribbon { padding:10px 40px; display:flex; align-items:center; gap:12px; background:#F0FBF6; border-bottom:1px solid #e0f0e8; }
+  .status-pill { padding:4px 12px; border-radius:999px; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; }
+  .status-pending   { background:#FFF9C4; color:#856404; }
+  .status-printing  { background:#E3F2FD; color:#1565C0; }
+  .status-shipped   { background:#E8EAF6; color:#3949AB; }
+  .status-delivered { background:#E0F5EE; color:#1A6B4E; }
+  .status-cancelled { background:#FFEBEE; color:#C62828; }
+
+  /* Body */
+  .inv-body { padding:32px 40px; }
+
+  /* Bill info grid */
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:32px; }
+  .info-box h3 { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#999; margin-bottom:8px; }
+  .info-box p  { font-size:0.88rem; line-height:1.7; color:#444; }
+  .info-box strong { color:#1a1a1a; }
+
+  /* Items table */
+  .items-section h3 { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#999; margin-bottom:12px; }
+  .items-table { width:100%; border-collapse:separate; border-spacing:0; border:1.5px solid #eee; border-radius:10px; overflow:hidden; }
+  .items-table thead th { background:#ffffff; padding:10px 16px; text-align:left; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#999; border-bottom:1.5px solid #eee; }
+  .items-table tbody td { padding:14px 16px; vertical-align:top; border-bottom:1px solid #f0f0f0; font-size:0.85rem; }
+  .items-table tbody tr:last-child td { border-bottom:none; }
+  .item-img-cell { width:64px; }
+  .item-img { width:52px; height:52px; object-fit:contain; border-radius:8px; background:#f5f5f5; padding:4px; }
+  .item-name { font-weight:600; margin-bottom:3px; }
+  .item-size { font-size:0.75rem; color:#888; }
+  .text-right { text-align:right; }
+  .price { font-weight:700; }
+
+  /* Customization section per item */
+  .custom-section { margin-top:10px; background:#f9f9f9; border-radius:8px; padding:10px 14px; }
+  .custom-title { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#aaa; margin-bottom:8px; }
+  .custom-row { display:flex; gap:8px; margin-bottom:5px; font-size:0.8rem; }
+  .custom-key { color:#888; font-weight:600; min-width:120px; flex-shrink:0; text-transform:capitalize; }
+  .custom-val { color:#1a1a1a; }
+
+  /* Uploaded photos */
+  .photos-section { margin-top:12px; }
+  .photos-title { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#aaa; margin-bottom:8px; }
+  .photos-grid { display:flex; gap:10px; flex-wrap:wrap; }
+  .photo-card { position:relative; }
+  .photo-thumb { width:80px; height:80px; object-fit:cover; border-radius:8px; border:1.5px solid #eee; display:block; }
+  .photo-slot  { font-size:0.65rem; color:#888; text-align:center; margin-top:4px; }
+  .photo-download { position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.65); color:#fff; border-radius:4px; padding:2px 6px; font-size:0.65rem; font-weight:600; text-decoration:none; }
+  .photo-download:hover { background:#1A4332; }
+
+  /* Totals */
+  .totals-section { display:flex; justify-content:flex-end; margin-top:24px; }
+  .totals-card { width:300px; }
+  .total-row { display:flex; justify-content:space-between; padding:7px 0; font-size:0.85rem; color:#666; border-bottom:1px solid #f0f0f0; }
+  .total-row:last-child { border-bottom:none; }
+  .total-final { font-size:1rem; font-weight:800; color:#1a1a1a; }
+
+  /* Payment + Shipping */
+  .footer-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:28px; padding-top:24px; border-top:1.5px solid #eee; }
+  .footer-box h3 { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#999; margin-bottom:8px; }
+  .footer-box p { font-size:0.85rem; color:#444; line-height:1.7; }
+
+  /* Notes */
+  .notes-box { margin-top:20px; background:#FFFBEA; border:1.5px solid #FDE68A; border-radius:8px; padding:12px 16px; font-size:0.82rem; color:#92400E; }
+  .notes-box strong { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; }
+
+  /* Thank you footer */
+  .inv-footer { background:#ffffff; padding:20px 40px; display:flex; justify-content:space-between; align-items:center; border-top:1.5px solid #eee; }
+  .inv-footer-thanks { font-size:0.9rem; font-weight:600; color:#1A4332; }
+  .inv-footer-contact { font-size:0.78rem; color:#888; text-align:right; }
+
+  @media print {
+    body { background:#fff; }
+    .no-print { display:none !important; }
+    .invoice-wrapper { margin:0; padding:0; max-width:100%; }
+    .invoice { box-shadow:none; border-radius:0; }
+    .inv-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .status-ribbon { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="invoice-wrapper">
+
+  <!-- Action bar -->
+  <div class="no-print">
+    <a href="{% url 'manage:order_detail' order.order_id %}" class="btn-back">← Back to Order</a>
+    <button onclick="window.print()" class="btn-print">🖨️ Print Invoice</button>
+  </div>
+
+  <div class="invoice">
+
+    <!-- Header -->
+    <div class="inv-header">
+      <div>
+        <div class="brand-name">{{ store_settings.company_legal_name|default:"CraftX3D" }}</div>
+        <div class="brand-tag">3D Printing Specialists</div>
+        {% if store_settings.invoice_enabled %}
+        <div style="margin-top:16px;font-size:0.78rem;opacity:0.75;line-height:1.7;">
+          {% if store_settings.company_address %}{{ store_settings.company_address|linebreaksbr }}<br>{% endif %}
+          {% if store_settings.company_phone %}📞 {{ store_settings.company_phone }}<br>{% endif %}
+          {% if store_settings.company_email %}✉️ {{ store_settings.company_email }}<br>{% endif %}
+          {% if store_settings.show_gst_on_invoice and store_settings.gst_number %}<strong>GSTIN:</strong> {{ store_settings.gst_number }}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="inv-title">
+        <div class="inv-word">INVOICE</div>
+        <div class="inv-id">#{{ order.order_id }}</div>
+        <div class="inv-date">{{ order.created_at|date:"d F Y" }}</div>
+      </div>
+    </div>
+
+    <!-- Status ribbon -->
+    <div class="status-ribbon">
+      <span style="font-size:0.78rem;color:#666;font-weight:600;">Status:</span>
+      <span class="status-pill status-{{ order.status }}">{{ order.get_status_display }}</span>
+      {% if order.payment_status == 'paid' %}
+      <span class="status-pill" style="background:#E8F8EF;color:#1A6641;">✅ Paid</span>
+      {% elif order.payment_status == 'failed' %}
+      <span class="status-pill" style="background:#FBEAEA;color:#C0392B;">❌ Payment Failed</span>
+      {% else %}
+      <span class="status-pill" style="background:#FFF3CD;color:#856404;">⏳ Payment Pending</span>
+      {% endif %}
+      {% if order.tracking_number %}
+      <span style="font-size:0.78rem;color:#666;margin-left:auto;">Tracking: <strong>{{ order.tracking_number }}</strong>{% if order.courier %} via {{ order.courier }}{% endif %}</span>
+      {% endif %}
+    </div>
+
+    <!-- Body -->
+    <div class="inv-body">
+
+      <!-- Bill to / Ship to -->
+      <div class="info-grid">
+        <div class="info-box">
+          <h3>Bill To</h3>
+          <p>
+            <strong>{{ order.full_name }}</strong><br>
+            📱 {{ order.phone }}{% if order.alternate_phone %} / {{ order.alternate_phone }}{% endif %}<br>
+            {% if order.email %}✉️ {{ order.email }}<br>{% endif %}
+          </p>
+        </div>
+        <div class="info-box">
+          <h3>Delivery Address</h3>
+          <p>
+            {{ order.address }},<br>
+            {{ order.city }}, {{ order.state }}<br>
+            PIN: {{ order.pincode }}
+          </p>
+        </div>
+        <div class="info-box">
+          <h3>Order Date</h3>
+          <p><strong>{{ order.created_at|date:"d M Y, g:i A" }}</strong></p>
+        </div>
+        <div class="info-box">
+          <h3>Order ID</h3>
+          <p><strong>#{{ order.order_id }}</strong></p>
+        </div>
+      </div>
+
+      <!-- Items -->
+      <div class="items-section">
+        <h3>Items Ordered</h3>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th class="item-img-cell"></th>
+              <th>Product</th>
+              <th class="text-right">Qty</th>
+              <th class="text-right">Unit Price</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in order.items.all %}
+            <tr>
+              <td class="item-img-cell">
+                {% if item.product and item.product.main_image %}
+                <img src="{{ item.product.main_image.image.url }}" class="item-img" alt="">
+                {% else %}
+                <div class="item-img" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📦</div>
+                {% endif %}
+              </td>
+              <td>
+                <div class="item-name">{{ item.product_name }}</div>
+                {% if item.selected_size %}<div class="item-size">Size: {{ item.selected_size }}</div>{% endif %}
+                {% if item.parcel_charge %}<div class="item-size">📦 Parcel/Packaging: ₹{{ item.parcel_charge }} × {{ item.quantity }} = ₹{{ item.parcel_charge_total }}</div>{% endif %}
+
+                <!-- Customization Details -->
+                {% if item.customization_data %}
+                {% with cd=item.customization_data %}
+                {% if cd.choices %}
+                <div class="custom-section">
+                  <div class="custom-title">✏️ Customization Details</div>
+                  <table style="width:100%;border-collapse:collapse;margin-top:4px;">
+                    {% for label, value in cd.choices.items %}
+                    {% if 'photo' not in label|lower and 'logo' not in label|lower and 'image' not in label|lower %}
+                    <tr>
+                      <td style="padding:5px 10px 5px 0;font-size:0.8rem;font-weight:700;color:#666;white-space:nowrap;vertical-align:top;width:38%;text-transform:capitalize;">
+                        {{ label|lower|capfirst }}
+                      </td>
+                      <td style="padding:5px 0;font-size:0.88rem;color:#1a1a1a;vertical-align:top;">
+                        {% if 'font' in label|lower %}
+                          {# Render font name in its own typeface #}
+                          <span style="font-family:'{{ value }}',serif;font-size:1.1rem;">{{ value }}</span>
+                          <span style="font-size:0.72rem;color:#aaa;margin-left:6px;">({{ value }})</span>
+                        {% elif '#' in value and value|length <= 8 %}
+                          {# Colour swatch #}
+                          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:{{ value }};vertical-align:middle;margin-right:5px;border:1px solid #ddd;"></span>{{ value }}
+                        {% elif '✅' in value %}
+                          {# Uploaded file badge #}
+                          <span style="background:#e8f8ef;color:#1a6641;border:1px solid #5dd692;border-radius:12px;padding:2px 9px;font-size:0.75rem;font-weight:700;">✅ Uploaded</span>
+                          <span style="margin-left:6px;font-size:0.8rem;color:#666;">{{ value|slice:"2:" }}</span>
+                        {% else %}
+                          {{ value }}
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                  </table>
+                </div>
+                {% elif cd %}
+                {# Fallback: display raw keys if no choices dict (old format) #}
+                <div class="custom-section">
+                  <div class="custom-title">✏️ Customization Details</div>
+                  {% for k, v in cd.items %}
+                    {% if v and k != '_builder' and k != 'uploaded_photos' and 'photo' not in k|lower and 'logo' not in k|lower and 'image' not in k|lower %}
+                    <div class="custom-row">
+                      <span class="custom-key custom-key-fmt">{{ k }}</span>
+                      <span class="custom-val">
+                        {% if 'font' in k|lower %}<span style="font-family:'{{ v }}',serif;font-size:1.1rem;">{{ v }}</span>{% else %}{{ v }}{% endif %}
+                      </span>
+                    </div>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+                {% endif %}
+
+                <!-- Uploaded Photos -->
+                {% if item.images.exists %}
+                <div class="photos-section">
+                  <div class="photos-title">Uploaded Photos / Files</div>
+                  <div class="photos-grid">
+                    {% for img in item.images.all %}
+                    <div class="photo-card">
+                      <img src="{{ img.image.url }}" class="photo-thumb" alt="{{ img.slot_label }}">
+                      <a href="{{ img.image.url }}" download class="photo-download no-print">⬇</a>
+                      <div class="photo-slot">{{ img.slot_label|default:"Photo" }}</div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
+              </td>
+              <td class="text-right">{{ item.quantity }}</td>
+              <td class="text-right">₹{{ item.unit_price }}</td>
+              <td class="text-right price">₹{{ item.total_price }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totals -->
+      <div class="totals-section">
+        <div class="totals-card">
+          <div class="total-row"><span>Subtotal</span><span>₹{{ order.subtotal }}</span></div>
+          {% if order.parcel_charge_total %}
+          <div class="total-row"><span>📦 Parcel &amp; Packaging</span><span>₹{{ order.parcel_charge_total }}</span></div>
+          {% endif %}
+          {% if order.discount_amount %}
+          <div class="total-row" style="color:#1A6B4E;"><span>Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</span><span>−₹{{ order.discount_amount }}</span></div>
+          {% endif %}
+          {% if order.gift_wrap %}
+          <div class="total-row"><span>🎁 Gift Wrap</span><span>₹{{ order.gift_wrap_price }}</span></div>
+          {% endif %}
+          <div class="total-row total-final"><span>Grand Total</span><span>₹{{ order.total }}</span></div>
+        </div>
+      </div>
+
+      <!-- Payment + Shipping footer grid -->
+      <div class="footer-grid">
+        <div class="footer-box">
+          <h3>Payment</h3>
+          <p>
+            <strong>{{ order.payment_method|upper }}</strong><br>
+            Amount Paid: ₹{{ order.total }}
+          </p>
+        </div>
+        <div class="footer-box">
+          <h3>Shipping</h3>
+          <p>
+            {% if order.courier %}Courier: <strong>{{ order.courier }}</strong><br>{% endif %}
+            {% if order.tracking_number %}Tracking: <strong>{{ order.tracking_number }}</strong><br>{% endif %}
+            {% if not order.courier and not order.tracking_number %}Shipping details will be updated soon.{% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Customer Notes -->
+      {% if order.notes %}
+      <div class="notes-box">
+        <strong>Customer Notes:</strong><br>
+        {{ order.notes }}
+      </div>
+      {% endif %}
+
+    </div><!-- /inv-body -->
+
+    <!-- Footer -->
+    <div class="inv-footer">
+      <div class="inv-footer-thanks">{{ store_settings.invoice_footer_note|default:"Thank you for shopping with us!" }} 🎉</div>
+      {% if store_settings.invoice_enabled and store_settings.company_phone or store_settings.company_email %}
+      <div class="inv-footer-contact">
+        {% if store_settings.company_phone %}📞 {{ store_settings.company_phone }}{% endif %}
+        {% if store_settings.company_phone and store_settings.company_email %} &nbsp;|&nbsp; {% endif %}
+        {% if store_settings.company_email %}✉️ {{ store_settings.company_email }}{% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+  </div><!-- /invoice -->
+
+  <!-- All Images Download Section (non-print) -->
+  {% with all_imgs=order.items.all %}
+  {% for item in all_imgs %}
+  {% if item.images.exists %}
+  <div class="no-print" style="background:#fff;border-radius:12px;padding:20px 28px;margin-top:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+    <h3 style="font-size:0.85rem;font-weight:700;margin-bottom:14px;color:#1A4332;">📎 Downloadable Customization Files — {{ item.product_name }}</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      {% for img in item.images.all %}
+      <div style="text-align:center;">
+        <img src="{{ img.image.url }}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:1.5px solid #eee;display:block;" alt="">
+        <a href="{{ img.image.url }}" download style="display:inline-block;margin-top:6px;padding:5px 10px;background:#1A4332;color:#fff;border-radius:6px;font-size:0.72rem;font-weight:600;text-decoration:none;">⬇ Download</a>
+        <div style="font-size:0.68rem;color:#999;margin-top:3px;">{{ img.slot_label|default:"Photo" }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endwith %}
+
+</div>
+
+</body>
+<script>
+// Format snake_case keys to Title Case for display
+document.querySelectorAll('.custom-key-fmt').forEach(function(el) {
+  var key = el.textContent.trim();
+  var formatted = key.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+  el.textContent = formatted + ':';
+});
+</script>
+</html>

@@ -1,0 +1,74 @@
+{% extends 'manage/base.html' %}
+{% block title %}Refund Policy — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}Refund Policy{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Refund Policy</h1><p class="page-sub">Shown to customers on the Refund Policy page</p></div>
+  <button class="m-btn m-btn-primary" onclick="openRefundModal()">+ Add Section</button>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>#</th><th>TITLE</th><th class="hide-mobile">CONTENT</th><th>ACTIVE</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for t in terms %}
+        <tr>
+          <td style="color:var(--m-muted);">{{ t.display_order }}</td>
+          <td style="font-weight:600;font-size:0.88rem;">{{ t.title|truncatechars:60 }}</td>
+          <td style="font-size:0.8rem;color:var(--m-muted);">{{ t.content|truncatechars:80 }}</td>
+          <td><span class="m-badge {% if t.is_active %}badge-success{% else %}badge-muted{% endif %}">{{ t.is_active|yesno:"Yes,No" }}</span></td>
+          <td><div class="btn-group"><button class="m-btn-icon" onclick="editRefund({{ t.pk }},'{{ t.title|escapejs }}',`{{ t.content|escapejs }}`,{{ t.display_order }},{{ t.is_active|yesno:'true,false' }})" title="Edit">✏️</button><button class="m-btn-icon" onclick="deleteRefund({{ t.pk }})" title="Delete">🗑️</button></div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--m-muted);">No refund policy sections yet. Add sections to build your Refund Policy page.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="m-modal-overlay" id="refundModal" role="dialog" aria-modal="true">
+  <div class="m-modal"><div class="m-modal-header"><span class="m-modal-title" id="refundModalTitle">Add Section</span><button class="m-modal-close" onclick="closeRefundModal()">✕</button></div>
+  <div class="m-modal-body">
+    <form method="post" id="refundForm" action="{% url 'manage:refund_add' %}">
+      {% csrf_token %}
+      <div class="m-form-group-light"><label class="m-form-label-light">Title <span class="req">*</span></label><input type="text" name="title" id="refundTitle" class="m-field" required placeholder="e.g. 1. Eligible for Refund" aria-required="true"></div>
+      <div class="m-form-group-light"><label class="m-form-label-light">Content <span class="req">*</span></label><textarea name="content" id="refundContent" class="m-field m-field-textarea" rows="6" required placeholder="Section text..." aria-required="true"></textarea></div>
+      <div class="m-form-row">
+        <div class="m-form-group-light"><label class="m-form-label-light">Display Order</label><input type="number" name="display_order" id="refundOrder" class="m-field" value="10"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Active</label><div class="toggle-switch" style="margin-top:10px;"><input type="checkbox" class="toggle-input" id="refundActive" name="is_active" checked><label class="toggle-track" for="refundActive"></label></div></div>
+      </div>
+      <div class="m-modal-footer" style="padding:0;margin-top:16px;"><button type="button" class="m-btn m-btn-outline" onclick="closeRefundModal()">Cancel</button><button type="submit" class="m-btn m-btn-primary" id="refundSubmitBtn">Add Section</button></div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function openRefundModal() {
+  document.getElementById('refundModalTitle').textContent = 'Add Section';
+  document.getElementById('refundForm').action = "{% url 'manage:refund_add' %}";
+  document.getElementById('refundTitle').value = '';
+  document.getElementById('refundContent').value = '';
+  document.getElementById('refundOrder').value = 10;
+  document.getElementById('refundActive').checked = true;
+  document.getElementById('refundSubmitBtn').textContent = 'Add Section';
+  document.getElementById('refundModal').classList.add('show');
+}
+function closeRefundModal() { document.getElementById('refundModal').classList.remove('show'); }
+function editRefund(pk, title, content, order, active) {
+  document.getElementById('refundModalTitle').textContent = 'Edit Section';
+  document.getElementById('refundForm').action = `/manage/refund/${pk}/edit/`;
+  document.getElementById('refundTitle').value = title;
+  document.getElementById('refundContent').value = content;
+  document.getElementById('refundOrder').value = order;
+  document.getElementById('refundActive').checked = active;
+  document.getElementById('refundSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('refundModal').classList.add('show');
+}
+function deleteRefund(pk) {
+  if(!confirm('Delete this refund policy section?')) return;
+  const f=document.createElement('form');f.method='POST';f.action=`/manage/refund/${pk}/delete/`;f.innerHTML='<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">';document.body.appendChild(f);f.submit();
+}
+</script>
+{% endblock %}

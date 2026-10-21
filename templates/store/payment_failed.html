@@ -1,0 +1,94 @@
+{% extends 'store/base.html' %}
+{% load static %}
+{% block title %}Payment Unsuccessful — CraftX3D{% endblock %}
+
+{% block content %}
+<script>
+(function(){
+  history.replaceState({ payFailed: true }, '', window.location.href);
+  history.pushState({ payFailedTop: true }, '', window.location.href);
+  window.addEventListener('popstate', function() {
+    window.location.replace('/cart/');
+  });
+})();
+</script>
+
+<div class="payment-failed-wrap">
+
+  <!-- Breadcrumb -->
+  <div class="checkout-breadcrumb" style="margin-bottom:32px;justify-content:center;">
+    <div class="crumb-step done">🛒 Cart</div>
+    <span class="crumb-arrow">→</span>
+    <div class="crumb-step done">📋 Delivery Details</div>
+    <span class="crumb-arrow">→</span>
+    <div class="crumb-step" style="color:#C0392B;background:#fdecea;">💳 Payment</div>
+    <span class="crumb-arrow">→</span>
+    <div class="crumb-step inactive">✅ Order Placed</div>
+  </div>
+
+  <!-- Icon -->
+  <div class="payment-failed-icon">❌</div>
+
+  <!-- Card -->
+  <div class="payment-failed-card">
+    <div class="payment-failed-title">Payment Unsuccessful</div>
+    <p class="payment-failed-sub">
+      Your order has <strong>not</strong> been placed and no amount has been charged.
+      {% if cart_restored %}Your items have been returned to your cart so you can try again.{% endif %}
+    </p>
+
+    <!-- Reason box -->
+    <div class="payment-failed-reason-box">
+      <span class="reason-icon">⚠️</span>
+      <div class="reason-text">
+        {% if reason == 'failed' %}
+          <strong>Transaction Declined</strong><br>
+          Your bank or payment provider declined this transaction.
+          Please check your card details, available balance, or try a different payment method.
+        {% elif reason == 'error' %}
+          <strong>Connection Issue</strong><br>
+          We couldn't confirm your payment status due to a network error.
+          <strong>Please check My Orders before retrying</strong> — if any amount was deducted, do not pay again.
+        {% else %}
+          <strong>Something Went Wrong</strong><br>
+          We were unable to process your payment. This may be a temporary issue — please try again in a moment.
+        {% endif %}
+        <br><br>
+        <em>If any amount was deducted from your account, it will be automatically refunded within 5–7 business days.
+        Contact us at <a href="{% url 'store:help' %}" style="color:#922B21;font-weight:600;">support</a> if it takes longer.</em>
+      </div>
+    </div>
+
+    <!-- Action buttons — BOTH go to CART, not home -->
+    <div class="payment-failed-actions">
+      {% if reason == 'error' %}
+      <a href="{% url 'store:my_orders' %}" class="btn-try-again">
+        📋 Check My Orders First
+      </a>
+      <a href="{% url 'store:cart' %}" class="btn-back-cart">
+        🛒 Return to Cart
+      </a>
+      {% else %}
+      <a href="{% url 'store:cart' %}" class="btn-try-again">
+        🛒 Return to Cart & Retry
+      </a>
+      <a href="{% url 'store:products' %}" class="btn-back-cart">
+        ← Continue Shopping
+      </a>
+      {% endif %}
+    </div>
+
+    {% if cart_restored %}
+    <div style="margin-top:16px;padding:12px 16px;background:#e8f8ef;border:1px solid #2ecc71;border-radius:var(--radius-sm);font-size:0.82rem;color:#1a6641;font-weight:500;text-align:left;">
+      ✅ Your cart items have been restored. Click "Return to Cart" to review and try again.
+    </div>
+    {% endif %}
+  </div>
+
+  <p class="payment-failed-info">
+    🔒 Your payment details are never stored on our servers. All transactions are secured by Razorpay.<br>
+    Need help? <a href="{% url 'store:help' %}" style="color:var(--teal);font-weight:600;">Contact our support team →</a>
+  </p>
+
+</div>
+{% endblock %}

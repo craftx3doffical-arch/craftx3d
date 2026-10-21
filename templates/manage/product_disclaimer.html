@@ -1,0 +1,74 @@
+{% extends 'manage/base.html' %}
+{% block title %}Product Disclaimer — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}Product Disclaimer{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Product Disclaimer</h1><p class="page-sub">Shown to customers on the Product Disclaimer page</p></div>
+  <button class="m-btn m-btn-primary" onclick="openProductDisclaimerModal()">+ Add Section</button>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>#</th><th>TITLE</th><th class="hide-mobile">CONTENT</th><th>ACTIVE</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for t in terms %}
+        <tr>
+          <td style="color:var(--m-muted);">{{ t.display_order }}</td>
+          <td style="font-weight:600;font-size:0.88rem;">{{ t.title|truncatechars:60 }}</td>
+          <td style="font-size:0.8rem;color:var(--m-muted);">{{ t.content|truncatechars:80 }}</td>
+          <td><span class="m-badge {% if t.is_active %}badge-success{% else %}badge-muted{% endif %}">{{ t.is_active|yesno:"Yes,No" }}</span></td>
+          <td><div class="btn-group"><button class="m-btn-icon" onclick="editProductDisclaimer({{ t.pk }},'{{ t.title|escapejs }}',`{{ t.content|escapejs }}`,{{ t.display_order }},{{ t.is_active|yesno:'true,false' }})" title="Edit">✏️</button><button class="m-btn-icon" onclick="deleteProductDisclaimer({{ t.pk }})" title="Delete">🗑️</button></div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--m-muted);">No shipping policy sections yet. Add sections to build your Product Disclaimer page.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="m-modal-overlay" id="productDisclaimerModal" role="dialog" aria-modal="true">
+  <div class="m-modal"><div class="m-modal-header"><span class="m-modal-title" id="productDisclaimerModalTitle">Add Section</span><button class="m-modal-close" onclick="closeProductDisclaimerModal()">✕</button></div>
+  <div class="m-modal-body">
+    <form method="post" id="productDisclaimerForm" action="{% url 'manage:product_disclaimer_add' %}">
+      {% csrf_token %}
+      <div class="m-form-group-light"><label class="m-form-label-light">Title <span class="req">*</span></label><input type="text" name="title" id="productDisclaimerTitle" class="m-field" required placeholder="e.g. 1. Order Processing Time" aria-required="true"></div>
+      <div class="m-form-group-light"><label class="m-form-label-light">Content <span class="req">*</span></label><textarea name="content" id="productDisclaimerContent" class="m-field m-field-textarea" rows="6" required placeholder="Section text..." aria-required="true"></textarea></div>
+      <div class="m-form-row">
+        <div class="m-form-group-light"><label class="m-form-label-light">Display Order</label><input type="number" name="display_order" id="productDisclaimerOrder" class="m-field" value="10"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Active</label><div class="toggle-switch" style="margin-top:10px;"><input type="checkbox" class="toggle-input" id="productDisclaimerActive" name="is_active" checked><label class="toggle-track" for="productDisclaimerActive"></label></div></div>
+      </div>
+      <div class="m-modal-footer" style="padding:0;margin-top:16px;"><button type="button" class="m-btn m-btn-outline" onclick="closeProductDisclaimerModal()">Cancel</button><button type="submit" class="m-btn m-btn-primary" id="productDisclaimerSubmitBtn">Add Section</button></div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function openProductDisclaimerModal() {
+  document.getElementById('productDisclaimerModalTitle').textContent = 'Add Section';
+  document.getElementById('productDisclaimerForm').action = "{% url 'manage:product_disclaimer_add' %}";
+  document.getElementById('productDisclaimerTitle').value = '';
+  document.getElementById('productDisclaimerContent').value = '';
+  document.getElementById('productDisclaimerOrder').value = 10;
+  document.getElementById('productDisclaimerActive').checked = true;
+  document.getElementById('productDisclaimerSubmitBtn').textContent = 'Add Section';
+  document.getElementById('productDisclaimerModal').classList.add('show');
+}
+function closeProductDisclaimerModal() { document.getElementById('productDisclaimerModal').classList.remove('show'); }
+function editProductDisclaimer(pk, title, content, order, active) {
+  document.getElementById('productDisclaimerModalTitle').textContent = 'Edit Section';
+  document.getElementById('productDisclaimerForm').action = `/manage/product-disclaimer/${pk}/edit/`;
+  document.getElementById('productDisclaimerTitle').value = title;
+  document.getElementById('productDisclaimerContent').value = content;
+  document.getElementById('productDisclaimerOrder').value = order;
+  document.getElementById('productDisclaimerActive').checked = active;
+  document.getElementById('productDisclaimerSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('productDisclaimerModal').classList.add('show');
+}
+function deleteProductDisclaimer(pk) {
+  if(!confirm('Delete this shipping policy section?')) return;
+  const f=document.createElement('form');f.method='POST';f.action=`/manage/product-disclaimer/${pk}/delete/`;f.innerHTML='<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">';document.body.appendChild(f);f.submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'manage/base.html' %}
+{% block title %}Coupons — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Sales{% endblock %}
+{% block breadcrumb_current %}Coupons{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Coupons</h1><p class="page-sub">{{ coupons.count }} active coupons</p></div>
+  <button class="m-btn m-btn-primary" onclick="document.getElementById('addCouponModal').classList.add('show')">+ Create Coupon</button>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>CODE</th><th>TYPE</th><th>DISCOUNT</th><th class="hide-mobile">MIN ORDER</th><th>USES</th><th class="hide-mobile">VALID UNTIL</th><th>STATUS</th><th>ACTION</th></tr></thead>
+      <tbody>
+        {% for c in coupons %}
+        <tr>
+          <td>
+            <code style="background:var(--m-bg);padding:3px 8px;border-radius:6px;font-weight:700;font-size:0.9rem;">{{ c.code }}</code>
+            {% if c.is_secret %}<span style="display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:2px 7px;background:#f3e8ff;color:#7c3aed;border-radius:20px;border:1px solid #c4aaf7;">🔒 SECRET</span>{% endif %}
+          </td>
+          <td>{{ c.discount_type|title }}</td>
+          <td style="font-weight:700;">{% if c.discount_type == 'percent' %}{{ c.discount_value }}%{% else %}₹{{ c.discount_value }}{% endif %}</td>
+          <td>₹{{ c.min_order_value }}</td>
+          <td>{{ c.used_count }}/{{ c.max_uses|default:"∞" }}</td>
+          <td style="font-size:0.78rem;color:var(--m-muted);">{{ c.valid_until|date:"d M Y"|default:"No expiry" }}</td>
+          <td>{% with v=c.is_valid %}<span class="m-badge {% if v.0 %}badge-success{% else %}badge-danger{% endif %}">{{ v.0|yesno:"Valid,Invalid" }}</span>{% endwith %}</td>
+          <td><button class="m-btn-icon" onclick="deleteCoupon({{ c.pk }}, '{{ c.code|escapejs }}')" title="Delete">🗑️</button></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--m-muted);">No coupons created yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<!-- Add Coupon Modal -->
+<div class="m-modal-overlay" id="addCouponModal" role="dialog" aria-modal="true">
+  <div class="m-modal" style="max-width:480px;">
+    <div class="m-modal-header"><span class="m-modal-title">Create Coupon</span><button class="m-modal-close" onclick="document.getElementById('addCouponModal').classList.remove('show')">✕</button></div>
+    <div class="m-modal-body">
+      <form method="post" action="{% url 'manage:coupon_add' %}">
+        {% csrf_token %}
+        <div class="m-form-row">
+          <div class="m-form-group-light"><label class="m-form-label-light">Coupon Code <span class="req">*</span></label><input type="text" name="code" class="m-field" required placeholder="e.g. SAVE20" style="text-transform:uppercase;" aria-required="true"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Type</label><select name="discount_type" class="m-field m-field-select"><option value="percent">Percentage</option><option value="flat">Flat Amount</option></select></div>
+        </div>
+        <div class="m-form-row">
+          <div class="m-form-group-light"><label class="m-form-label-light">Discount Value <span class="req">*</span></label><input type="number" name="discount_value" class="m-field" required step="0.01" placeholder="e.g. 20" aria-required="true"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Min Order Value (₹)</label><input type="number" name="min_order_value" class="m-field" placeholder="0" value="0"></div>
+        </div>
+        <div class="m-form-row">
+          <div class="m-form-group-light"><label class="m-form-label-light">Max Uses (blank = unlimited)</label><input type="number" name="max_uses" class="m-field" placeholder="100"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Valid Until</label><input type="date" name="valid_until" class="m-field"></div>
+        </div>
+        <input type="hidden" name="is_active" value="on">
+        <!-- Secret coupon toggle -->
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:#f8f4ff;border:1.5px solid #c4aaf7;border-radius:8px;cursor:pointer;margin-top:4px;">
+          <input type="checkbox" name="is_secret" id="isSecretCheck" style="width:16px;height:16px;margin-top:2px;accent-color:#7c3aed;flex-shrink:0;">
+          <div>
+            <div style="font-weight:700;font-size:0.85rem;color:#4c1d95;">🔒 Secret Coupon</div>
+            <div style="font-size:0.75rem;color:#6d28d9;margin-top:2px;">Works when typed manually by the customer, but never shown in any promotional section or suggestion UI.</div>
+          </div>
+        </label>
+        <div class="m-modal-footer" style="padding:0;margin-top:16px;"><button type="button" class="m-btn m-btn-outline" onclick="document.getElementById('addCouponModal').classList.remove('show')">Cancel</button><button type="submit" class="m-btn m-btn-primary">Create Coupon</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function deleteCoupon(pk, code) {
+  if(!confirm(`Delete coupon "${code}"?`)) return;
+  const form = document.createElement('form'); form.method = 'POST'; form.action = `/manage/coupons/${pk}/delete/`;
+  form.innerHTML = '<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">'; document.body.appendChild(form); form.submit();
+}
+document.getElementById('addCouponModal').addEventListener('click', e => { if(e.target.id==='addCouponModal') e.target.classList.remove('show'); });
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'store/base.html' %}
+{% block title %}My Favorites — CraftX3D{% endblock %}
+{% block body_page %}favorites{% endblock %}
+{% block content %}
+<div class="orders-page" style="max-width:1100px;">
+  <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:800;margin:0 0 6px;">❤️ My Favorites</h1>
+  <p style="color:var(--text-muted);font-size:0.9rem;margin:0 0 28px;">{{ products|length }} saved item{{ products|length|pluralize }}</p>
+
+  {% if products %}
+  <div class="products-grid">
+    {% for product in products %}
+    <div class="product-card{% if not product.is_in_stock %} product-card-oos{% endif %}" data-fav-card>
+      <a href="{% url 'store:product_detail' product.slug %}" aria-label="{{ product.name }}">
+        <div class="product-img-wrap">
+          {% if product.main_image %}
+            <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" loading="lazy">
+          {% else %}
+            <div style="font-size:3.5rem;">📦</div>
+          {% endif %}
+          {% if not product.is_in_stock %}
+          <div class="oos-overlay">
+            <span class="oos-badge">🔔 Coming Soon</span>
+          </div>
+          {% elif product.discount_percent %}
+          <span class="discount-badge">-{{ product.discount_percent }}%</span>
+          {% endif %}
+          {% if product.is_in_stock %}
+          <a href="{% url 'store:product_detail' product.slug %}" class="quick-view-btn" onclick="event.stopPropagation();">Quick view <span class="qv-eye">👁</span></a>
+          {% endif %}
+        </div>
+      </a>
+      <button type="button" class="fav-btn is-favorited" onclick="toggleFavorite({{ product.pk }}, this, event)" aria-pressed="true" aria-label="Remove from favorites">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-6.7-4.35-9.3-8.1C.9 10.1 1.4 6.6 4.2 4.9c2.4-1.5 5.3-.8 7 1.2l.8 1 .8-1c1.7-2 4.6-2.7 7-1.2 2.8 1.7 3.3 5.2 1.5 8-2.6 3.75-9.3 8.1-9.3 8.1z"/></svg>
+      </button>
+      <div class="product-body">
+        {% if product.category %}
+        <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">{{ product.category.name }}</div>
+        {% endif %}
+        <div class="product-name">{{ product.name }}</div>
+        <div class="product-price-row">
+          <span class="price-current">₹{{ product.base_price }}</span>
+          {% if product.compare_price %}<span class="price-original">₹{{ product.compare_price }}</span>{% endif %}
+                  </div>
+        {% if not product.is_in_stock %}
+        <a href="{% url 'store:product_detail' product.slug %}" class="btn-add-cart btn-coming-soon">🔔 Coming Soon</a>
+        {% elif product.customization_type == 'none' %}
+        <button type="button" class="btn-add-cart" onclick="quickAddToCart({{ product.pk }}, this)">🛒 Add to Cart</button>
+        {% else %}
+        <a href="{% url 'store:product_detail' product.slug %}" class="btn-add-cart">View Details</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:60px 20px;background:#fff;border:1.5px solid var(--cream-border);border-radius:var(--radius);">
+    <div style="font-size:3rem;margin-bottom:12px;">🤍</div>
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:6px;">No favorites yet</div>
+    <div style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px;">Tap the heart on any product to save it here.</div>
+    <a href="{% url 'store:products' %}" class="btn-primary" style="display:inline-flex;text-decoration:none;">Browse Products →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

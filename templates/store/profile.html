@@ -1,0 +1,83 @@
+{% extends 'store/base.html' %}
+{% block title %}My Profile — CraftX3D{% endblock %}
+{% block content %}
+<div class="orders-page">
+  <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:800;margin:0 0 24px;">My Profile</h1>
+
+  {% if messages %}{% for m in messages %}
+  <div style="padding:11px 16px;border-radius:10px;margin-bottom:16px;font-size:0.88rem;background:#e8f8ef;border:1px solid #2ecc71;color:#1a6641;">{{ m }}</div>
+  {% endfor %}{% endif %}
+
+  <!-- Stats -->
+  <div class="profile-stats">
+    <div class="profile-stat-card">
+      <div class="profile-stat-num">{{ order_count }}</div>
+      <div class="profile-stat-label">Total Orders</div>
+    </div>
+    <div class="profile-stat-card">
+      <div class="profile-stat-num">{{ delivered_count }}</div>
+      <div class="profile-stat-label">Delivered</div>
+    </div>
+  </div>
+
+  <!-- Edit form -->
+  <div class="profile-card">
+    <div class="profile-card-title">Account Details</div>
+    <form method="post" action="{% url 'store:profile' %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label" for="full_name">Full Name</label>
+        <input type="text" id="full_name" name="full_name" class="form-input" value="{{ request.user.get_full_name }}" placeholder="Your full name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input type="email" id="email" class="form-input" value="{{ request.user.email }}" disabled style="background:#f0f0f0;color:var(--text-muted);cursor:not-allowed;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Email can't be changed — it's your login ID.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone" class="form-input" value="{{ profile.phone }}" placeholder="10-digit mobile number" maxlength="15">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="city">City</label>
+        <input type="text" id="city" name="city" class="form-input" value="{{ profile.city }}" placeholder="e.g. Tiruppur">
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;padding:13px;justify-content:center;">Save Changes</button>
+    </form>
+  </div>
+
+  <!-- Recent orders -->
+  {% if recent_orders %}
+  <div class="profile-card">
+    <div class="profile-card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Recent Orders</span>
+      <a href="{% url 'store:my_orders' %}" style="font-size:0.82rem;color:var(--teal);text-decoration:none;font-weight:600;">View all →</a>
+    </div>
+    {% for order in recent_orders %}
+    <a href="{% url 'store:order_detail' order.order_id %}" class="profile-order-row">
+      <div>
+        <div style="font-weight:700;font-size:0.9rem;">#{{ order.order_id }}</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);">{{ order.created_at|date:"d M Y" }}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-weight:700;font-size:0.9rem;">₹{{ order.total }}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">{{ order.get_status_display }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.profile-stats { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+.profile-stat-card { background:#fff; border:1.5px solid var(--cream-border); border-radius:var(--radius); padding:20px; text-align:center; }
+.profile-stat-num { font-size:2rem; font-weight:800; color:var(--forest); font-family:'Playfair Display',Georgia,serif; }
+.profile-stat-label { font-size:0.8rem; color:var(--text-muted); margin-top:2px; }
+.profile-card { background:#fff; border:1.5px solid var(--cream-border); border-radius:var(--radius); padding:20px; margin-bottom:20px; }
+.profile-card-title { font-weight:700; font-size:1rem; margin-bottom:16px; }
+.profile-order-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--cream-border); text-decoration:none; color:inherit; }
+.profile-order-row:last-child { border-bottom:none; }
+.profile-order-row:hover { background:var(--cream); }
+</style>
+{% endblock %}

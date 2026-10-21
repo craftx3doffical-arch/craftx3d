@@ -1,0 +1,93 @@
+{% extends 'manage/base.html' %}
+{% block title %}Categories — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Catalogue{% endblock %}
+{% block breadcrumb_current %}Categories{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Categories</h1><p class="page-sub">{{ categories.count }} categories</p></div>
+  <button class="m-btn m-btn-primary" onclick="openAddModal()">+ Add Category</button>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>NAME</th><th>SLUG</th><th>IMAGES</th><th>PRODUCTS</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for cat in categories %}
+        <tr>
+          <td><div style="font-weight:600;">{{ cat.name }}</div>{% if cat.description %}<div style="font-size:0.72rem;color:var(--m-muted);">{{ cat.description|truncatechars:50 }}</div>{% endif %}</td>
+          <td style="font-size:0.78rem;color:var(--m-muted);">{{ cat.slug }}</td>
+          <td>{{ cat.images.count }}</td>
+          <td>{{ cat.products.count }}</td>
+          <td><span class="m-badge {% if cat.is_active %}badge-success{% else %}badge-muted{% endif %}">{{ cat.is_active|yesno:"Active,Inactive" }}</span></td>
+          <td><div class="btn-group"><a href="{% url 'manage:category_edit' cat.pk %}" class="m-btn-icon" title="Edit">✏️</a><button class="m-btn-icon" onclick="confirmDelete('{% url 'manage:category_delete' cat.pk %}','{{ cat.name|escapejs }}')" title="Delete">🗑️</button></div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--m-muted);">No categories yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<!-- Add Modal -->
+<div class="m-modal-overlay" id="addCatModal" role="dialog" aria-modal="true">
+  <div class="m-modal" style="max-width:480px;">
+    <div class="m-modal-header"><span class="m-modal-title">Add Category</span><button class="m-modal-close" onclick="document.getElementById('addCatModal').classList.remove('show')">✕</button></div>
+    <div class="m-modal-body">
+      <form method="post" action="{% url 'manage:category_add' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="m-form-group-light"><label class="m-form-label-light">Name <span class="req">*</span></label><input type="text" name="name" class="m-field" required placeholder="Category name" aria-required="true"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Description</label><textarea name="description" class="m-field m-field-textarea" rows="2" placeholder="Optional description"></textarea></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Images</label><input type="file" name="images" class="m-field" multiple accept="image/*" aria-label="Category images"></div>
+        <div class="m-form-group-light"><div class="toggle-switch"><input type="checkbox" class="toggle-input" id="catActive" name="is_active" checked><label class="toggle-track" for="catActive"></label><span class="toggle-label">Active</span></div></div>
+        <div class="m-modal-footer" style="padding:0;margin-top:16px;"><button type="button" class="m-btn m-btn-outline" onclick="document.getElementById('addCatModal').classList.remove('show')">Cancel</button><button type="submit" class="m-btn m-btn-primary">Add Category</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Delete Modal -->
+<div class="m-modal-overlay" id="deleteModal" role="dialog" aria-modal="true">
+  <div class="m-modal" style="max-width:380px;">
+    <div class="m-modal-header"><span class="m-modal-title">⚠️ Confirm Delete</span><button class="m-modal-close" onclick="document.getElementById('deleteModal').classList.remove('show')">✕</button></div>
+    <div class="m-modal-body"><p>Delete <strong id="deleteTarget"></strong>?</p></div>
+    <div class="m-modal-footer"><button class="m-btn m-btn-outline" onclick="document.getElementById('deleteModal').classList.remove('show')">Cancel</button><form id="deleteForm" method="post"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><button type="submit" class="m-btn m-btn-danger">Delete</button></form></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+// Add Category Modal — AJAX submit so page reloads on success
+document.querySelector('#addCatModal form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var form = this;
+  var fd = new FormData(form);
+  fetch(form.action, {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    body: fd
+  }).then(r => r.json()).then(d => {
+    if (d.success) {
+      showMToast('Category "' + d.name + '" added!', 'success');
+      setTimeout(() => location.reload(), 700);
+    } else {
+      showMToast(d.error || 'Failed to add category', 'error');
+    }
+  }).catch(() => form.submit()); // fallback to normal submit
+});
+
+function openAddModal() { document.getElementById('addCatModal').classList.add('show'); }
+function confirmDelete(url, name) {
+  document.getElementById('deleteTarget').textContent = name;
+  document.getElementById('deleteForm').action = url;
+  document.getElementById('deleteModal').classList.add('show');
+}
+document.querySelectorAll('.m-modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('show'); }));
+
+function showMToast(msg, type) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:' + (type==='success'?'#1A9B77':'#e53e3e') + ';color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;z-index:9999;font-size:0.9rem;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+</script>
+{% endblock %}

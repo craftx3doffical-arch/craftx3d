@@ -1,0 +1,172 @@
+{% extends 'manage/base.html' %}
+{% block title %}Dashboard — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Staff Portal{% endblock %}
+{% block breadcrumb_current %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-sub">Welcome back, {{ request.session.staff_username }}! Here's what's happening.</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'manage:product_add' %}" class="m-btn m-btn-primary">+ Add Product</a>
+    <a href="{% url 'manage:orders' %}" class="m-btn m-btn-outline">View Orders</a>
+  </div>
+</div>
+
+<!-- Stats Grid (always 4 cols on desktop, 2×2 on tablet, etc.) -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Revenue</div>
+    <div class="stat-value">₹{{ stats.total_revenue|floatformat:0 }}</div>
+    <div class="stat-change up">▲ 18% vs last month</div>
+    <div class="stat-icon" style="background:rgba(26,155,119,0.12);">💰</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Orders</div>
+    <div class="stat-value">{{ stats.active_orders }}</div>
+    <div class="stat-change up">▲ {{ stats.new_today }} new today</div>
+    <div class="stat-icon" style="background:rgba(245,166,35,0.12);">📦</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total Products</div>
+    <div class="stat-value" style="color:var(--m-teal);">{{ stats.total_products }}</div>
+    <div class="stat-change" style="color:var(--m-muted);">Across all categories</div>
+    <div class="stat-icon" style="background:rgba(59,130,246,0.12);">🏷️</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Customers</div>
+    <div class="stat-value" style="color:var(--m-purple);">{{ stats.total_customers }}</div>
+    <div class="stat-change up">▲ 14 this week</div>
+    <div class="stat-icon" style="background:rgba(124,58,237,0.12);">👥</div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+  <a href="{% url 'manage:product_add' %}" class="quick-action">
+    <div class="qa-icon">➕</div>
+    <div class="qa-label">Add Product</div>
+    <div class="qa-sub">New listing</div>
+  </a>
+  <a href="{% url 'manage:orders' %}" class="quick-action">
+    <div class="qa-icon">📋</div>
+    <div class="qa-label">View Orders</div>
+    <div class="qa-sub">{{ stats.pending_orders }} pending</div>
+  </a>
+  <a href="{% url 'manage:coupons' %}" class="quick-action">
+    <div class="qa-icon">🏷️</div>
+    <div class="qa-label">Create Coupon</div>
+    <div class="qa-sub">Promotions</div>
+  </a>
+  <a href="{% url 'manage:reviews' %}" class="quick-action">
+    <div class="qa-icon">⭐</div>
+    <div class="qa-label">Approve Reviews</div>
+    <div class="qa-sub">{{ stats.pending_reviews }} pending</div>
+  </a>
+  <a href="{% url 'manage:enquiries' %}" class="quick-action">
+    <div class="qa-icon">💬</div>
+    <div class="qa-label">Enquiries</div>
+    <div class="qa-sub">{{ stats.new_enquiries }} new</div>
+  </a>
+</div>
+
+<!-- Dashboard 2-col grid: chart + activity/products -->
+<div class="dashboard-grid">
+  <!-- Revenue Chart -->
+  <div class="m-card">
+    <div class="m-card-header">
+      <span class="m-card-title">📈 Revenue — Last 7 Days</span>
+      <span style="font-size:0.75rem;color:var(--m-muted);">Daily sales trend</span>
+    </div>
+    <div class="m-card-body">
+      <div class="chart-container" id="revenueChart" aria-label="Revenue chart"></div>
+    </div>
+  </div>
+
+  <!-- Right: Activity + Top Products -->
+  <div class="dashboard-right-col">
+    <div class="m-card">
+      <div class="m-card-header"><span class="m-card-title">⚡ Activity Feed</span></div>
+      <div class="m-card-body" style="color:var(--m-muted);font-size:0.85rem;text-align:center;padding:32px 20px;">
+        No activity yet
+      </div>
+    </div>
+    <div class="m-card">
+      <div class="m-card-header"><span class="m-card-title">🏆 Top Products</span></div>
+      <div class="m-card-body">
+        {% for p in top_products %}
+        <div class="top-product-row">
+          <div style="flex:1;font-size:0.85rem;font-weight:600;">{{ p.name|truncatechars:22 }}</div>
+          <div class="top-product-bar-bg">
+            <div class="top-product-bar-fill" style="width:{% widthratio p.order_count top_products.0.order_count 100 %}%;"></div>
+          </div>
+          <div style="font-size:0.78rem;font-weight:700;min-width:24px;text-align:right;">{{ p.order_count }}</div>
+        </div>
+        {% empty %}
+        <p style="color:var(--m-muted);font-size:0.85rem;text-align:center;padding:16px 0;">No orders yet</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Orders -->
+<div class="m-card" style="margin-top:24px;">
+  <div class="m-card-header">
+    <span class="m-card-title">🛒 Recent Orders</span>
+    <a href="{% url 'manage:orders' %}" class="m-btn m-btn-outline m-btn-sm">View All</a>
+  </div>
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead>
+        <tr>
+          <th>ORDER ID</th>
+          <th>CUSTOMER</th>
+          <th class="hide-mobile">ITEMS</th>
+          <th>AMOUNT</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in recent_orders %}
+        <tr>
+          <td><a href="{% url 'manage:order_detail' order.order_id %}" style="color:var(--m-accent);font-weight:700;">#{{ order.order_id }}</a></td>
+          <td>
+            <div style="font-weight:600;font-size:0.88rem;">{{ order.full_name }}</div>
+            <div style="font-size:0.72rem;color:var(--m-muted);">{{ order.phone }}</div>
+          </td>
+          <td class="hide-mobile">{{ order.items.count }}</td>
+          <td style="font-weight:700;">₹{{ order.total }}</td>
+          <td><span class="m-badge badge-{{ order.status|slice:':1' }}">{{ order.get_status_display }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;color:var(--m-muted);padding:32px;">No orders yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Revenue Chart
+(function() {
+  var data = {{ revenue_data|safe }};
+  var max = Math.max.apply(null, data.map(function(d) { return d.revenue; }));
+  if (max === 0) max = 1;
+  var chart = document.getElementById('revenueChart');
+  if (!chart) return;
+  var bars = data.map(function(d) {
+    var pct = Math.max((d.revenue / max) * 100, 4);
+    return '<div class="chart-bar-wrap">' +
+      '<div class="chart-bar" style="height:' + pct + '%;" title="₹' + d.revenue.toFixed(0) + '"></div>' +
+      '<span class="chart-label" style="position:static;font-size:0.65rem;">' + d.date + '</span>' +
+      '</div>';
+  }).join('');
+  chart.innerHTML = '<div class="chart-bars">' + bars + '</div>';
+})();
+</script>
+{% endblock %}

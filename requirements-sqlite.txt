@@ -1,0 +1,12 @@
+# ── Dev / Windows / SQLite setup (no PostgreSQL required) ──
+Django==4.2.13
+Pillow==10.3.0
+python-dotenv==1.0.1
+whitenoise==6.6.0
+setuptools==75.6.0
+razorpay==1.4.2
+django-allauth==0.63.6
+PyJWT==2.9.0
+cryptography==43.0.1
+django-cloudinary-storage==0.3.0
+cloudinary==1.40.0

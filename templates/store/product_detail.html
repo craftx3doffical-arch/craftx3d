@@ -1,0 +1,820 @@
+{% extends 'store/base.html' %}
+{% load static %}
+{% block title %}{{ product.name }} — CraftX3D{% endblock %}
+
+{% block content %}
+<div style="max-width:1100px;margin:0 auto;padding:20px 24px;">
+  <a href="{% url 'store:products' %}" style="font-size:0.85rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:20px;">← Back to Products</a>
+</div>
+
+<div class="product-detail-layout">
+  <!-- ══ Professional Gallery ══ -->
+  <div class="product-gallery-wrap">
+
+    <!-- Main image -->
+    <div class="product-gallery-main" id="mainImage"
+         onclick="{% if product.images.count %}openLightbox(_galleryIdx){% endif %}">
+      {% if product.discount_percent %}
+      <span class="pgal-badge-sale">SALE</span>
+      <span class="pgal-badge-save">SAVE {{ product.discount_percent }}%</span>
+      {% endif %}
+      {% if product.main_image %}
+        <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" id="mainImg">
+      {% else %}
+        <div style="font-size:5rem;opacity:0.25;">📦</div>
+      {% endif %}
+
+      {% if product.video %}
+      <button type="button" class="pgal-play-btn" onclick="event.stopPropagation();playProductVideo()" aria-label="Play product video">▶</button>
+      {% endif %}
+
+      {% if product.images.count > 1 %}
+      <button type="button" class="pgal-arrow prev" onclick="event.stopPropagation();galleryNav(-1)" aria-label="Previous image">‹</button>
+      <button type="button" class="pgal-arrow next" onclick="event.stopPropagation();galleryNav(1)"  aria-label="Next image">›</button>
+      <div class="pgal-counter" id="pgalCounter">1 / {{ product.images.count }}</div>
+      {% endif %}
+      {% if product.images.count %}
+      <div class="pgal-zoom-hint">🔍 Click to zoom</div>
+      {% endif %}
+    </div>
+
+    {% if product.video %}
+    <div class="pgal-video-overlay" id="pgalVideoOverlay">
+      <button type="button" class="pgal-video-close" onclick="closeProductVideo()" aria-label="Close video">✕</button>
+      <video id="pgalVideo" src="{{ product.video.url }}" controls playsinline></video>
+    </div>
+    <script>
+      function playProductVideo() {
+        var overlay = document.getElementById('pgalVideoOverlay');
+        var video = document.getElementById('pgalVideo');
+        overlay.classList.add('open');
+        video.currentTime = 0;
+        video.play().catch(function() {});
+      }
+      function closeProductVideo() {
+        var overlay = document.getElementById('pgalVideoOverlay');
+        var video = document.getElementById('pgalVideo');
+        video.pause();
+        overlay.classList.remove('open');
+      }
+    </script>
+    {% endif %}
+
+    <!-- Thumbnail strip — shows for ANY count ≥ 1 -->
+    {% with all_images=product.images.all %}
+    {% if all_images %}
+    <div class="product-thumbs" id="galleryThumbs">
+      {% for img in all_images %}
+        {% if forloop.counter0 < 5 %}
+        <div class="product-thumb {% if forloop.first %}active{% endif %}"
+             data-url="{{ img.image.url }}"
+             data-index="{{ forloop.counter0 }}"
+             onclick="switchImage('{{ img.image.url }}', this, {{ forloop.counter0 }})"
+             role="button" tabindex="0" aria-label="Image {{ forloop.counter }}">
+          <img src="{{ img.image.url }}" alt="{{ product.name }} {{ forloop.counter }}" loading="lazy">
+        </div>
+        {% elif forloop.counter0 == 5 %}
+        <div class="pgal-more-tile" onclick="openLightbox(5)" title="View all {{ product.images.count }} images">
+          <img src="{{ img.image.url }}" alt="more images">
+          <div class="pgal-more-label">+{{ product.images.count|add:"-5" }}</div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Lightbox -->
+    <div class="pgal-lightbox" id="pgalLightbox" onclick="closeLightbox()">
+      <button class="pgal-lightbox-close" onclick="closeLightbox()" aria-label="Close">✕</button>
+      {% if product.images.count > 1 %}
+      <button class="pgal-lightbox-nav prev" onclick="event.stopPropagation();lightboxNav(-1)" aria-label="Prev">‹</button>
+      <button class="pgal-lightbox-nav next" onclick="event.stopPropagation();lightboxNav(1)"  aria-label="Next">›</button>
+      {% endif %}
+      <img class="pgal-lightbox-main" id="pgalLbImg" src="" alt="{{ product.name }}" onclick="event.stopPropagation()">
+      <div class="pgal-lightbox-strip" onclick="event.stopPropagation()">
+        {% for img in product.images.all %}
+        <img class="pgal-lightbox-thumb {% if forloop.first %}active{% endif %}"
+             src="{{ img.image.url }}"
+             data-url="{{ img.image.url }}"
+             data-index="{{ forloop.counter0 }}"
+             onclick="lightboxSetImg('{{ img.image.url }}', {{ forloop.counter0 }}, this)"
+             alt="{{ forloop.counter }}" loading="lazy">
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Info ── -->
+  <div class="product-info">
+    {% if product.category %}<div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;">{{ product.category.name }}</div>{% endif %}
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <h1 class="product-detail-name" style="margin-bottom:0;">{{ product.name }}</h1>
+      <!-- WhatsApp Share + Favourite -->
+      <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+        <a href="https://wa.me/?text={{ product.name|urlencode }}%20%E2%80%94%20Check%20it%20out%3A%20https://craftx3d.in/products/{{ product.slug }}/"
+           target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;
+                  background:#25D366;color:#fff;border-radius:var(--radius-pill);
+                  font-size:0.84rem;font-weight:700;text-decoration:none;
+                  box-shadow:0 2px 8px rgba(37,211,102,0.3);transition:opacity 0.2s;"
+           onmouseenter="this.style.opacity='0.88'" onmouseleave="this.style.opacity='1'">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.554 4.123 1.526 5.859L.057 23.928a.5.5 0 0 0 .614.614l6.083-1.471A11.942 11.942 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.697-.526-5.228-1.44l-.374-.218-3.876.938.952-3.816-.233-.382A9.939 9.939 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+          Share
+        </a>
+        <button type="button" class="fav-btn fav-btn-large{% if product.pk in favorite_product_ids %} is-favorited{% endif %}" onclick="toggleFavorite({{ product.pk }}, this, event)" aria-pressed="{% if product.pk in favorite_product_ids %}true{% else %}false{% endif %}" aria-label="{% if product.pk in favorite_product_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-6.7-4.35-9.3-8.1C.9 10.1 1.4 6.6 4.2 4.9c2.4-1.5 5.3-.8 7 1.2l.8 1 .8-1c1.7-2 4.6-2.7 7-1.2 2.8 1.7 3.3 5.2 1.5 8-2.6 3.75-9.3 8.1-9.3 8.1z"/></svg>
+      </button>
+      </div><!-- /share+fav row -->
+    </div>
+
+    <!-- Rating — Amazon style: number + partial-fill stars + count -->
+    {% if reviews.count %}
+    <div class="amz-rating-row" style="margin-bottom:8px;">
+      <span class="amz-rating-num" style="font-size:1.1rem;">{{ avg_rating|floatformat:1 }}</span>
+      <span class="amz-stars-wrap" style="font-size:1.1rem;">
+        <span class="amz-stars-empty">★★★★★</span>
+        <span class="amz-stars-filled" style="width:{% widthratio avg_rating 5 100 %}%;">★★★★★</span>
+      </span>
+      <a href="#productReviews" class="amz-rating-count" style="font-size:0.88rem;">
+        ({{ reviews.count }} review{{ reviews.count|pluralize }})
+      </a>
+    </div>
+    {% endif %}
+
+    <!-- Price -->
+    <div>
+      <span class="product-price-large" id="displayPrice">₹{{ product.base_price }}</span>
+      {% if product.compare_price %}<span class="product-price-original">₹{{ product.compare_price }}</span>{% endif %}
+    </div>
+
+    {% if product.show_parcel_charge and product.parcel_charge_price %}
+    <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.82rem;color:var(--charcoal);background:var(--cream-dark);border:1px solid var(--cream-border);padding:6px 12px;border-radius:999px;">
+      <span>📦</span>
+      <span>Plus <strong>₹{{ product.parcel_charge_price }} {{ product.parcel_charge_title|default:"Parcel & Packaging Fee" }}</strong> — added at checkout</span>
+    </div>
+    {% else %}
+    <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.82rem;color:var(--teal);background:#E8F5E9;border:1px solid #C8E6C9;padding:6px 12px;border-radius:999px;font-weight:700;">
+      <span>🚚</span>
+      <span>{{ product.parcel_charge_free_label|default:"Free Parcel & Packaging" }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Add to Cart Form -->
+    <form id="addToCartForm" method="post" action="{% url 'store:add_to_cart' product.pk %}" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Size Options -->
+      {% if product.sizes.exists %}
+      <div class="customization-section">
+        <div class="custom-label">Size</div>
+        <div class="size-pills">
+          {% for size in product.sizes.all %}
+          <label class="size-pill" style="cursor:pointer;">
+            <input type="radio" name="selected_size" value="{{ size.label }}" style="display:none;" {% if forloop.first %}checked{% endif %} onchange="updateSizePrice({{ size.extra_price }})">
+            {{ size.label }}{% if size.extra_price %} (+₹{{ size.extra_price }}){% endif %}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Customization Fields (JSON-driven builder for 'field' type) -->
+      {% if product.customization_type == 'field' and product.customization_data %}
+      {{ product.customization_data|json_script:"customizationJsonData" }}
+      <div id="customizationFields" class="customization-section" style="display:flex;flex-direction:column;gap:0;padding:0;background:none;border:none;"></div>
+      {% endif %}
+
+      <!-- Photo Upload (for 'photo' customization type) -->
+      {% if product.customization_type == 'photo' %}
+      <div class="customization-section">
+        <div class="custom-label">📸 Upload Your Photo <span style="color:var(--red)">*</span></div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="file-upload-area" for="photoUpload" id="photoUpload_zone" style="padding:18px;">
+            <input type="file" id="photoUpload" name="custom_photo" accept="image/*" required onchange="previewPhoto(this)" aria-label="Upload photo">
+            <div id="photoPreview"><div class="file-upload-icon">📸</div><div class="file-upload-text">Click or drag to upload your photo</div></div>
+          </label>
+          <div class="field-err" id="err_photoUpload" data-for="photoUpload">⚠ Please upload a photo to continue</div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label" style="font-size:0.82rem;">Special Instructions (optional)</label>
+          <textarea name="custom_instructions" class="form-input" rows="2" placeholder="Any special notes about your photo or customization..."></textarea>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Miniature Customization (for 'miniature' type) -->
+      {% if product.customization_type == 'miniature' %}
+      <div class="customization-section">
+        <div class="custom-label">🧍 Miniature Details</div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label" style="font-size:0.82rem;">Upload Reference Photo *</label>
+          <label class="file-upload-area" for="miniPhotoUpload" style="padding:18px;">
+            <input type="file" id="miniPhotoUpload" name="custom_photo" accept="image/*" required aria-label="Upload reference photo">
+            <div><div class="file-upload-icon">🧍</div><div class="file-upload-text">Upload a clear front-facing photo</div></div>
+          </label>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label" style="font-size:0.82rem;">Character Description</label>
+          <textarea name="custom_description" class="form-input" rows="2" placeholder="Describe pose, outfit, accessories..."></textarea>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Quantity & Add to Cart -->
+      {% if product.is_in_stock %}
+      <div class="purchase-row">
+        <div class="qty-selector">
+          <button type="button" class="qty-btn" onclick="changeQty(-1)" aria-label="Decrease">−</button>
+          <input type="number" name="quantity" id="qty" value="1" min="1" {% if product.track_inventory %}max="{{ product.stock }}"{% endif %} class="qty-num" style="width:48px;text-align:center;border:none;background:none;font-family:inherit;font-size:1.1rem;font-weight:700;" aria-label="Quantity">
+          <button type="button" class="qty-btn" onclick="changeQty(1)" aria-label="Increase">+</button>
+        </div>
+        {% if request.user.is_authenticated %}
+        <button type="submit" class="btn-add-to-cart-large" style="flex:1;" id="addCartBtn">🛒 Add to Cart</button>
+        {% else %}
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large" style="flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">🔒 Login to Buy</a>
+        {% endif %}
+      </div>
+      <div id="cartGateMsg" style="display:none;margin-top:10px;padding:10px 14px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.84rem;color:#856404;font-weight:500;"></div>
+      {% else %}
+      <div class="pd-coming-soon-wrap">
+        <button class="btn-add-to-cart-large coming-soon-btn" disabled>
+          <span class="pd-cs-badge">🔔 Coming Soon</span>
+        </button>
+        <div class="pd-cs-note">This item is temporarily out of stock — check back soon.</div>
+      </div>
+      {% endif %}
+    </form>
+
+    <!-- Delivery Info -->
+    <div class="pd-delivery-cards">
+      {% if product.show_standard_delivery and product.is_in_stock %}
+      <div class="pd-delivery-card">
+        <span class="pd-delivery-icon">🚀</span>
+        <div><div class="pd-delivery-title">{{ product.standard_delivery_title|default:"Standard Delivery" }}</div><div class="pd-delivery-sub">{{ product.standard_delivery_days|default:"7-10" }} days</div></div>
+      </div>
+      {% endif %}
+      {% if product.show_express_delivery and product.is_in_stock %}
+      <div class="pd-delivery-card">
+        <span class="pd-delivery-icon">⚡</span>
+        <div><div class="pd-delivery-title">{{ product.express_delivery_title|default:"Express Delivery" }}</div><div class="pd-delivery-sub">{{ product.express_delivery_days|default:"3-5" }} days</div></div>
+      </div>
+      {% endif %}
+      {% if product.show_production_time %}
+      <div class="pd-delivery-card">
+        <span class="pd-delivery-icon">🛠️</span>
+        <div><div class="pd-delivery-title">{{ product.production_time_title|default:"Production Time" }}</div><div class="pd-delivery-sub">{{ product.production_time_days|default:"2" }} days</div></div>
+      </div>
+      {% endif %}
+      {% if not product.is_in_stock %}
+      <div class="pd-delivery-card pd-stock-out">
+        <span class="pd-delivery-icon">📦</span>
+        <div>
+          <div class="pd-delivery-title">Out of Stock</div>
+          <div class="pd-delivery-sub">Coming back soon</div>
+        </div>
+      </div>
+      {% endif %}
+      {# "In Stock / Only X left" box intentionally removed — store owner request #}
+    </div>
+
+    {% if product.show_delivery_estimate %}
+    <div class="pd-delivery-estimate">
+      <div class="pd-estimate-row">🟢 Ships in 24 hours — delivery in {{ product.express_delivery_days }}–{{ product.standard_delivery_days }} working days</div>
+      <div class="pd-estimate-row pd-estimate-highlight">📅 Order today — estimated delivery: <strong>{{ product.delivery_estimate_dates.0|date:"d M" }} – {{ product.delivery_estimate_dates.1|date:"d M" }}</strong></div>
+    </div>
+    {% endif %}
+
+    {% if product.show_feature_ticks %}
+    <ul class="pd-feature-ticks">
+      {% if product.feature_tick_1 %}<li>✓ {{ product.feature_tick_1 }}</li>{% endif %}
+      {% if product.feature_tick_2 %}<li>✓ {{ product.feature_tick_2 }}</li>{% endif %}
+      {% if product.feature_tick_3 %}<li>✓ {{ product.feature_tick_3 }}</li>{% endif %}
+    </ul>
+    {% endif %}
+
+    {% if product.show_short_description and product.short_description %}
+    <p class="pd-short-description">{{ product.short_description }}</p>
+    {% endif %}
+
+    {% if product.show_trust_badges %}
+    <div class="pd-trust-badges">
+      {% if product.trust_badge_1 %}<div class="pd-trust-badge">🚚 {{ product.trust_badge_1 }}</div>{% endif %}
+      {% if product.trust_badge_2 %}<div class="pd-trust-badge">💳 {{ product.trust_badge_2 }}</div>{% endif %}
+      {% if product.trust_badge_3 %}<div class="pd-trust-badge">🔄 {{ product.trust_badge_3 }}</div>{% endif %}
+      {% if product.trust_badge_4 %}<div class="pd-trust-badge">🌿 {{ product.trust_badge_4 }}</div>{% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Accordion Sections — each of the 5 staff-added info blocks is its own accordion item -->
+    {% for section in product.extra_info_sections %}
+    <div class="accordion-item" id="descAccord{{ forloop.counter }}">
+      <button class="accordion-header" onclick="toggleAccord('descAccord{{ forloop.counter }}')" aria-expanded="false">
+        {{ section.title }} <span class="accordion-plus">+</span>
+      </button>
+      <div class="accordion-body"><div class="accordion-content">
+        <p class="pd-flow-text">{{ section.content|linebreaksbr }}</p>
+        {% if section.image %}<img src="{{ section.image.url }}" alt="{{ section.title }}" class="pd-flow-image">{% endif %}
+      </div></div>
+    </div>
+    {% endfor %}
+    {% for faq in product.faqs.all %}
+    <div class="accordion-item" id="faq{{ faq.pk }}">
+      <button class="accordion-header" onclick="toggleAccord('faq{{ faq.pk }}')" aria-expanded="false">
+        {{ faq.question }} <span class="accordion-plus">+</span>
+      </button>
+      <div class="accordion-body"><div class="accordion-content">{{ faq.answer }}</div></div>
+    </div>
+    {% endfor %}
+
+    {% if product.show_materials_table and product.materials_table_rows %}
+    <div class="pd-materials-table">
+      <div class="pd-materials-title">Details</div>
+      <div class="pd-materials-box">
+        {% for row in product.materials_table_rows %}
+        <div class="pd-materials-row"><span>{{ row.label }}</span><span>{{ row.value }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if product.show_about_craft and product.about_craft_text %}
+    <div class="pd-about-craft">
+      <div class="pd-about-craft-title">{{ product.about_craft_title|default:"About Our Craft" }}</div>
+      <div class="pd-about-craft-text">{{ product.about_craft_text }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ══ PHOTOS FROM REVIEWS ══════════════════════════════════════════════ -->
+{% if reviews %}
+{% with photo_reviews=reviews|dictsortreversed:"created_at" %}
+{% if True %}
+<div class="container" style="padding-top:0;padding-bottom:0;">
+  {% comment %}Collect reviews with photos{% endcomment %}
+  {% for review in reviews %}{% if review.photo %}
+  {% if forloop.first %}<div style="margin:28px 0 0;"><div style="font-weight:700;font-size:1rem;margin-bottom:12px;">📷 Photos from reviews</div>
+  <div id="reviewPhotoRow" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+  {% endif %}
+  <div class="review-photo-thumb" style="flex-shrink:0;scroll-snap-align:start;cursor:pointer;border-radius:10px;overflow:hidden;width:120px;height:120px;"
+       onclick="openReviewModal({{ forloop.counter0 }})"
+       data-name="{{ review.reviewer_name }}"
+       data-rating="{{ review.rating }}"
+       data-title="{{ review.title|default:'' }}"
+       data-body="{{ review.body|escapejs }}"
+       data-date="{{ review.created_at|date:'d M, Y' }}"
+       data-photo="{{ review.photo.url }}">
+    <img src="{{ review.photo.url }}" alt="Review photo by {{ review.reviewer_name }}"
+         style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+  </div>
+  {% if forloop.last %}</div></div>{% endif %}
+  {% endif %}{% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- ══ CUSTOMER REVIEWS — image-6 style ═══════════════════════════════ -->
+<div class="container section" id="productReviews" style="border-top:1px solid var(--cream-border);padding-top:32px;">
+  <h2 class="rvs-heading">Customer Reviews</h2>
+
+  <!-- Summary: score | histogram | write button -->
+  <div class="rvs-summary">
+    <div class="rvs-score-col">
+      <div class="rvs-score-stars">
+        {% for i in "12345" %}<span class="rvs-star{% if forloop.counter <= avg_rating|floatformat:0|add:0 %} filled{% endif %}">★</span>{% endfor %}
+        <span class="rvs-score-num">{{ avg_rating|floatformat:2 }} out of 5</span>
+      </div>
+      <div class="rvs-score-based">Based on {{ reviews.count }} review{{ reviews.count|pluralize }} <span class="rvs-verified-tick">✔</span></div>
+    </div>
+    <div class="rvs-histogram">
+      {% for star, count in rating_counts.items reversed %}
+      <div class="rvs-histo-row">
+        <span class="rvs-histo-stars">{% for i in "12345" %}<span class="rvs-star sm{% if forloop.counter <= star %} filled{% endif %}">★</span>{% endfor %}</span>
+        <span class="rvs-histo-track"><span class="rvs-histo-fill" style="width:{% if reviews.count %}{% widthratio count reviews.count 100 %}{% else %}0{% endif %}%;"></span></span>
+        <span class="rvs-histo-count">{{ count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="rvs-write-col">
+      <a href="{% url 'store:write_review' %}?product={{ product.pk }}" class="rvs-write-btn">Write a review</a>
+    </div>
+  </div>
+
+  <!-- Sort -->
+  <div class="rvs-sortbar">
+    <select id="rvsSort" class="rvs-sort-select" onchange="sortReviews(this.value)" aria-label="Sort reviews">
+      <option value="recent">Most Recent</option>
+      <option value="highest">Highest Rating</option>
+      <option value="lowest">Lowest Rating</option>
+    </select>
+  </div>
+
+  <!-- Review list -->
+  <div id="rvsList">
+    {% for review in reviews %}
+    <div class="rvs-item{% if forloop.counter > 5 %} rvs-hidden{% endif %}" data-rating="{{ review.rating }}" data-ts="{{ review.created_at|date:'U' }}">
+      <div class="rvs-item-top">
+        <span class="rvs-item-stars">{% for i in "12345" %}<span class="rvs-star{% if forloop.counter <= review.rating %} filled{% endif %}">★</span>{% endfor %}</span>
+        <span class="rvs-item-date">{{ review.created_at|date:"m/d/Y" }}</span>
+      </div>
+      <div class="rvs-item-who">
+        <span class="rvs-avatar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <span class="rvs-item-name">{{ review.reviewer_name }}</span>
+        {% if review.user %}<span class="rvs-verified-badge">Verified</span>{% endif %}
+      </div>
+      {% if review.title %}<div class="rvs-item-title">{{ review.title }}</div>{% endif %}
+      <p class="rvs-item-body">{{ review.body }}</p>
+      {% if review.photo %}
+      <div class="rvs-item-photo" onclick="openReviewModal(0)"><img src="{{ review.photo.url }}" alt="Review photo"></div>
+      {% endif %}
+      {% if review.staff_reply %}
+      <div class="rvs-staff-reply"><strong>Response from us:</strong> {{ review.staff_reply }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if reviews.count > 5 %}
+  <div style="text-align:center;margin-top:16px;" id="showMoreWrap">
+    <button onclick="showAllReviews()" class="rvs-viewall-btn">View all {{ reviews.count }} reviews for this item</button>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ══ YOU MAY ALSO LIKE — image-5 style cards ═════════════════════════════ -->
+{% if related %}
+<div class="container" style="padding:36px 24px 8px;">
+  <h2 class="yml-title">You may also like</h2>
+  <div class="yml-grid">
+    {% for p in related %}
+    <a href="{% url 'store:product_detail' p.slug %}" class="yml-card">
+      <div class="yml-img-wrap">
+        {% if p.discount_percent %}<span class="yml-off-badge">-{{ p.discount_percent }}%</span>{% endif %}
+        {% if p.main_image %}
+          <img src="{{ p.main_image.image.url }}" alt="{{ p.name }}" loading="lazy">
+        {% else %}
+          <div class="yml-img-fallback">📦</div>
+        {% endif %}
+      </div>
+      <div class="yml-body">
+        <div class="yml-name">{{ p.name }}</div>
+        {% if p.r_count %}
+        <div class="yml-stars">
+          {% for i in "12345" %}<span class="yml-star{% if forloop.counter <= p.r_avg|floatformat:0|add:0 %} filled{% endif %}">★</span>{% endfor %}
+          <span class="yml-star-count">({{ p.r_count }})</span>
+        </div>
+        {% elif p.is_new %}
+        <span class="yml-new-chip">✦ New</span>
+        {% endif %}
+        <div class="yml-price-row">
+          {% if p.compare_price %}<span class="yml-mrp">₹{{ p.compare_price|floatformat:2 }}</span>{% endif %}
+          <span class="yml-price">₹{{ p.base_price|floatformat:2 }}</span>
+        </div>
+        <span class="yml-cta">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          Choose options
+        </span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ══ REVIEW PHOTO MODAL — Etsy/Meesho style with full review details ══ -->
+<div id="reviewModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);align-items:flex-end;justify-content:center;"
+     onclick="if(event.target===this)closeReviewModal()">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:0 0 32px;">
+    <!-- Photo + arrows -->
+    <div style="position:relative;width:100%;background:#000;">
+      <img id="rmPhoto" src="" alt="" style="width:100%;max-height:340px;object-fit:contain;display:block;">
+      <button onclick="rmPrev()" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.18);border:none;color:#fff;font-size:1.6rem;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+      <button onclick="rmNext()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.18);border:none;color:#fff;font-size:1.6rem;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">›</button>
+      <button onclick="closeReviewModal()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.45);border:none;color:#fff;font-size:1.1rem;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <!-- Review details -->
+    <div style="padding:20px 20px 0;">
+      <!-- Stars + badge -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <div id="rmStars" style="color:#FFB800;font-size:1.1rem;font-weight:700;"></div>
+        <span style="font-size:0.75rem;border:1.5px solid #ddd;border-radius:20px;padding:2px 9px;color:#666;">This item</span>
+        <span id="rmRecommends" style="font-size:0.78rem;color:#1A9B77;font-weight:600;display:none;">✓ Recommends</span>
+      </div>
+      <!-- Title + body -->
+      <div id="rmTitle" style="font-weight:700;margin-bottom:6px;font-size:0.9rem;"></div>
+      <p id="rmBody" style="font-size:0.88rem;line-height:1.65;color:#333;margin-bottom:14px;"></p>
+      <!-- Reviewer -->
+      <div style="display:flex;align-items:center;gap:9px;padding-top:12px;border-top:1px solid #eee;">
+        <div id="rmAvatar" style="width:36px;height:36px;border-radius:50%;background:#FFB800;color:#333;font-weight:700;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+        <div>
+          <div id="rmName" style="font-weight:600;font-size:0.84rem;"></div>
+          <div id="rmDate" style="font-size:0.73rem;color:#888;"></div>
+        </div>
+      </div>
+      <!-- Purchased item -->
+      <div style="margin-top:14px;padding:12px;background:#f8f8f8;border-radius:var(--radius-sm);display:flex;gap:12px;align-items:center;">
+        {% if product.main_image %}<img src="{{ product.main_image.image.url }}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;">{% endif %}
+        <div>
+          <div style="font-size:0.7rem;color:#888;font-weight:600;text-transform:uppercase;margin-bottom:2px;">Purchased item</div>
+          <div style="font-size:0.84rem;font-weight:700;line-height:1.3;">{{ product.name|truncatechars:50 }}</div>
+          <div style="font-size:0.8rem;color:#1A9B77;font-weight:600;margin-top:2px;">₹{{ product.base_price }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ══ Professional Gallery ══════════════════════════════════════════════════ */
+const _BASE_PRICE   = {{ product.base_price }};
+const _galleryUrls  = [{% for img in product.images.all %}'{{ img.image.url }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+let _galleryIdx     = 0;
+let _lbIdx          = 0;
+let _sizeExtra      = 0;   // tracks currently selected size's extra price
+
+/* ── Size price update (model sizes OR builder sizes) ───────────────────── */
+function updateSizePrice(extra) {
+  _sizeExtra = parseFloat(extra) || 0;
+  var el = document.getElementById('displayPrice');
+  if (el) el.textContent = '₹' + (_BASE_PRICE + _sizeExtra).toFixed(0).replace(/\.0$/, '');
+}
+
+/* ── Main gallery: switch image ─────────────────────────────────────────── */
+function switchImage(url, el, idx, userInitiated) {
+  if (idx === undefined) idx = _galleryUrls.indexOf(url);
+  _galleryIdx = idx;
+  if (userInitiated === undefined) userInitiated = true;
+
+  // Fade main image
+  const main = document.getElementById('mainImg');
+  if (main) {
+    main.style.opacity = '0';
+    setTimeout(() => { main.src = url; main.style.opacity = '1'; }, 140);
+  }
+
+  // Update active thumbnail border
+  document.querySelectorAll('.product-thumb').forEach(t => t.classList.remove('active'));
+  // Only auto-scroll the thumbnail strip into view for an explicit click/arrow —
+  // never during the automatic rotation, or the page jumps back up while the
+  // customer is scrolled further down reading the product details.
+  if (el) {
+    el.classList.add('active');
+    if (userInitiated) el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  }
+
+  // Update counter
+  const ctr = document.getElementById('pgalCounter');
+  if (ctr) ctr.textContent = (idx + 1) + ' / ' + _galleryUrls.length;
+}
+
+/* ── Arrow navigation ───────────────────────────────────────────────────── */
+function galleryNav(dir, userInitiated) {
+  if (!_galleryUrls.length) return;
+  if (userInitiated === undefined) userInitiated = true;
+  _galleryIdx = (_galleryIdx + dir + _galleryUrls.length) % _galleryUrls.length;
+  const thumb = document.querySelector(`.product-thumb[data-index="${_galleryIdx}"]`);
+  switchImage(_galleryUrls[_galleryIdx], thumb, _galleryIdx, userInitiated);
+}
+
+/* ── Auto-scroll: advance through gallery images automatically ──────────── */
+let _galleryAutoTimer = null;
+function startGalleryAuto() {
+  if (_galleryUrls.length < 2) return; // nothing to rotate
+  stopGalleryAuto();
+  _galleryAutoTimer = setInterval(() => galleryNav(1, false), 3800);
+}
+function stopGalleryAuto() {
+  if (_galleryAutoTimer) { clearInterval(_galleryAutoTimer); _galleryAutoTimer = null; }
+}
+(function initGalleryAuto() {
+  const mainEl = document.getElementById('mainImage');
+  if (!mainEl) return;
+  startGalleryAuto();
+  // Pause on hover/focus (desktop) and touch (mobile), resume after a short delay
+  mainEl.addEventListener('mouseenter', stopGalleryAuto);
+  mainEl.addEventListener('mouseleave', startGalleryAuto);
+  // Main gallery: stopGalleryAuto on touch + SWIPE to navigate
+  var _mainTouchX = 0;
+  mainEl.addEventListener('touchstart', function(e){ _mainTouchX = e.touches[0].clientX; stopGalleryAuto(); }, { passive: true });
+  mainEl.addEventListener('touchend', function(e){
+    var dx = _mainTouchX - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 40) { e.preventDefault(); galleryNav(dx > 0 ? 1 : -1, true); }
+  }, { passive: true });
+  document.getElementById('galleryThumbs')?.addEventListener('mouseenter', stopGalleryAuto);
+  document.getElementById('galleryThumbs')?.addEventListener('mouseleave', startGalleryAuto);
+  document.getElementById('pgalLightbox')?.addEventListener('transitionend', () => {
+    if (document.getElementById('pgalLightbox').classList.contains('open')) stopGalleryAuto();
+    else startGalleryAuto();
+  });
+})();
+
+/* ── Lightbox open / close ──────────────────────────────────────────────── */
+function openLightbox(startIdx) {
+  const lb = document.getElementById('pgalLightbox');
+  if (!lb) return;
+  stopGalleryAuto();
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  lightboxSetImg(_galleryUrls[startIdx] || _galleryUrls[0], startIdx,
+    document.querySelector(`.pgal-lightbox-thumb[data-index="${startIdx}"]`));
+  // Push history state so back button closes the lightbox
+  history.pushState({ craftixLightbox: true }, '', location.href);
+}
+
+function closeLightbox() {
+  const lb = document.getElementById('pgalLightbox');
+  if (!lb || !lb.classList.contains('open')) return;
+  lb.classList.remove('open');
+  document.body.style.overflow = '';
+  startGalleryAuto();
+  // If the current history state is our lightbox state, pop it back
+  if (history.state && history.state.craftixLightbox) {
+    history.back();
+  }
+}
+
+// Back button / swipe-back closes lightbox instead of leaving the page
+window.addEventListener('popstate', function(e) {
+  const lb = document.getElementById('pgalLightbox');
+  if (lb && lb.classList.contains('open')) {
+    lb.classList.remove('open');
+    document.body.style.overflow = '';
+    startGalleryAuto();
+    // Don't call closeLightbox() — popstate already handled the history pop
+  }
+});
+
+function lightboxNav(dir) {
+  _lbIdx = (_lbIdx + dir + _galleryUrls.length) % _galleryUrls.length;
+  lightboxSetImg(_galleryUrls[_lbIdx], _lbIdx,
+    document.querySelector(`.pgal-lightbox-thumb[data-index="${_lbIdx}"]`));
+}
+
+function lightboxSetImg(url, idx, thumbEl) {
+  _lbIdx = idx || 0;
+  const img = document.getElementById('pgalLbImg');
+  if (img) {
+    img.style.opacity = '0';
+    setTimeout(() => { img.src = url; img.style.opacity = '1'; }, 120);
+  }
+  document.querySelectorAll('.pgal-lightbox-thumb').forEach(t => t.classList.remove('active'));
+  if (thumbEl) { thumbEl.classList.add('active'); thumbEl.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }
+}
+
+// Close lightbox on Escape key + add TOUCH SWIPE for product images
+var _lbTouchX = 0;
+var _pgalLightboxEl = document.getElementById('pgalLightbox');
+if (_pgalLightboxEl) {
+  _pgalLightboxEl.addEventListener('touchstart', function(e){ _lbTouchX = e.touches[0].clientX; }, {passive:true});
+  _pgalLightboxEl.addEventListener('touchend', function(e){
+    var dx = _lbTouchX - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 40) { e.stopPropagation(); dx > 0 ? lightboxNav(1) : lightboxNav(-1); }
+  }, {passive:true});
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft')  { const lb = document.getElementById('pgalLightbox'); if (lb?.classList.contains('open')) lightboxNav(-1); else galleryNav(-1); }
+  if (e.key === 'ArrowRight') { const lb = document.getElementById('pgalLightbox'); if (lb?.classList.contains('open')) lightboxNav(1);  else galleryNav(1); }
+});
+
+/* ── Qty ─────────────────────────────────────────────────────────────────── */
+function changeQty(d) {
+  const inp = document.getElementById('qty');
+  inp.value = Math.max(1, Math.min(parseInt(inp.value) + d, {{ product.available_stock|default:99 }}));
+}
+
+/* ── Accordion ───────────────────────────────────────────────────────────── */
+function toggleAccord(id) {
+  const item = document.getElementById(id);
+  if (!item) return; // product may not have this accordion — never crash the page script
+  const btn  = item.querySelector('.accordion-header');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.accordion-item.open').forEach(i => {
+    i.classList.remove('open');
+    const h = i.querySelector('.accordion-header');
+    if (h) h.setAttribute('aria-expanded', 'false');
+  });
+  if (!isOpen) { item.classList.add('open'); if (btn) btn.setAttribute('aria-expanded', 'true'); }
+}
+toggleAccord('descAccord1');
+
+/* ── Show all reviews ────────────────────────────────────────────────────── */
+function showAllReviews() {
+  document.querySelectorAll('#rvsList .rvs-item.rvs-hidden').forEach(el => el.classList.remove('rvs-hidden'));
+  const wrap = document.getElementById('showMoreWrap');
+  if (wrap) wrap.style.display = 'none';
+}
+
+/* ── Review sorting (Most Recent / Highest / Lowest) ─────────────────────── */
+function sortReviews(mode) {
+  const list = document.getElementById('rvsList');
+  if (!list) return;
+  const items = Array.from(list.querySelectorAll('.rvs-item'));
+  const expanded = !document.querySelector('#showMoreWrap') ||
+                   document.getElementById('showMoreWrap').style.display === 'none';
+  items.sort((a, b) => {
+    const ra = +a.dataset.rating, rb = +b.dataset.rating;
+    const ta = +a.dataset.ts, tb = +b.dataset.ts;
+    if (mode === 'highest') return rb - ra || tb - ta;
+    if (mode === 'lowest')  return ra - rb || tb - ta;
+    return tb - ta; // recent
+  });
+  items.forEach((el, i) => {
+    el.classList.toggle('rvs-hidden', !expanded && i >= 5);
+    list.appendChild(el);
+  });
+}
+
+/* ── Review photo modal (Etsy-style with full review details) ───────────── */
+var _rmThumbs = [];
+var _rmIdx = 0;
+function openReviewModal(startIdx) {
+  _rmThumbs = Array.from(document.querySelectorAll('.review-photo-thumb'));
+  if (!_rmThumbs.length) return;
+  _rmIdx = Math.max(0, Math.min(startIdx, _rmThumbs.length - 1));
+  _rmRender();
+  var m = document.getElementById('reviewModal');
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  history.pushState({ reviewModal: true }, '', location.href);
+}
+function _rmRender() {
+  var el = _rmThumbs[_rmIdx];
+  if (!el) return;
+  document.getElementById('rmPhoto').src = el.dataset.photo || '';
+  var rating = parseInt(el.dataset.rating) || 5;
+  document.getElementById('rmStars').textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  document.getElementById('rmTitle').textContent = el.dataset.title || '';
+  document.getElementById('rmBody').textContent = el.dataset.body || '';
+  document.getElementById('rmName').textContent = el.dataset.name || '';
+  document.getElementById('rmDate').textContent = el.dataset.date || '';
+  document.getElementById('rmAvatar').textContent = (el.dataset.name || 'R')[0].toUpperCase();
+  var rec = document.getElementById('rmRecommends');
+  rec.style.display = rating >= 4 ? '' : 'none';
+}
+function rmPrev() { _rmIdx = (_rmIdx - 1 + _rmThumbs.length) % _rmThumbs.length; _rmRender(); }
+function rmNext() { _rmIdx = (_rmIdx + 1) % _rmThumbs.length; _rmRender(); }
+function closeReviewModal() {
+  document.getElementById('reviewModal').style.display = 'none';
+  document.body.style.overflow = '';
+  if (history.state && history.state.reviewModal) history.back();
+}
+// Back button closes review modal
+window.addEventListener('popstate', function(e) {
+  var m = document.getElementById('reviewModal');
+  if (m && m.style.display === 'flex') {
+    m.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+});
+// Touch swipe in review modal
+var _rmTX = 0;
+var rmEl = document.getElementById('reviewModal');
+if (rmEl) {
+  rmEl.addEventListener('touchstart', function(e){ _rmTX = e.touches[0].clientX; }, {passive:true});
+  rmEl.addEventListener('touchend', function(e){
+    var dx = _rmTX - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 40) { dx > 0 ? rmNext() : rmPrev(); }
+  }, {passive:true});
+}
+
+/* ── Photo preview ───────────────────────────────────────────────────────── */
+function previewPhoto(input) {
+  const div = document.getElementById('photoPreview');
+  const zone = document.getElementById('photoUpload_zone');
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const safeName = String(file.name || 'photo').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const sizeLabel = file.size >= 1048576 ? (file.size/1048576).toFixed(1)+' MB' : (file.size/1024).toFixed(0)+' KB';
+  div.innerHTML =
+    '<div class="cu-uploaded-row">' +
+      '<img class="cu-uploaded-thumb" src="' + url + '" alt="Uploaded photo">' +
+      '<div class="cu-uploaded-meta">' +
+        '<div class="cu-uploaded-name">' + safeName + '</div>' +
+        '<div class="cu-uploaded-size">' + sizeLabel + ' · Uploaded ✓</div>' +
+      '</div>' +
+      '<span class="cu-change-link">Change</span>' +
+    '</div>';
+  if (zone) { zone.style.borderColor='var(--teal)'; zone.style.borderStyle='solid'; zone.style.background='#F2FAF7'; }
+}
+
+/* ── Size pills (model sizes) ────────────────────────────────────────────── */
+document.querySelectorAll('.size-pill input').forEach(r => {
+  r.addEventListener('change', () => {
+    document.querySelectorAll('.size-pill').forEach(p => p.classList.remove('active'));
+    r.closest('.size-pill').classList.add('active');
+  });
+});
+if (document.querySelector('.size-pill input:checked')) {
+  document.querySelector('.size-pill input:checked').closest('.size-pill').classList.add('active');
+}
+</script>
+{% endblock %}

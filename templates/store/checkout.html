@@ -1,0 +1,250 @@
+{% extends 'store/base.html' %}
+{% load static %}
+{% block title %}Checkout — CraftX3D{% endblock %}
+
+{% block content %}
+<div class="checkout-layout">
+
+  <!-- ══ LEFT: Address selection ══════════════════════════════════ -->
+  <div>
+
+    <!-- Breadcrumb -->
+    <div class="checkout-breadcrumb" style="margin-bottom:24px;">
+      <div class="crumb-step done">🛒 Cart</div>
+      <span class="crumb-arrow">→</span>
+      <div class="crumb-step active">📋 Delivery</div>
+      <span class="crumb-arrow">→</span>
+      <div class="crumb-step inactive">💳 Payment</div>
+      <span class="crumb-arrow">→</span>
+      <div class="crumb-step inactive">✅ Done</div>
+    </div>
+
+    <h2 style="font-weight:800;font-size:1.15rem;margin-bottom:16px;">📍 Choose a delivery address</h2>
+
+    {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}" style="margin-bottom:14px;flex-direction:column;gap:2px;">{{ m }}</div>{% endfor %}{% endif %}
+
+    <!-- ── Saved addresses ───────────────────────────────────────── -->
+    {% if saved_addresses %}
+    <form method="post" action="{% url 'store:checkout' %}" id="checkoutForm">
+      {% csrf_token %}
+
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+        {% for addr in saved_addresses %}
+        <label class="addr-pick-card {% if addr.is_default %}addr-pick-selected{% endif %}"
+               id="pickCard{{ addr.id }}"
+               onclick="selectAddr({{ addr.id }})">
+          <input type="radio" name="selected_address_id" value="{{ addr.id }}"
+                 {% if addr.is_default %}checked{% endif %}
+                 style="width:18px;height:18px;accent-color:var(--teal);flex-shrink:0;margin-top:2px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:0.9rem;margin-bottom:2px;">
+              {{ addr.full_name }}
+              {% if addr.is_default %}<span style="font-size:0.68rem;font-weight:700;padding:1px 7px;background:#e0f8ef;color:var(--teal);border-radius:20px;margin-left:6px;">Default</span>{% endif %}
+            </div>
+            <div style="font-size:0.83rem;color:var(--text-muted);line-height:1.55;">
+              {{ addr.address_line1 }}{% if addr.address_line2 %}, {{ addr.address_line2 }}{% endif %}{% if addr.landmark %}, Near {{ addr.landmark }}{% endif %}<br>
+              {{ addr.city }}, {{ addr.state }} — {{ addr.pincode }}<br>
+              📞 {{ addr.phone }}
+            </div>
+          </div>
+          <a href="{% url 'store:edit_address' addr.id %}?next={% url 'store:checkout' %}"
+             onclick="event.stopPropagation();"
+             style="font-size:0.8rem;color:var(--teal);font-weight:600;flex-shrink:0;text-decoration:none;">Edit</a>
+        </label>
+        {% endfor %}
+      </div>
+
+      <!-- Add new address link -->
+      <a href="{% url 'store:add_address' %}?next={% url 'store:checkout' %}"
+         style="display:flex;align-items:center;gap:8px;padding:14px 16px;border:1.5px dashed var(--cream-border);border-radius:var(--radius);font-weight:600;font-size:0.88rem;color:var(--teal);text-decoration:none;transition:border-color 0.2s;margin-bottom:20px;">
+        <span style="font-size:1.2rem;">+</span> Add a new delivery address
+      </a>
+
+      <!-- Hidden form submit triggers from the right-side button -->
+      <button type="submit" id="mainCheckoutBtn" style="display:none;"></button>
+    </form>
+
+    {% else %}
+    <!-- ── No saved addresses: show inline form ─────────────────── -->
+    <form method="post" action="{% url 'store:checkout' %}" id="checkoutForm">
+      {% csrf_token %}
+
+      {% if form.errors %}
+      <div class="alert alert-error" style="margin-bottom:16px;flex-direction:column;gap:3px;align-items:flex-start;">
+        {% for f, errs in form.errors.items %}{% for e in errs %}<div>• {{ e }}</div>{% endfor %}{% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Location card: pincode auto-fills city & state -->
+      <div class="co-card">
+        <div class="co-card-head"><span class="co-step">1</span> Location</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Pincode *</label>
+            <input type="text" name="pincode" id="pincode" class="form-input"
+                   value="{{ form.pincode.value|default:'' }}"
+                   placeholder="6-digit pincode" maxlength="6" pattern="\d{6}" required
+                   inputmode="numeric" oninput="handlePincode(this.value)">
+            <span id="pincodeStatus" class="co-pin-status"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">City *</label>
+            <input type="text" name="city" id="city" class="form-input" value="{{ form.city.value|default:'' }}" placeholder="e.g. Chennai" required>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">State *</label>
+          <select name="state" id="state" class="form-input" required style="appearance:none;">
+            <option value="">Select…</option>
+            {% for s in indian_states %}<option value="{{ s }}" {% if form.state.value == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="co-card">
+        <div class="co-card-head"><span class="co-step">2</span> Address &amp; contact</div>
+
+      <div class="form-group">
+        <label class="form-label">House No. / Building / Street *</label>
+        <input type="text" name="address" id="address" class="form-input" value="{{ form.address.value|default:'' }}" placeholder="Flat, House no., Area, Street" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" name="full_name" class="form-input" value="{{ form.full_name.value|default:'' }}" placeholder="Name on delivery" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Mobile Number *</label>
+        <div class="input-icon-wrap">
+          <span class="phone-prefix">🇮🇳 +91</span>
+          <input type="tel" name="phone" class="form-input input-with-prefix" value="{{ form.phone.value|default:'' }}" placeholder="10-digit number" maxlength="10" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <div class="input-icon-wrap">
+          <span class="input-icon">✉️</span>
+          <input type="email" name="email" class="form-input" value="{{ form.email.value|default:'' }}" placeholder="your@email.com" required>
+        </div>
+      </div>
+
+      <!-- Save address checkbox -->
+      <label style="display:flex;align-items:center;gap:9px;padding:12px;cursor:pointer;background:#FAF8F4;border:1.5px solid #EFECE5;border-radius:12px;margin-top:2px;">
+        <input type="checkbox" name="save_address" style="width:16px;height:16px;accent-color:var(--teal);" checked>
+        <span style="font-size:0.85rem;font-weight:500;">Save this address for future orders</span>
+      </label>
+      </div><!-- /co-card 2 -->
+
+      <button type="submit" id="mainCheckoutBtn" style="display:none;"></button>
+    </form>
+
+    <a href="{% url 'store:manage_addresses' %}" style="font-size:0.82rem;color:var(--text-muted);display:block;margin-top:10px;">Manage saved addresses →</a>
+    {% endif %}
+
+  </div><!-- /left -->
+
+  <!-- ══ RIGHT: Order summary + Pay button ════════════════════════ -->
+  <div>
+    <div class="order-summary-box" style="position:sticky;top:80px;">
+
+      <!-- Items -->
+      <div class="checkout-card" style="margin-bottom:16px;">
+        <div class="checkout-section-title">🛒 ORDER ({{ cart.item_count }} item{{ cart.item_count|pluralize }})</div>
+        {% for item in cart.items.select_related %}
+        <div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--cream-border);">
+          <div style="width:48px;height:48px;background:#f8f8f8;border-radius:8px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+            {% if item.product.main_image %}<img src="{{ item.product.main_image.image.url }}" style="width:100%;height:100%;object-fit:contain;padding:4px;" loading="lazy">{% else %}📦{% endif %}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.product.name }}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Qty {{ item.quantity }}</div>
+          </div>
+          <div style="font-size:0.88rem;font-weight:700;flex-shrink:0;">₹{{ item.total_price }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Totals -->
+      <div class="checkout-card" style="margin-bottom:16px;">
+        <div class="summary-line"><span>Subtotal</span><span>₹{{ cart.subtotal }}</span></div>
+        {% if cart.parcel_charge_total %}<div class="summary-line"><span>📦 Parcel &amp; Packaging</span><span>₹{{ cart.parcel_charge_total|floatformat:2 }}</span></div>{% endif %}
+        {% if cart.discount_amount %}<div class="summary-line" style="color:var(--teal);"><span>Discount{% if cart.coupon %} ({{ cart.coupon.code }}){% endif %}</span><span>−₹{{ cart.discount_amount }}</span></div>{% endif %}
+        {% if cart.gift_wrap %}<div class="summary-line"><span>🎁 Gift Wrap</span><span>₹{{ cart.gift_wrap_price }}</span></div>{% endif %}
+        <div class="summary-line total"><span>Total</span><span>₹{{ cart.total }}</span></div>
+      </div>
+
+      <!-- Pay button — submits the left-side form -->
+      <button onclick="document.getElementById('mainCheckoutBtn').click();"
+              class="btn-checkout-pay">
+        🔒 Continue to Payment · ₹{{ cart.total }}
+      </button>
+      <div style="text-align:center;font-size:0.75rem;color:var(--text-muted);margin-top:8px;">Secured by Razorpay · SSL encrypted</div>
+
+    </div>
+  </div><!-- /right -->
+
+</div><!-- /checkout-layout -->
+{% endblock %}
+
+{% block extra_js %}
+<style>
+/* Address pick cards */
+.addr-pick-card {
+  display:flex;align-items:flex-start;gap:12px;padding:16px;
+  border:1.5px solid var(--cream-border);border-radius:var(--radius);
+  cursor:pointer;transition:border-color 0.2s,box-shadow 0.2s;background:#fff;
+}
+.addr-pick-card:hover { border-color:var(--teal); }
+.addr-pick-selected { border-color:var(--teal);box-shadow:0 0 0 1px var(--teal); }
+.btn-checkout-pay {
+  display:block;width:100%;padding:16px;background:var(--gold);color:var(--charcoal);
+  font-size:1rem;font-weight:800;border:none;border-radius:var(--radius-pill);
+  cursor:pointer;transition:background 0.2s,transform 0.15s;font-family:inherit;
+}
+.btn-checkout-pay:hover { background:var(--gold-dark);transform:translateY(-1px); }
+</style>
+<script>
+function selectAddr(id) {
+  document.querySelectorAll('.addr-pick-card').forEach(function(c){ c.classList.remove('addr-pick-selected'); });
+  var card = document.getElementById('pickCard' + id);
+  if (card) card.classList.add('addr-pick-selected');
+  var radio = card ? card.querySelector('input[type=radio]') : null;
+  if (radio) radio.checked = true;
+}
+
+// Pincode auto-fill for inline form
+var _pt;
+function handlePincode(val) {
+  clearTimeout(_pt);
+  var st = document.getElementById('pincodeStatus');
+  if (val.length !== 6 || !/^\d{6}$/.test(val)) { if (st) st.style.display='none'; return; }
+  st.style.display = 'inline-block'; st.classList.remove('err'); st.textContent = 'Looking up…';
+  _pt = setTimeout(function() {
+    fetch('/api/pincode/' + val + '/')
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          var c = document.getElementById('city');
+          var s = document.getElementById('state');
+          if (c && !c.value) c.value = d.city;
+          // State always follows the pincode — prevents a stale wrong state
+          // (e.g. "Haryana" showing for a Tamil Nadu pincode)
+          if (s && d.state) {
+            for (var i = 0; i < s.options.length; i++) {
+              if (s.options[i].value.toLowerCase() === d.state.toLowerCase()) {
+                s.value = s.options[i].value; break;
+              }
+            }
+          }
+          st.textContent = d.city ? '✓ ' + d.city + ', ' + d.state : '✓ Found';
+        } else {
+          st.classList.add('err'); st.textContent = 'Pincode not found';
+        }
+      })
+      .catch(function(){ st.style.display='none'; });
+  }, 400);
+}
+</script>
+{% endblock %}

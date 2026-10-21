@@ -1,0 +1,18 @@
+{% extends 'store/base.html' %}
+{% block title %}Sign-in Failed — CraftX3D{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card" style="text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:12px;">⚠️</div>
+    <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:1.3rem;font-weight:700;margin-bottom:8px;">Sign-in Unsuccessful</h2>
+    <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:24px;line-height:1.6;">
+      Something went wrong while signing in with Google. This can happen if you cancel the sign-in or if there's a temporary issue. Please try again.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <a href="{% url 'store:login' %}" style="display:block;padding:13px;background:var(--charcoal);color:#fff;border-radius:var(--radius-sm);font-weight:700;text-decoration:none;font-size:0.9rem;">← Try Sign In Again</a>
+      <a href="{% url 'store:register' %}" style="display:block;padding:13px;background:var(--teal);color:#fff;border-radius:var(--radius-sm);font-weight:700;text-decoration:none;font-size:0.9rem;">Create Account Instead</a>
+      <a href="{% url 'store:home' %}" style="font-size:0.82rem;color:var(--text-muted);">← Return to home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

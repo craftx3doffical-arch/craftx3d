@@ -1,0 +1,140 @@
+{% extends 'store/base.html' %}
+{% block title %}Write a Review — CraftX3D{% endblock %}
+{% block content %}
+<div class="review-form-wrap">
+  <a href="{% url 'store:reviews' %}" style="font-size:0.85rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:20px;">← Back to Reviews</a>
+
+  <div class="help-form-card">
+    <h1 style="font-size:1.5rem;font-weight:800;margin-bottom:24px;">✍️ Write a Review</h1>
+
+    {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+
+      <!-- Product -->
+      <div class="form-group">
+        <label class="form-label" for="id_product">Product Purchased</label>
+        <select name="product" id="id_product" class="form-input">
+          <option value="">Select a product…</option>
+          {% for p in products %}<option value="{{ p.pk }}" {% if form.product.value == p.pk|stringformat:"d" or request.GET.product == p.pk|stringformat:"d" %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <!-- Name -->
+      <div class="form-group">
+        <label class="form-label" for="id_reviewer_name">Your Name <span style="color:var(--red)">*</span></label>
+        <input type="text" id="id_reviewer_name" name="reviewer_name" class="form-input" required value="{{ form.reviewer_name.value|default:request.user.get_full_name }}" placeholder="How your name appears on the review">
+      </div>
+
+      <!-- Star Rating -->
+      <div class="form-group">
+        <label class="form-label">Your Rating <span style="color:var(--red)">*</span></label>
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+          <div class="star-rating-interactive" id="starRating">
+            {% for i in "12345" %}<button type="button" class="star-btn" title="{{ i }} star">☆</button>{% endfor %}
+          </div>
+          <span class="rating-label" id="ratingLabel"></span>
+          <input type="hidden" name="rating" id="ratingValue" value="{{ form.rating.value|default:'0' }}">
+        </div>
+        <div id="ratingError" style="color:var(--red);font-size:0.8rem;display:none">Please select a rating</div>
+      </div>
+
+      <!-- Title -->
+      <div class="form-group">
+        <label class="form-label" for="id_title">Review Title <span style="color:var(--red)">*</span></label>
+        <input type="text" id="id_title" name="title" class="form-input" required value="{{ form.title.value|default:'' }}" placeholder="e.g. Absolutely stunning quality!">
+      </div>
+
+      <!-- Body -->
+      <div class="form-group">
+        <label class="form-label" for="id_body">Your Review <span style="color:var(--red)">*</span></label>
+        <textarea id="id_body" name="body" class="form-input" rows="5" required placeholder="Tell us about quality, delivery, customization, packaging…">{{ form.body.value|default:'' }}</textarea>
+      </div>
+
+      <!-- Photo -->
+      <div class="form-group">
+        <label class="form-label">Add a Photo <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+        <label for="id_photo" class="review-photo-upload" id="reviewUpload">
+          <input type="file" id="id_photo" name="photo" accept="image/*" onchange="previewReviewPhoto(this)" style="position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;">
+          <div id="reviewPhotoPreview" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;">
+            <div style="width:56px;height:56px;background:var(--cream-dark);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📸</div>
+            <div style="font-size:0.85rem;font-weight:600;color:var(--charcoal);">Click to attach a photo</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">JPG, PNG up to 5MB</div>
+          </div>
+        </label>
+      </div>
+
+      <button type="submit" class="btn-primary" id="reviewSubmit" style="width:100%;padding:14px;justify-content:center;opacity:0.45;cursor:not-allowed" disabled>Submit Review →</button>
+      <p style="text-align:center;font-size:0.75rem;color:var(--text-muted);margin-top:10px;">Your review will appear once our team has reviewed it.</p>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewReviewPhoto(input) {
+  var div = document.getElementById('reviewPhotoPreview');
+  if (div && input.files[0]) {
+    div.innerHTML = '<img src="'+URL.createObjectURL(input.files[0])+'" style="max-height:110px;border-radius:8px;object-fit:cover;">';
+    document.getElementById('reviewUpload').style.borderColor = 'var(--teal)';
+  }
+}
+
+// Validate before enable submit
+function checkForm() {
+  var rating = parseInt(document.getElementById('ratingValue').value) || 0;
+  var name = (document.getElementById('id_reviewer_name').value||'').trim();
+  var title = (document.getElementById('id_title').value||'').trim();
+  var body = (document.getElementById('id_body').value||'').trim();
+  var ok = rating > 0 && name && title && body;
+  var btn = document.getElementById('reviewSubmit');
+  btn.disabled = !ok; btn.style.opacity = ok ? '1' : '0.45'; btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+}
+
+document.querySelectorAll('#id_reviewer_name,#id_title,#id_body').forEach(function(f){ f.addEventListener('input', checkForm); });
+// Star rating triggers form check — also restore saved rating on validation error
+var origStar = initStarRating;
+document.addEventListener('DOMContentLoaded', function(){
+  // If Django re-rendered the page with a previously submitted rating, restore stars
+  var savedRating = parseInt(document.getElementById('ratingValue').value) || 0;
+  if (savedRating > 0) {
+    var stars = document.querySelectorAll('.star-btn');
+    stars.forEach(function(s, i) { s.textContent = i < savedRating ? '★' : '☆'; });
+    var label = document.getElementById('ratingLabel');
+    var labels = ['','Poor','Fair','Good','Great','Excellent'];
+    if (label) label.textContent = labels[savedRating] || '';
+    checkForm();
+  }
+  initStarRating();
+  // patch star clicks to call checkForm
+  document.querySelectorAll('.star-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ setTimeout(checkForm, 50); });
+  });
+  checkForm();
+});
+
+var _reviewSubmitting = false;
+document.querySelector('form').addEventListener('submit', function(e) {
+  var rating = parseInt(document.getElementById('ratingValue').value) || 0;
+  if (!rating) {
+    e.preventDefault();
+    document.getElementById('ratingError').style.display = 'block';
+    return;
+  }
+  // Block every submission after the first — catches fast double-taps,
+  // rage-clicks while waiting for the server, and Enter-key repeats.
+  if (_reviewSubmitting) {
+    e.preventDefault();
+    return;
+  }
+  _reviewSubmitting = true;
+  var btn = document.getElementById('reviewSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  btn.style.opacity = '0.65';
+  btn.style.cursor = 'not-allowed';
+});
+</script>
+{% endblock %}

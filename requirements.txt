@@ -1,0 +1,31 @@
+# ── Core (always required) ──────────────────────────────
+Django==4.2.13
+Pillow==10.3.0
+python-dotenv==1.0.1
+whitenoise==6.6.0
+
+# ── PostgreSQL (Railway/production database) ────────────
+# On Windows without PostgreSQL installed, comment this out
+# and use requirements-sqlite.txt instead
+psycopg2-binary==2.9.9
+
+# ── Online payments (Razorpay) ───────────────────────────
+# setuptools provides pkg_resources, which the razorpay SDK needs internally
+# but doesn't declare as its own dependency — without it, payment creation
+# crashes with "ModuleNotFoundError: No module named 'pkg_resources'".
+# Pinned exactly (not >=) because newer setuptools releases have started
+# removing pkg_resources entirely.
+setuptools==75.6.0
+razorpay==1.4.2
+
+# ── Google login ──────────────────────────────────────────
+django-allauth==0.63.6
+PyJWT==2.9.0
+cryptography==43.0.1
+
+# ── Media storage (Cloudinary) ───────────────────────────
+django-cloudinary-storage==0.3.0
+cloudinary==1.40.0
+
+# ── Production server ───────────────────────────────────
+gunicorn==22.0.0

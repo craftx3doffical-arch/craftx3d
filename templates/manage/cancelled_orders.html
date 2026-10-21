@@ -1,0 +1,30 @@
+{% extends 'manage/base.html' %}
+{% block title %}Cancelled Orders — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Sales{% endblock %}
+{% block breadcrumb_current %}Cancelled Orders{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Cancelled Orders</h1><p class="page-sub">{{ orders.count }} orders</p></div>
+  <a href="{% url 'manage:export_cancelled' %}" class="m-btn m-btn-outline">⬇ Export</a>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>ORDER</th><th>CUSTOMER</th><th>TOTAL</th><th>DATE</th><th>ACTION</th></tr></thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td><a href="{% url 'manage:order_detail' order.order_id %}" style="color:var(--m-accent);font-weight:700;">#{{ order.order_id }}</a></td>
+          <td><div style="font-weight:600;">{{ order.full_name }}</div><div style="font-size:0.72rem;color:var(--m-muted);">{{ order.phone }}</div></td>
+          <td style="font-weight:700;">₹{{ order.total }}</td>
+          <td style="font-size:0.78rem;color:var(--m-muted);">{{ order.created_at|date:"d M Y" }}</td>
+          <td><a href="{% url 'manage:order_detail' order.order_id %}" class="m-btn-icon" title="View">👁️</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--m-muted);">No orders found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

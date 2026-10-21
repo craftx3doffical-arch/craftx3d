@@ -1,0 +1,346 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0">
+  <meta name="color-scheme" content="only light">
+  <meta name="theme-color" content="#ffffff">
+  <!-- Critical inline: blocks Android forced-dark-mode BEFORE external CSS loads -->
+  <style>
+    :root { color-scheme: only light; }
+    html, body {
+      background-color: #ffffff !important;
+      color-scheme: only light !important;
+    }
+    /* Ensure no element can be force-darkened */
+    * { color-scheme: inherit; }
+  </style>
+  <title>{% block title %}CraftX3D — Premium 3D Printed Products{% endblock %}</title>
+  <meta name="description" content="Unique, functional, and beautifully designed objects crafted with precision 3D printing technology by CraftX3D.">
+  <!-- Favicon / app icons -->
+  <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32.png' %}">
+  <link rel="icon" type="image/png" sizes="48x48" href="{% static 'img/favicon-48.png' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/icon-192.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/favicon-16.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/store.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body data-page="{% block body_page %}{% endblock %}">
+
+{% if store_settings.announcement_bar_enabled and store_settings.announcement_bar_text %}
+<div class="announcement-bar" role="region" aria-label="Announcement">
+  <div class="announcement-track">
+    {% for g in "12" %}<div class="announcement-group"{% if g == "2" %} aria-hidden="true"{% endif %}>{% for i in "12345678" %}<span class="announcement-item">{{ store_settings.announcement_bar_text }}</span>{% endfor %}</div>{% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- NAVBAR -->
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+
+  <a href="{% url 'store:home' %}" class="navbar-brand" aria-label="CraftX3D home">
+    <img src="{% static 'img/logo-navbar.png' %}" alt="{{ store_settings.store_name|default:'CraftX3D' }}" class="navbar-brand-logo" width="248" height="62" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline';"><span class="navbar-brand-text" style="display:none;">Craft<span class="accent">X3D</span></span>
+  </a>
+
+  <ul class="navbar-nav" id="mainNav">
+    <li class="nav-item-home"><a href="{% url 'store:home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">Home</a></li>
+    <li class="nav-dropdown-item">
+      <a href="{% url 'store:products' %}" class="{% if 'product' in request.resolver_match.url_name %}active{% endif %}">
+        Category
+        {% if nav_categories %}<svg class="nav-dd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>{% endif %}
+      </a>
+      {% if nav_categories %}
+      <div class="nav-dropdown-panel">
+        <a href="{% url 'store:products' %}" class="nav-dd-link">All Products</a>
+        {% for cat in nav_categories %}
+        <a href="{% url 'store:products' %}?category={{ cat.slug }}" class="nav-dd-link{% if request.GET.category == cat.slug or product.category.slug == cat.slug %} active{% endif %}">{{ cat.name }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </li>
+    <li class="nav-item-best"><a href="{% url 'store:products' %}?bestseller=1">Bestsellers</a></li>
+    {% if nav_categories %}
+    <li class="nav-category-mobile-only nav-cat-toggle-item">
+      <button type="button" class="nav-cat-toggle" onclick="this.closest('li').classList.toggle('open')" aria-expanded="false">
+        Categories <svg class="nav-cat-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <ul class="nav-cat-submenu">
+        {% for cat in nav_categories %}
+        <li><a href="{% url 'store:products' %}?category={{ cat.slug }}">{{ cat.name }}</a></li>
+        {% endfor %}
+      </ul>
+    </li>
+    {% endif %}
+    <li class="nav-item-reviews"><a href="{% url 'store:reviews' %}" class="{% if 'review' in request.resolver_match.url_name %}active{% endif %}">
+      Reviews{% if review_count %}<span class="review-badge">{{ review_count }}</span>{% endif %}
+    </a></li>
+    <li class="nav-item-about"><a href="{% url 'store:about' %}" class="{% if request.resolver_match.url_name == 'about' %}active{% endif %}">About</a></li>
+    <li class="nav-item-help"><a href="{% url 'store:help' %}" class="{% if request.resolver_match.url_name == 'help' %}active{% endif %}">Help & Support</a></li>
+    {% if request.user.is_authenticated %}
+    <li class="nav-item-orders"><a href="{% url 'store:my_orders' %}" class="{% if 'order' in request.resolver_match.url_name %}active{% endif %}">My Orders</a></li>
+    {% endif %}
+  </ul>
+
+  <div class="navbar-right">
+    {% if request.user.is_authenticated %}
+      <div class="profile-menu-wrap">
+        <button class="profile-trigger" id="profileTrigger" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+          <span class="profile-avatar">{{ request.user.first_name.0|default:request.user.username.0|upper }}</span>
+          <span class="greeting-text">{{ request.user.first_name|default:request.user.username }}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="profile-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="profile-dropdown" id="profileDropdown" role="menu">
+          <div class="profile-dropdown-header">
+            <span class="profile-avatar profile-avatar-lg">{{ request.user.first_name.0|default:request.user.username.0|upper }}</span>
+            <div>
+              <div class="profile-dropdown-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+              <div class="profile-dropdown-email">{{ request.user.email }}</div>
+            </div>
+          </div>
+          <div class="profile-dropdown-divider"></div>
+          <a href="{% url 'store:profile' %}" class="profile-dropdown-link" role="menuitem">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            My Profile
+          </a>
+          <a href="{% url 'store:my_orders' %}" class="profile-dropdown-link" role="menuitem">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            My Orders
+          </a>
+          <a href="{% url 'store:manage_addresses' %}" class="profile-dropdown-link" role="menuitem">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            My Addresses
+          </a>
+          <a href="{% url 'store:my_favorites' %}" class="profile-dropdown-link" role="menuitem">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            My Favorites{% if favorite_count %} <span style="margin-left:auto;background:var(--gold);color:#fff;font-size:0.68rem;font-weight:700;padding:1px 7px;border-radius:20px;">{{ favorite_count }}</span>{% endif %}
+          </a>
+          <a href="{% url 'store:help' %}" class="profile-dropdown-link" role="menuitem">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Help &amp; Support
+          </a>
+          <div class="profile-dropdown-divider"></div>
+          <a href="{% url 'store:logout' %}" class="profile-dropdown-link profile-dropdown-link-danger" role="menuitem">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Logout
+          </a>
+        </div>
+      </div>
+    {% else %}
+      <a href="{% url 'store:login' %}" class="btn-outline">Login</a>
+    {% endif %}
+    <button class="btn-cart" id="cartToggleBtn" aria-label="Cart ({{ cart_count }} items)" onclick="openCartDrawer()">
+      🛒 <span class="cart-text">Cart</span>
+      {% if cart_count %}
+        <span class="cart-badge" id="cartBadgeNav" aria-live="polite">{{ cart_count }}</span>
+      {% else %}
+        <span class="cart-badge" id="cartBadgeNav" aria-live="polite" style="display:none;">0</span>
+      {% endif %}
+    </button>
+  </div>
+</nav>
+
+<!-- ═══ CART DRAWER ═══════════════════════════════════════ -->
+<div id="cartOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;" onclick="closeCartDrawer()"></div>
+<div id="cartDrawer" class="cart-drawer" aria-label="Shopping cart" role="dialog">
+  {% include 'store/_cart_drawer_content.html' %}
+</div>
+
+<!-- MESSAGES -->
+{% if messages %}
+<div style="max-width:900px;margin:16px auto;padding:0 24px;">
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }}" role="alert">
+    {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}❌{% else %}ℹ️{% endif %}
+    {{ message }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- MAIN CONTENT -->
+<main id="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- FOOTER -->
+<footer class="footer" role="contentinfo">
+  <div class="footer-grid">
+    <div class="footer-brand-col">
+      <div class="footer-brand">
+        {% if store_settings.footer_logo %}
+          <img src="{{ store_settings.footer_logo.url }}" alt="{{ store_settings.store_name|default:'CraftX3D' }}" style="max-height:56px;max-width:240px;object-fit:contain;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline';">
+        {% else %}
+          <img src="{% static 'img/logo-light.png' %}" alt="{{ store_settings.store_name|default:'CraftX3D' }}" style="max-height:56px;max-width:240px;object-fit:contain;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline';">
+        {% endif %}
+        <span style="display:none;">{% if store_settings.store_name %}{{ store_settings.store_name }}{% else %}Craft<span class="accent">X3D</span>{% endif %}</span>
+      </div>
+      <p class="footer-desc">Premium 3D printed products crafted with precision. Each piece is unique, functional, and beautifully designed by CraftX3D.</p>
+      <div class="footer-trust">
+        <span class="footer-trust-badge">🔒 Secure Checkout</span>
+        <span class="footer-trust-badge">🇮🇳 Made in India</span>
+      </div>
+      {% if store_settings.instagram_url %}
+      <a href="{{ store_settings.instagram_url }}" target="_blank" rel="noopener" aria-label="Follow us on Instagram" style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(255,255,255,0.08);border-radius:50%;margin-top:14px;text-decoration:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#fff" stroke="none"/></svg>
+      </a>
+      {% endif %}
+    </div>
+    <div>
+      <div class="footer-heading">Quick Links</div>
+      <ul class="footer-links">
+        <li><a href="{% url 'store:home' %}"><span class="footer-link-dot"></span>Home</a></li>
+        <li><a href="{% url 'store:products' %}"><span class="footer-link-dot"></span>All Products</a></li>
+        <li><a href="{% url 'store:about' %}"><span class="footer-link-dot"></span>About Us</a></li>
+        <li><a href="{% url 'store:help' %}"><span class="footer-link-dot"></span>Help &amp; Support</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-heading">Legal</div>
+      <ul class="footer-links">
+        <li><a href="{% url 'store:terms' %}"><span class="footer-link-dot"></span>Terms &amp; Conditions</a></li>
+        <li><a href="{% url 'store:privacy' %}"><span class="footer-link-dot"></span>Privacy Policy</a></li>
+        <li><a href="{% url 'store:refund' %}"><span class="footer-link-dot"></span>Refund Policy</a></li>
+        <li><a href="{% url 'store:shipping' %}"><span class="footer-link-dot"></span>Shipping Policy</a></li>
+        <li><a href="{% url 'store:custom_order_policy' %}"><span class="footer-link-dot"></span>Custom Order Policy</a></li>
+        <li><a href="{% url 'store:product_disclaimer' %}"><span class="footer-link-dot"></span>Product Disclaimer</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-heading">My Account</div>
+      <ul class="footer-links">
+        {% if request.user.is_authenticated %}
+        <li><a href="{% url 'store:profile' %}"><span class="footer-link-dot"></span>My Profile</a></li>
+        <li><a href="{% url 'store:cart' %}"><span class="footer-link-dot"></span>My Cart</a></li>
+        <li><a href="{% url 'store:my_orders' %}"><span class="footer-link-dot"></span>My Orders</a></li>
+        <li><a href="{% url 'store:logout' %}"><span class="footer-link-dot"></span>Logout</a></li>
+        {% else %}
+        <li><a href="{% url 'store:login' %}"><span class="footer-link-dot"></span>Login</a></li>
+        <li><a href="{% url 'store:register' %}"><span class="footer-link-dot"></span>Create Account</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    <div>
+      <div class="footer-heading">Contact Us</div>
+      <!-- WhatsApp -->
+      <div class="footer-contact-row" style="align-items:flex-start;">
+        <a href="https://wa.me/919751342480" target="_blank" rel="noopener"
+           style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+          <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:#25D366;border-radius:50%;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.554 4.123 1.526 5.859L.057 23.928a.5.5 0 0 0 .614.614l6.083-1.471A11.942 11.942 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.697-.526-5.228-1.44l-.374-.218-3.876.938.952-3.816-.233-.382A9.939 9.939 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+          </span>
+          <div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.45);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">WhatsApp</div>
+            <div style="font-weight:700;font-size:0.9rem;color:#fff;">+91 97513 42480</div>
+          </div>
+        </a>
+      </div>
+      <!-- Email -->
+      <div class="footer-contact-row">
+        <span class="footer-contact-icon">✉️</span>
+        <a href="mailto:supportcraftx3dstudio@gmail.com" style="word-break:break-all;">supportcraftx3dstudio@gmail.com</a>
+      </div>
+      <!-- Hours -->
+      <div class="footer-contact-row">
+        <span class="footer-contact-icon">🕐</span>
+        <span class="footer-contact-text">Mon–Sat, 9:00 AM – 5:00 PM</span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    &copy; {% now "Y" %} CraftX3D. All rights reserved.
+  </div>
+</footer>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<script src="{% static 'js/store.js' %}"></script>
+
+<!-- Profile dropdown: inline CSS + JS, deliberately NOT in store.css/store.js.
+     This block is rendered fresh by Django on every page load, so it can
+     never go stale from browser/static-file caching the way the hashed
+     store.css / store.js bundle can. -->
+<style>
+  .profile-menu-wrap { position: relative; }
+  .profile-dropdown {
+    position: absolute; top: calc(100% + 10px); right: 0; width: 250px;
+    background: #fff; border-radius: 14px; border: 1px solid #eee;
+    box-shadow: 0 16px 44px rgba(0,0,0,0.16); padding: 8px;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transform: translateY(-8px);
+    transition: opacity .18s ease, transform .18s ease, visibility .18s;
+    z-index: 500;
+  }
+  .profile-dropdown.open { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); }
+  .profile-trigger[aria-expanded="true"] .profile-chevron { transform: rotate(180deg); }
+</style>
+<script>
+(function () {
+  var trigger  = document.getElementById('profileTrigger');
+  var dropdown = document.getElementById('profileDropdown');
+  if (!trigger || !dropdown) return;
+
+  function close() {
+    dropdown.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+  function toggle(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var willOpen = !dropdown.classList.contains('open');
+    dropdown.classList.toggle('open', willOpen);
+    trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  }
+
+  trigger.addEventListener('click', toggle);
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.profile-menu-wrap')) close();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') close();
+  });
+})();
+</script>
+
+{% block extra_js %}{% endblock %}
+
+<script>
+// Auto-dismiss messages
+setTimeout(() => {
+  document.querySelectorAll('.alert').forEach(el => {
+    el.style.transition = 'opacity 0.5s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 500);
+  });
+}, 4000);
+
+// ── Home-link interception ────────────────────────────────────────────
+// Any link that points to the home page uses location.replace() instead
+// of a normal navigation push. This ensures the home page always sits at
+// the BOTTOM of the history stack — pressing back from home exits the site
+// rather than looping back to the previous page.
+(function () {
+  var HOME = '/';
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[href]');
+    if (!a || a.target || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var href = a.getAttribute('href');
+    // Match exact home URL or the full origin URL
+    if (href === HOME || href === window.location.origin + HOME || href === window.location.origin) {
+      e.preventDefault();
+      window.location.replace(HOME);
+    }
+  });
+})();
+</script>
+</body>
+</html>

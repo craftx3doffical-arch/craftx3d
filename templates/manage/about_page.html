@@ -1,0 +1,43 @@
+{% extends 'manage/base.html' %}
+{% block title %}About Page — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}About Page{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">About Page Editor</h1><p class="page-sub">Update the customer-facing About Us page</p></div>
+  <a href="/" target="_blank" class="m-btn m-btn-outline">👁 Preview</a>
+</div>
+<form method="post" action="{% url 'manage:about_page' %}">
+  {% csrf_token %}
+  <div class="settings-grid">
+    <div>
+      <div class="form-section-card">
+        <div class="form-section-header">🦸 Hero Section</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><label class="m-form-label-light">Hero Heading</label><input type="text" name="hero_heading" class="m-field" value="{{ content.hero_heading|default:'' }}" placeholder="e.g. The Story Behind CraftX3D"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Hero Subheading</label><textarea name="hero_subheading" class="m-field m-field-textarea" rows="3" placeholder="Brief intro...">{{ content.hero_subheading|default:'' }}</textarea></div>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">📖 Our Story</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><label class="m-form-label-light">Story Title</label><input type="text" name="story_title" class="m-field" value="{{ content.story_title|default:'' }}" placeholder="e.g. How It All Started"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Story Content (paragraphs)</label><textarea name="story_content" class="m-field m-field-textarea" rows="6" placeholder="Our founding story...">{{ content.story_content|default:'' }}</textarea></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Mission Statement</label><textarea name="mission_statement" class="m-field m-field-textarea" rows="3" placeholder="Our mission...">{{ content.mission_statement|default:'' }}</textarea></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="form-section-card">
+        <div class="form-section-header">👥 Team Section</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><label class="m-form-label-light">Section Title</label><input type="text" name="team_section_title" class="m-field" value="{{ content.team_section_title|default:'' }}" placeholder="e.g. Meet the Makers"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Subtitle</label><input type="text" name="team_subtitle" class="m-field" value="{{ content.team_subtitle|default:'' }}" placeholder="Brief team description"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Team Quote</label><textarea name="team_quote" class="m-field m-field-textarea" rows="3" placeholder="An inspiring quote from your team...">{{ content.team_quote|default:'' }}</textarea></div>
+        </div>
+      </div>
+      <button type="submit" class="m-btn m-btn-primary" style="width:100%;padding:12px;justify-content:center;">💾 Save Changes</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

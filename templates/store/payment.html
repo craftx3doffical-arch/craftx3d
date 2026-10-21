@@ -1,0 +1,272 @@
+{% extends 'store/base.html' %}
+{% load static %}
+{% block title %}Secure Payment — CraftX3D{% endblock %}
+
+{% block content %}
+<div class="checkout-layout">
+
+  <!-- ══════════════════════════════════════
+       LEFT COLUMN — breadcrumb + order info
+  ══════════════════════════════════════ -->
+  <div>
+
+    <!-- Breadcrumb -->
+    <div class="checkout-breadcrumb" style="margin-bottom:28px;">
+      <div class="crumb-step done">🛒 Cart</div>
+      <span class="crumb-arrow">→</span>
+      <div class="crumb-step done">📋 Delivery Details</div>
+      <span class="crumb-arrow">→</span>
+      <div class="crumb-step active">💳 Payment</div>
+      <span class="crumb-arrow">→</span>
+      <div class="crumb-step inactive">✅ Order Placed</div>
+    </div>
+
+    <!-- Order items -->
+    <div class="checkout-card">
+      <div class="checkout-section-title">📦 ORDER SUMMARY</div>
+      {% for item in order.items.all %}
+      <div style="display:flex;gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid var(--cream-border);">
+        <div style="width:56px;height:56px;background:var(--cream);border-radius:10px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">
+          {% if item.product and item.product.main_image %}
+            <img src="{{ item.product.main_image.image.url }}" alt="{{ item.product_name }}" style="width:100%;height:100%;object-fit:contain;padding:5px;" loading="lazy">
+          {% else %}📦{% endif %}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--charcoal);">{{ item.product_name }}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:3px;">Qty {{ item.quantity }} × ₹{{ item.unit_price }}</div>
+        </div>
+        <div style="font-weight:700;font-size:0.92rem;flex-shrink:0;">₹{{ item.total_price }}</div>
+      </div>
+      {% endfor %}
+
+      <!-- Totals -->
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);">
+          <span>Subtotal</span><span>₹{{ order.subtotal }}</span>
+        </div>
+        {% if order.parcel_charge_total %}
+        <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);">
+          <span>📦 Parcel &amp; Packaging</span><span>₹{{ order.parcel_charge_total }}</span>
+        </div>
+        {% endif %}
+        {% if order.discount_amount %}
+        <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--teal);font-weight:600;">
+          <span>Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</span><span>−₹{{ order.discount_amount }}</span>
+        </div>
+        {% endif %}
+        {% if order.gift_wrap %}
+        <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);">
+          <span>🎁 Gift Wrap</span><span>₹{{ order.gift_wrap_price }}</span>
+        </div>
+        {% endif %}
+        <div style="display:flex;justify-content:space-between;font-size:1.05rem;font-weight:800;color:var(--charcoal);padding-top:10px;border-top:1.5px solid var(--cream-border);margin-top:4px;">
+          <span>Total</span><span>₹{{ order.total }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delivery address -->
+    <div class="checkout-card">
+      <div class="checkout-section-title">📍 DELIVERING TO</div>
+      <div style="font-size:0.88rem;color:var(--charcoal);line-height:1.8;">
+        <div style="font-weight:700;font-size:0.95rem;margin-bottom:4px;">{{ order.full_name }}</div>
+        <div style="color:var(--text-muted);">{{ order.address }}, {{ order.city }}, {{ order.state }} — {{ order.pincode }}</div>
+        <div style="color:var(--text-muted);margin-top:4px;">📞 {{ order.phone }}{% if order.alternate_phone %} / {{ order.alternate_phone }}{% endif %}</div>
+        <div style="color:var(--text-muted);">✉️ {{ order.email }}</div>
+      </div>
+    </div>
+
+  </div><!-- /left -->
+
+  <!-- ══════════════════════════════════════
+       RIGHT COLUMN — sticky payment panel
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="pay-panel" style="position:sticky;top:80px;">
+
+      {% if razorpay_key_id %}
+
+      <!-- Header -->
+      <div class="pay-panel-header">
+        <div class="pay-lock-icon">🔒</div>
+        <div>
+          <div style="font-weight:700;font-size:1rem;color:var(--charcoal);">Secure Payment</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">256-bit SSL · Powered by Razorpay</div>
+        </div>
+      </div>
+
+      <!-- Amount -->
+      <div class="pay-amount-box">
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);">Amount to Pay</div>
+        <div class="pay-amount">₹{{ order.total }}</div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;">One-time charge · No hidden fees</div>
+      </div>
+
+      <!-- Pay button -->
+      <div style="padding:20px 24px 0;">
+        <button id="rzpPayBtn" class="btn-pay-now">
+          <span id="rzpBtnText">💳 Pay ₹{{ order.total }} Now</span>
+        </button>
+        <div id="paymentError" style="display:none;margin-top:12px;padding:11px 14px;background:#fbeaea;border:1.5px solid #f3c6c6;border-radius:8px;font-size:0.82rem;color:#C0392B;line-height:1.5;text-align:left;"></div>
+      </div>
+
+      <!-- Payment method pills -->
+      <div class="pay-methods">
+        <span>UPI</span><span>Debit Card</span><span>Credit Card</span><span>Net Banking</span><span>Wallets</span>
+      </div>
+
+      <!-- Trust indicators -->
+      <div class="pay-trust">
+        <div class="pay-trust-item">✅ Your order is confirmed <strong>only after</strong> payment succeeds</div>
+        <div class="pay-trust-item">🔄 Auto-refund if any issue — within 5–7 business days</div>
+        <div class="pay-trust-item">🔒 We never see or store your card details</div>
+      </div>
+
+      <!-- Cancel link — routes through cancel_payment for clean cleanup -->
+      <div style="text-align:center;padding:16px 24px 20px;border-top:1px solid var(--cream-border);">
+        <a href="{% url 'store:cancel_payment' order.order_id %}" class="pay-cancel-link" id="cancelPayLink">
+          ← Cancel &amp; return to cart
+        </a>
+      </div>
+
+      {% else %}
+
+      <!-- Payment not configured -->
+      <div class="pay-panel-header">
+        <div class="pay-lock-icon">⚠️</div>
+        <div>
+          <div style="font-weight:700;font-size:1rem;">Payment Unavailable</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Online payment is not configured on this store</div>
+        </div>
+      </div>
+      <div style="margin:20px 24px;padding:14px 16px;background:#fbeaea;border:1.5px solid #f3c6c6;border-radius:9px;color:#C0392B;font-size:0.84rem;line-height:1.5;">
+        ⚠️ Online payment isn't set up yet. Please contact support to complete your order.
+      </div>
+      <div style="text-align:center;padding:0 24px 20px;">
+        <a href="{% url 'store:cancel_payment' order.order_id %}" class="pay-cancel-link">← Return to cart</a>
+      </div>
+
+      {% endif %}
+    </div><!-- /pay-panel -->
+  </div><!-- /right -->
+
+</div><!-- /checkout-layout -->
+
+{% if razorpay_key_id %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+(function () {
+  var cancelUrl = '{% url "store:cancel_payment" order.order_id %}';
+  var failedUrl = '{% url "store:payment_failed" order.order_id %}?reason=failed';
+  var errorUrl  = '{% url "store:payment_failed" order.order_id %}?reason=error';
+
+  var btn     = document.getElementById('rzpPayBtn');
+  var btnText = document.getElementById('rzpBtnText');
+  var errBox  = document.getElementById('paymentError');
+  var paymentCompleted = false;
+  var _navigating = false;  // prevents ondismiss + payment.failed race
+
+  function showError(msg) {
+    errBox.textContent = msg;
+    errBox.style.display = 'block';
+    errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function resetBtn() {
+    btn.disabled = false;
+    btnText.textContent = '💳 Pay ₹{{ order.total }} Now';
+  }
+
+  btn.addEventListener('click', function () {
+    paymentCompleted = false;
+    btn.disabled = true;
+    btnText.textContent = 'Opening secure payment…';
+    errBox.style.display = 'none';
+
+    var options = {
+      key:         '{{ razorpay_key_id }}',
+      amount:      {{ amount_paise }},
+      currency:    'INR',
+      name:        'CraftX3D',
+      description: 'Order #{{ order.order_id }}',
+      order_id:    '{{ order.razorpay_order_id }}',
+      prefill: {
+        name:    '{{ order.full_name|escapejs }}',
+        email:   '{{ order.email|escapejs }}',
+        contact: '{{ order.phone|escapejs }}'
+      },
+      theme: { color: '#1A6641' },
+
+      handler: function (response) {
+        // Payment succeeded in Razorpay — verify signature on our server
+        paymentCompleted = true;
+        btnText.textContent = 'Verifying payment…';
+
+        fetch('{% url "store:payment_verify" order.order_id %}', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id:   response.razorpay_order_id,
+            razorpay_signature:  response.razorpay_signature
+          })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.success) {
+            btnText.textContent = '✅ Payment confirmed! Placing order…';
+            window.location.href = data.redirect;
+          } else {
+            paymentCompleted = false;
+            resetBtn();
+            showError(data.message || 'Payment verification failed. Please try again.');
+          }
+        })
+        .catch(function () {
+          // Network error during verification — we don't know the outcome
+          window.location.href = errorUrl;
+        });
+      },
+
+      modal: {
+        ondismiss: function () {
+          // Guards:
+          // 1. paymentCompleted — handler() already ran (success), ignore
+          // 2. _navigating      — payment.failed already redirected, ignore
+          if (paymentCompleted || _navigating) return;
+          _navigating = true;
+          window.location.href = cancelUrl;
+        }
+      }
+    };
+
+    var rzp = new Razorpay(options);
+
+    rzp.on('payment.failed', function () {
+      // Hard failure (card declined / bank error).
+      // Set flag so ondismiss (which fires after this) doesn't also navigate.
+      if (_navigating) return;
+      _navigating = true;
+      resetBtn();
+      window.location.href = failedUrl;
+    });
+
+    rzp.open();
+  });
+
+  // Cancel link — show feedback while navigating
+  var cancelLink = document.getElementById('cancelPayLink');
+  if (cancelLink) {
+    cancelLink.addEventListener('click', function () {
+      this.textContent = 'Returning to cart…';
+      this.style.opacity = '0.55';
+      this.style.pointerEvents = 'none';
+    });
+  }
+})();
+</script>
+{% endif %}
+
+{% endblock %}

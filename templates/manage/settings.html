@@ -1,0 +1,124 @@
+{% extends 'manage/base.html' %}
+{% block title %}Settings — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}Settings{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Store Settings</h1><p class="page-sub">Configure your store behaviour</p></div>
+</div>
+<form method="post" action="{% url 'manage:settings' %}" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="settings-grid">
+    <div>
+      <div class="form-section-card">
+        <div class="form-section-header">🏪 Store Info</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><label class="m-form-label-light">Store Name</label><input type="text" name="store_name" class="m-field" value="{{ settings.store_name|default:'CraftX3D' }}" placeholder="Your store name"></div>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">🎨 Branding</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Logo</label>
+            {% if settings.logo %}<img src="{{ settings.logo.url }}" alt="Current logo" style="max-height:48px;display:block;margin-bottom:10px;">{% endif %}
+            <input type="file" name="logo" accept="image/*" class="m-field">
+            <p class="m-form-hint">Shown in the navbar, footer, and staff portal sidebar. Leave blank to keep the text wordmark ("CraftX3D").</p>
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Footer Logo (light version for dark background)</label>
+            {% if settings.footer_logo %}<img src="{{ settings.footer_logo.url }}" alt="Current footer logo" style="max-height:48px;display:block;margin-bottom:10px;background:#1a1a1a;padding:6px 10px;border-radius:8px;">{% endif %}
+            <input type="file" name="footer_logo" accept="image/*" class="m-field">
+            <p class="m-form-hint">White/light logo used in the dark footer. If blank, the built-in light CraftX3D wordmark is used.</p>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <label class="m-form-label-light">Instagram Profile URL</label>
+            <input type="url" name="instagram_url" class="m-field" value="{{ settings.instagram_url }}" placeholder="https://instagram.com/craftx3d">
+            <p class="m-form-hint">Shown as an icon in the footer, links straight to your profile.</p>
+          </div>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">📢 Announcement Bar</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="annBarEnabled" name="announcement_bar_enabled" {% if settings.announcement_bar_enabled %}checked{% endif %}>
+              <label class="toggle-track" for="annBarEnabled"></label>
+              <span class="toggle-label">Show announcement bar</span>
+            </div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <label class="m-form-label-light">Bar Text</label>
+            <input type="text" name="announcement_bar_text" class="m-field" value="{{ settings.announcement_bar_text }}" placeholder="Flat 15% off on all prepaid orders">
+            <p class="m-form-hint">A thin strip shown at the very top of every page, above the logo.</p>
+          </div>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">🔀 Products Page</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Default Sort ("Sort by" dropdown)</label>
+            <select name="default_sort" class="m-field">
+              {% for value, label in settings.DEFAULT_SORT_CHOICES %}
+              <option value="{{ value }}" {% if settings.default_sort == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <p class="m-form-hint">Which order /products/ opens in for a customer who hasn't picked a sort yet. They can still change it from the dropdown.</p>
+          </div>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">🚚 Delivery</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><label class="m-form-label-light">Free Delivery Above (₹)</label><input type="number" name="free_delivery_above" class="m-field" value="{{ settings.free_delivery_above|default:0 }}" placeholder="0 = never free"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Standard Delivery Days</label><input type="number" name="standard_delivery_days" class="m-field" value="{{ settings.standard_delivery_days|default:7 }}"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Express Delivery Days</label><input type="number" name="express_delivery_days" class="m-field" value="{{ settings.express_delivery_days|default:3 }}"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="form-section-card">
+        <div class="form-section-header">💳 Payment</div>
+        <div class="form-section-body">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:9px;background:{% if razorpay_configured %}#e8f8ef{% else %}#fbeaea{% endif %};border:1px solid {% if razorpay_configured %}#2ecc71{% else %}#f3c6c6{% endif %};">
+            <span style="font-size:1.2rem;">{% if razorpay_configured %}✅{% else %}⚠️{% endif %}</span>
+            <div>
+              <div style="font-weight:700;font-size:0.85rem;">{% if razorpay_configured %}Razorpay is connected{% else %}Razorpay is not configured{% endif %}</div>
+              <div style="font-size:0.76rem;color:var(--text-muted);">
+                {% if razorpay_configured %}Online payments (UPI, Card, Net Banking) are live.
+                {% else %}Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET as environment variables to accept payments.{% endif %}
+              </div>
+            </div>
+          </div>
+          <div style="font-size:0.76rem;color:var(--text-muted);margin-top:10px;">Only online payment is accepted — Cash on Delivery has been removed. Payment keys are set via environment variables, not here, for security.</div>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">🎁 Gift Wrap</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><div class="toggle-switch"><input type="checkbox" class="toggle-input" id="giftWrapEnabled" name="gift_wrap_enabled" {% if settings.gift_wrap_enabled %}checked{% endif %}><label class="toggle-track" for="giftWrapEnabled"></label><span class="toggle-label">Enable Gift Wrap Option</span></div></div>
+          <div class="m-form-group-light" style="margin-top:14px;"><label class="m-form-label-light">Gift Wrap Price (₹)</label><input type="number" name="gift_wrap_price" class="m-field" value="{{ settings.gift_wrap_price|default:50 }}"></div>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">🧾 Invoice Details</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><div class="toggle-switch"><input type="checkbox" class="toggle-input" id="invoiceEnabled" name="invoice_enabled" {% if settings.invoice_enabled %}checked{% endif %}><label class="toggle-track" for="invoiceEnabled"></label><span class="toggle-label">Show Company Details on Invoice</span></div></div>
+          <div class="m-form-group-light" style="margin-top:14px;"><label class="m-form-label-light">Company / Legal Name</label><input type="text" name="company_legal_name" class="m-field" value="{{ settings.company_legal_name|default:'' }}" placeholder="e.g. CraftX3D Pvt. Ltd."></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Company Address</label><textarea name="company_address" class="m-field m-field-textarea" rows="3" placeholder="Street, City, State — PIN Code">{{ settings.company_address|default:'' }}</textarea></div>
+          <div class="m-form-row">
+            <div class="m-form-group-light"><label class="m-form-label-light">Phone</label><input type="text" name="company_phone" class="m-field" value="{{ settings.company_phone|default:'' }}" placeholder="+91 97513 42480"></div>
+            <div class="m-form-group-light"><label class="m-form-label-light">Email</label><input type="email" name="company_email" class="m-field" value="{{ settings.company_email|default:'' }}" placeholder="support@craftix3d.com"></div>
+          </div>
+          <div class="m-form-group-light"><div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showGst" name="show_gst_on_invoice" {% if settings.show_gst_on_invoice %}checked{% endif %}><label class="toggle-track" for="showGst"></label><span class="toggle-label">Show GSTIN on Invoice</span></div></div>
+          <div class="m-form-group-light" style="margin-top:14px;"><label class="m-form-label-light">GSTIN</label><input type="text" name="gst_number" class="m-field" value="{{ settings.gst_number|default:'' }}" placeholder="22AAAAA0000A1Z5" style="text-transform:uppercase;"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Invoice Footer Note</label><input type="text" name="invoice_footer_note" class="m-field" value="{{ settings.invoice_footer_note|default:'Thank you for shopping with us!' }}" placeholder="Thank you for shopping with us!"></div>
+        </div>
+      </div>
+      <button type="submit" class="m-btn m-btn-primary" style="width:100%;padding:12px;justify-content:center;">💾 Save Settings</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

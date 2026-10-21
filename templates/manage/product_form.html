@@ -1,0 +1,574 @@
+{% extends 'manage/base.html' %}
+{% block title %}{% if product %}Edit{% else %}Add{% endif %} Product — CraftX3D Staff{% endblock %}
+{% block breadcrumb_parent %}Products{% endblock %}
+{% block breadcrumb_current %}{% if product %}Edit{% else %}Add{% endif %} Product{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if product %}Edit Product{% else %}Add New Product{% endif %}</h1>
+    <p class="page-sub">{% if product %}Editing: {{ product.name }}{% else %}Fill in details to create a new product{% endif %}</p>
+  </div>
+  <a href="{% url 'manage:products' %}" class="m-btn m-btn-outline">← Back</a>
+</div>
+
+<form method="post" action="{% if product %}{% url 'manage:product_edit' product.pk %}{% else %}{% url 'manage:product_add' %}{% endif %}" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+  <div class="product-form-grid">
+    <!-- Left column: main details -->
+    <div>
+      <!-- Basic Info -->
+      <div class="form-section-card">
+        <div class="form-section-header">📝 Basic Information</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <label class="m-form-label-light" for="name">Product Name <span class="req">*</span></label>
+            <input type="text" id="name" name="name" class="m-field" value="{{ product.name|default:'' }}" required placeholder="e.g. Personalised Miniature" aria-required="true">
+          </div>
+          <div class="m-form-row">
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Category</label>
+              <select name="category" class="m-field m-field-select">
+                <option value="">Uncategorized</option>
+                {% for cat in categories %}<option value="{{ cat.pk }}" {% if product.category_id == cat.pk %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Customization Type</label>
+              <select name="customization_type" id="customizationType" class="m-field m-field-select">
+                {% for val, label in customization_types %}
+                <option value="{{ val }}" {% if product.customization_type == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- 🧩 Field Customization Builder (shown when type = field) -->
+          <div id="customBuilderSection" style="display:none;">
+            <div style="background:rgba(245,166,35,0.07);border:2px solid var(--m-accent);border-radius:12px;padding:16px;margin-bottom:8px;">
+              <div style="font-weight:700;font-size:0.9rem;margin-bottom:12px;color:var(--m-accent)">🧩 Field Customization Builder</div>
+              <div id="customBuilderMount"></div>
+              <input type="hidden" name="customization_data" id="id_customization_data" value="">
+              {# json_script safely escapes special characters (e.g. </script>) that raw |safe json.dumps would not #}
+              {% if product.customization_data %}
+              {{ product.customization_data|json_script:"existingCustomizationJSON" }}
+              {% endif %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Extra Info Sections -->
+      <div class="form-section-card">
+        <div class="form-section-header">📑 Extra Info Sections</div>
+        <div class="form-section-body">
+          <p class="m-form-hint" style="margin-bottom:14px;">Add up to 5 extra sections shown on the product page, same style as Description/Materials/Production. Leave blank to skip.</p>
+          <div style="border:1px solid var(--m-border);border-radius:10px;padding:12px;margin-bottom:10px;">
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Section 1 Title</label>
+              <input type="text" name="extra_title_1" class="m-field" value="{{ product.extra_title_1|default:'' }}" placeholder="e.g. Care Instructions">
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 1 Content</label>
+              <textarea name="extra_content_1" class="m-field m-field-textarea" rows="2" placeholder="Content for this section...">{{ product.extra_content_1|default:'' }}</textarea>
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 1 Image (optional)</label>
+              {% if product.extra_image_1 %}<img src="{{ product.extra_image_1.url }}" style="max-height:80px;border-radius:8px;display:block;margin-bottom:6px;">{% endif %}
+              <input type="file" name="extra_image_1" accept="image/*" class="m-field">
+            </div>
+          </div>
+          <div style="border:1px solid var(--m-border);border-radius:10px;padding:12px;margin-bottom:10px;">
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Section 2 Title</label>
+              <input type="text" name="extra_title_2" class="m-field" value="{{ product.extra_title_2|default:'' }}" placeholder="e.g. Warranty">
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 2 Content</label>
+              <textarea name="extra_content_2" class="m-field m-field-textarea" rows="2" placeholder="Content for this section...">{{ product.extra_content_2|default:'' }}</textarea>
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 2 Image (optional)</label>
+              {% if product.extra_image_2 %}<img src="{{ product.extra_image_2.url }}" style="max-height:80px;border-radius:8px;display:block;margin-bottom:6px;">{% endif %}
+              <input type="file" name="extra_image_2" accept="image/*" class="m-field">
+            </div>
+          </div>
+          <div style="border:1px solid var(--m-border);border-radius:10px;padding:12px;margin-bottom:10px;">
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Section 3 Title</label>
+              <input type="text" name="extra_title_3" class="m-field" value="{{ product.extra_title_3|default:'' }}" placeholder="e.g. What's in the Box">
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 3 Content</label>
+              <textarea name="extra_content_3" class="m-field m-field-textarea" rows="2" placeholder="Content for this section...">{{ product.extra_content_3|default:'' }}</textarea>
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 3 Image (optional)</label>
+              {% if product.extra_image_3 %}<img src="{{ product.extra_image_3.url }}" style="max-height:80px;border-radius:8px;display:block;margin-bottom:6px;">{% endif %}
+              <input type="file" name="extra_image_3" accept="image/*" class="m-field">
+            </div>
+          </div>
+          <div style="border:1px solid var(--m-border);border-radius:10px;padding:12px;margin-bottom:10px;">
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Section 4 Title</label>
+              <input type="text" name="extra_title_4" class="m-field" value="{{ product.extra_title_4|default:'' }}" placeholder="e.g. Cleaning & Maintenance">
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 4 Content</label>
+              <textarea name="extra_content_4" class="m-field m-field-textarea" rows="2" placeholder="Content for this section...">{{ product.extra_content_4|default:'' }}</textarea>
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 4 Image (optional)</label>
+              {% if product.extra_image_4 %}<img src="{{ product.extra_image_4.url }}" style="max-height:80px;border-radius:8px;display:block;margin-bottom:6px;">{% endif %}
+              <input type="file" name="extra_image_4" accept="image/*" class="m-field">
+            </div>
+          </div>
+          <div style="border:1px solid var(--m-border);border-radius:10px;padding:12px;">
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Section 5 Title</label>
+              <input type="text" name="extra_title_5" class="m-field" value="{{ product.extra_title_5|default:'' }}" placeholder="e.g. Safety Notes">
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 5 Content</label>
+              <textarea name="extra_content_5" class="m-field m-field-textarea" rows="2" placeholder="Content for this section...">{{ product.extra_content_5|default:'' }}</textarea>
+            </div>
+            <div class="m-form-group-light" style="margin-top:8px;">
+              <label class="m-form-label-light">Section 5 Image (optional)</label>
+              {% if product.extra_image_5 %}<img src="{{ product.extra_image_5.url }}" style="max-height:80px;border-radius:8px;display:block;margin-bottom:6px;">{% endif %}
+              <input type="file" name="extra_image_5" accept="image/*" class="m-field">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Images -->
+      <div class="form-section-card">
+        <div class="form-section-header">🖼️ Product Images (up to 10)</div>
+        <div class="form-section-body">
+          <div class="img-upload-grid" id="imgGrid">
+            {% if product %}
+              {% for img in product.images.all %}
+              <div class="img-slot has-image" style="position:relative;" id="imgSlot{{ img.pk }}">
+                <span class="img-slot-label">{% if img.is_main %}Main{% else %}{{ forloop.counter }}{% endif %}</span>
+                <img src="{{ img.image.url }}" alt="" loading="lazy">
+                <button type="button" class="img-slot-remove" onclick="removeImage({{ img.pk }})" title="Remove">✕</button>
+              </div>
+              {% endfor %}
+            {% endif %}
+            <!-- Upload new slot -->
+            <label class="img-slot" for="newImages" title="Add images">
+              <input type="file" id="newImages" name="images" multiple accept="image/*" style="display:none;" onchange="previewNewImages(this)">
+              <span class="img-slot-icon">+</span>
+              <span class="img-slot-main">Add</span>
+            </label>
+          </div>
+          <p class="m-form-hint">First image is the main product photo. Recommended: 800×800px. JPG/PNG/WebP.</p>
+        </div>
+      </div>
+
+      <!-- Product Video -->
+      <div class="form-section-card">
+        <div class="form-section-header">🎬 Product Video</div>
+        <div class="form-section-body">
+          {% if product.video %}
+          <video src="{{ product.video.url }}" controls style="width:100%;max-height:220px;border-radius:10px;display:block;margin-bottom:10px;background:#000;"></video>
+          {% endif %}
+          <input type="file" name="video" accept="video/*" class="m-field">
+          <p class="m-form-hint">Optional. Shows as the first slide in the gallery with a play button — customers tap it to watch. MP4 recommended, keep it short (under 30s) for fast loading.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: pricing, inventory, settings -->
+    <div>
+      <!-- Pricing -->
+      <div class="form-section-card">
+        <div class="form-section-header">💰 Pricing</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Base Price (₹) <span class="req">*</span></label>
+            <input type="number" name="base_price" class="m-field" value="{{ product.base_price|default:'' }}" required step="0.01" placeholder="0.00" aria-required="true">
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Compare Price (₹)</label>
+            <input type="number" name="compare_price" class="m-field" value="{{ product.compare_price|default:'' }}" step="0.01" placeholder="Original MRP">
+            <p class="m-form-hint">Show as strikethrough. Leave empty for no discount badge.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Parcel Charge -->
+      <div class="form-section-card">
+        <div class="form-section-header">📦 Parcel Charge</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Section Title</label>
+            <input type="text" name="parcel_charge_title" class="m-field" value="{{ product.parcel_charge_title|default:'Parcel & Packaging Fee' }}" placeholder="Parcel & Packaging Fee">
+            <p class="m-form-hint">Shown next to the fee on the product page, e.g. "Plus ₹100 {{ product.parcel_charge_title|default:'Parcel & Packaging Fee' }}".</p>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="showParcelCharge" name="show_parcel_charge" {% if product.show_parcel_charge %}checked{% endif %} onchange="toggleParcelChargeField(this.checked)">
+              <label class="toggle-track" for="showParcelCharge"></label>
+              <span class="toggle-label">Charge this fee</span>
+            </div>
+            <div style="font-size:0.76rem;color:var(--m-muted);margin-top:6px;">Turn off for free packaging — no extra fee shown on the product page or added to the cart.</div>
+          </div>
+          <div class="m-form-group-light" id="parcelChargeGroup" style="margin-top:14px;{% if not product.show_parcel_charge %}opacity:0.5;{% endif %}">
+            <label class="m-form-label-light">Parcel Charge Price (₹)</label>
+            <input type="number" name="parcel_charge_price" id="parcelChargeInput" class="m-field" value="{{ product.parcel_charge_price|default:'100' }}" min="0" step="0.01" placeholder="100.00" {% if not product.show_parcel_charge %}readonly{% endif %}>
+            <p class="m-form-hint">Flat fee per unit — added on top of the price, shown separately (like Amazon's packaging fee).</p>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <label class="m-form-label-light">Free-Packaging Badge Text</label>
+            <input type="text" name="parcel_charge_free_label" class="m-field" value="{{ product.parcel_charge_free_label|default:'Free Parcel & Packaging' }}" placeholder="Free Parcel & Packaging">
+            <p class="m-form-hint">Shown on the product page instead, when the fee above is turned off.</p>
+          </div>
+        </div>
+      </div>
+
+      <script>
+      function toggleParcelChargeField(enabled) {
+        var group = document.getElementById('parcelChargeGroup');
+        var input = document.getElementById('parcelChargeInput');
+        group.style.opacity = enabled ? '1' : '0.5';
+        input.readOnly = !enabled;
+      }
+      </script>
+
+      <!-- Inventory -->
+      <div class="form-section-card">
+        <div class="form-section-header">📋 Inventory</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="trackInventory" name="track_inventory" {% if product.track_inventory|default:True %}checked{% endif %} onchange="toggleStockField(this.checked)">
+              <label class="toggle-track" for="trackInventory"></label>
+              <span class="toggle-label">Track Inventory</span>
+            </div>
+            <div style="font-size:0.76rem;color:var(--m-muted);margin-top:6px;">Turn off for made-to-order items — always shown as available, no stock count needed.</div>
+          </div>
+          <div class="m-form-group-light" id="stockQtyGroup" style="margin-top:14px;{% if not product.track_inventory|default:True %}opacity:0.5;{% endif %}">
+            <label class="m-form-label-light">Stock Quantity</label>
+            <input type="number" name="stock" id="stockQtyInput" class="m-field" value="{{ product.stock|default:0 }}" min="0" placeholder="0" {% if not product.track_inventory|default:True %}readonly{% endif %}>
+          </div>
+        </div>
+      </div>
+
+      <script>
+      function toggleStockField(tracking) {
+        var group = document.getElementById('stockQtyGroup');
+        var input = document.getElementById('stockQtyInput');
+        group.style.opacity = tracking ? '1' : '0.5';
+        input.readOnly = !tracking;
+      }
+      </script>
+
+      <!-- Delivery -->
+      <div class="form-section-card">
+        <div class="form-section-header">🚀 Delivery Settings</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showStdDelivery" name="show_standard_delivery" {% if not product or product.show_standard_delivery %}checked{% endif %}><label class="toggle-track" for="showStdDelivery"></label><span class="toggle-label">Show Standard Delivery</span></div>
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Title</label>
+            <input type="text" name="standard_delivery_title" class="m-field" value="{{ product.standard_delivery_title|default:'Standard Delivery' }}" placeholder="Standard Delivery">
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Standard Delivery (days)</label>
+            <input type="number" name="standard_delivery_days" class="m-field" value="{{ product.standard_delivery_days|default:7 }}" min="1">
+          </div>
+
+          <div class="m-form-group-light" style="margin-top:16px;border-top:1px solid var(--m-border);padding-top:16px;">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showExpDelivery" name="show_express_delivery" {% if not product or product.show_express_delivery %}checked{% endif %}><label class="toggle-track" for="showExpDelivery"></label><span class="toggle-label">Show Express Delivery</span></div>
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Title</label>
+            <input type="text" name="express_delivery_title" class="m-field" value="{{ product.express_delivery_title|default:'Express Delivery' }}" placeholder="Express Delivery">
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Express Delivery (days)</label>
+            <input type="number" name="express_delivery_days" class="m-field" value="{{ product.express_delivery_days|default:3 }}" min="1">
+          </div>
+
+          <div class="m-form-group-light" style="margin-top:16px;border-top:1px solid var(--m-border);padding-top:16px;">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showProdTime" name="show_production_time" {% if product.show_production_time %}checked{% endif %}><label class="toggle-track" for="showProdTime"></label><span class="toggle-label">Show Production Time</span></div>
+            <div style="font-size:0.76rem;color:var(--m-muted);margin-top:6px;">Off by default — turn on to show a separate Production Time card on the product page.</div>
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Title</label>
+            <input type="text" name="production_time_title" class="m-field" value="{{ product.production_time_title|default:'Production Time' }}" placeholder="Production Time">
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Production Time (days)</label>
+            <input type="number" name="production_time_days" class="m-field" value="{{ product.production_time_days|default:2 }}" min="0">
+          </div>
+
+          <div class="m-form-group-light" style="margin-top:16px;border-top:1px solid var(--m-border);padding-top:16px;">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showDelivEstimate" name="show_delivery_estimate" {% if product.show_delivery_estimate %}checked{% endif %}><label class="toggle-track" for="showDelivEstimate"></label><span class="toggle-label">Show delivery estimate box</span></div>
+            <div style="font-size:0.76rem;color:var(--m-muted);margin-top:6px;">Shows "Ships in 24 hours" + an auto-calculated date range, based on the Express/Standard days above.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Ticks -->
+      <div class="form-section-card">
+        <div class="form-section-header">✅ Feature Tick List</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showTicks" name="show_feature_ticks" {% if product.show_feature_ticks %}checked{% endif %}><label class="toggle-track" for="showTicks"></label><span class="toggle-label">Show feature tick list</span></div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:10px;"><input type="text" name="feature_tick_1" class="m-field" value="{{ product.feature_tick_1|default:'3D-printed to order in premium PLA' }}" placeholder="Feature 1"></div>
+          <div class="m-form-group-light" style="margin-top:8px;"><input type="text" name="feature_tick_2" class="m-field" value="{{ product.feature_tick_2|default:'Eco-friendly, plant-based material' }}" placeholder="Feature 2"></div>
+          <div class="m-form-group-light" style="margin-top:8px;"><input type="text" name="feature_tick_3" class="m-field" value="{{ product.feature_tick_3|default:'Designed & handcrafted in India' }}" placeholder="Feature 3"></div>
+          <p class="m-form-hint">Leave a field blank to skip that line.</p>
+        </div>
+      </div>
+
+      <!-- Short Description -->
+      <div class="form-section-card">
+        <div class="form-section-header">📝 Short Description</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showShortDesc" name="show_short_description" {% if product.show_short_description %}checked{% endif %}><label class="toggle-track" for="showShortDesc"></label><span class="toggle-label">Show short intro paragraph</span></div>
+            <div style="font-size:0.76rem;color:var(--m-muted);margin-top:6px;">A short paragraph shown directly on the page — separate from the full Description tab.</div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:10px;"><textarea name="short_description" class="m-field m-field-textarea" rows="3" placeholder="e.g. Moonlight, brought closer. A softly glowing lamp that turns any corner into a calmer space...">{{ product.short_description|default:'' }}</textarea></div>
+        </div>
+      </div>
+
+      <!-- Trust Badges -->
+      <div class="form-section-card">
+        <div class="form-section-header">🏅 Trust Badges</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showTrustBadges" name="show_trust_badges" {% if product.show_trust_badges %}checked{% endif %}><label class="toggle-track" for="showTrustBadges"></label><span class="toggle-label">Show trust badges row</span></div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:10px;"><input type="text" name="trust_badge_1" class="m-field" value="{{ product.trust_badge_1|default:'Free shipping PAN India' }}" placeholder="🚚 Badge 1 (blank = hidden)"></div>
+          <div class="m-form-group-light" style="margin-top:8px;"><input type="text" name="trust_badge_2" class="m-field" value="{{ product.trust_badge_2|default:'Cash on Delivery' }}" placeholder="💳 Badge 2 (blank = hidden)"></div>
+          <div class="m-form-group-light" style="margin-top:8px;"><input type="text" name="trust_badge_3" class="m-field" value="{{ product.trust_badge_3|default:'Easy 7-day returns' }}" placeholder="🔄 Badge 3 (blank = hidden)"></div>
+          <div class="m-form-group-light" style="margin-top:8px;"><input type="text" name="trust_badge_4" class="m-field" value="{{ product.trust_badge_4|default:'' }}" placeholder="🌿 Badge 4 (blank = hidden)"></div>
+        </div>
+      </div>
+
+      <!-- Materials Table -->
+      <div class="form-section-card">
+        <div class="form-section-header">📋 Materials & Details Table</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showMatTable" name="show_materials_table" {% if product.show_materials_table %}checked{% endif %}><label class="toggle-track" for="showMatTable"></label><span class="toggle-label">Show details table</span></div>
+            <div style="font-size:0.76rem;color:var(--m-muted);margin-top:6px;">Add as many rows as you need — each has an editable label and value. Empty rows are skipped when saving.</div>
+          </div>
+          <div id="matRowsWrap" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+            {% for row in product.materials_table_rows %}
+            <div class="mat-row" style="display:flex;gap:8px;align-items:center;">
+              <input type="text" name="materials_row_label[]" class="m-field" value="{{ row.label }}" placeholder="Label, e.g. Material" style="flex:1;">
+              <input type="text" name="materials_row_value[]" class="m-field" value="{{ row.value }}" placeholder="Value" style="flex:1;">
+              <button type="button" class="m-btn-icon" onclick="this.closest('.mat-row').remove()" title="Delete row">🗑️</button>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="m-btn m-btn-outline m-btn-sm" style="margin-top:10px;" onclick="addMatRow()">+ Add Row</button>
+        </div>
+      </div>
+
+      <script>
+      function addMatRow(label, value) {
+        var wrap = document.getElementById('matRowsWrap');
+        var row = document.createElement('div');
+        row.className = 'mat-row';
+        row.style.cssText = 'display:flex;gap:8px;align-items:center;';
+        row.innerHTML =
+          '<input type="text" name="materials_row_label[]" class="m-field" placeholder="Label, e.g. Material" style="flex:1;" value="' + (label || '').replace(/"/g, '&quot;') + '">' +
+          '<input type="text" name="materials_row_value[]" class="m-field" placeholder="Value" style="flex:1;" value="' + (value || '').replace(/"/g, '&quot;') + '">' +
+          '<button type="button" class="m-btn-icon" onclick="this.closest(\'.mat-row\').remove()" title="Delete row">🗑️</button>';
+        wrap.appendChild(row);
+      }
+      {% if not product.materials_table_rows %}
+      // Seed a friendly starting point for brand-new products
+      document.addEventListener('DOMContentLoaded', function() {
+        addMatRow('Material', '');
+        addMatRow('Made using', '');
+        addMatRow('Care', '');
+        addMatRow('Includes', '');
+      });
+      {% endif %}
+      </script>
+
+      <!-- About Our Craft -->
+      <div class="form-section-card">
+        <div class="form-section-header">🎨 About Our Craft</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showAboutCraft" name="show_about_craft" {% if product.show_about_craft %}checked{% endif %}><label class="toggle-track" for="showAboutCraft"></label><span class="toggle-label">Show callout block</span></div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:10px;">
+            <label class="m-form-label-light">Title</label>
+            <input type="text" name="about_craft_title" class="m-field" value="{{ product.about_craft_title|default:'About Our Craft' }}" placeholder="About Our Craft">
+          </div>
+          <div class="m-form-group-light" style="margin-top:8px;">
+            <label class="m-form-label-light">Text</label>
+            <textarea name="about_craft_text" class="m-field m-field-textarea" rows="3" placeholder="Every piece is 3D-printed on demand using biodegradable PLA...">{{ product.about_craft_text|default:'' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visibility -->
+      <div class="form-section-card">
+        <div class="form-section-header">👁️ Visibility</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="isActive" name="is_active" {% if product.is_active or not product %}checked{% endif %}>
+              <label class="toggle-track" for="isActive"></label>
+              <span class="toggle-label">Active (visible on store)</span>
+            </div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="isFeatured" name="is_featured" {% if product.is_featured %}checked{% endif %}>
+              <label class="toggle-track" for="isFeatured"></label>
+              <span class="toggle-label">Featured on homepage</span>
+            </div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="isBestseller" name="is_bestseller" {% if product.is_bestseller %}checked{% endif %}>
+              <label class="toggle-track" for="isBestseller"></label>
+              <span class="toggle-label">Bestseller</span>
+            </div>
+            <div style="font-size:0.76rem;color:var(--m-muted);margin-top:6px;">Shows this product on the "Bestsellers" nav page.</div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="photoUpload" name="photo_upload_enabled" {% if product.photo_upload_enabled %}checked{% endif %}>
+              <label class="toggle-track" for="photoUpload"></label>
+              <span class="toggle-label">Enable photo upload</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+        <button type="submit" name="action" value="save" class="m-btn m-btn-primary" style="padding:12px;justify-content:center;">💾 Save Product</button>
+        {% if product %}
+        <button type="button" class="m-btn m-btn-danger" onclick="confirmDelete('{% url 'manage:product_delete' product.pk %}', '{{ product.name|escapejs }}')" style="padding:12px;justify-content:center;">🗑️ Delete Product</button>
+        {% endif %}
+        <a href="{% url 'manage:products' %}" class="m-btn m-btn-outline" style="padding:12px;justify-content:center;">Cancel</a>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- Delete Modal -->
+<div class="m-modal-overlay" id="deleteModal" role="dialog" aria-modal="true">
+  <div class="m-modal" style="max-width:380px;">
+    <div class="m-modal-header"><span class="m-modal-title">⚠️ Delete Product</span><button class="m-modal-close" onclick="document.getElementById('deleteModal').classList.remove('show')">✕</button></div>
+    <div class="m-modal-body"><p>Delete <strong>{{ product.name }}</strong>? This cannot be undone.</p></div>
+    <div class="m-modal-footer">
+      <button class="m-btn m-btn-outline" onclick="document.getElementById('deleteModal').classList.remove('show')">Cancel</button>
+      <form id="deleteForm" method="post"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><button type="submit" class="m-btn m-btn-danger">Delete</button></form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/customization-builder.js' %}"></script>
+<script>
+// Customization Builder init
+document.addEventListener('DOMContentLoaded', function() {
+  var typeSelect = document.getElementById('customizationType');
+  var builderSection = document.getElementById('customBuilderSection');
+
+  function toggleBuilder() {
+    if (!builderSection || !typeSelect) return;
+    var show = typeSelect.value === 'field';
+    builderSection.style.display = show ? 'block' : 'none';
+    // Clear customization_data when switching away from field type
+    if (!show) {
+      var hiddenInp = document.getElementById('id_customization_data');
+      if (hiddenInp) hiddenInp.value = '{}';
+    }
+  }
+  if (typeSelect) { typeSelect.addEventListener('change', toggleBuilder); toggleBuilder(); }
+
+  // Load existing customization data if editing (from embedded JSON script tag)
+  var existingData = null;
+  var existingJSON = document.getElementById('existingCustomizationJSON');
+  if (existingJSON) {
+    try {
+      existingData = JSON.parse(existingJSON.textContent);
+    } catch(e) { existingData = null; }
+  }
+  // Fallback: check hidden input value
+  if (!existingData) {
+    var hiddenInput = document.getElementById('id_customization_data');
+    if (hiddenInput && hiddenInput.value && hiddenInput.value !== '{}') {
+      try { existingData = JSON.parse(hiddenInput.value); } catch(e) {}
+    }
+  }
+
+  // Init builder with existing data (preserves all section states on edit)
+  if (document.getElementById('customBuilderMount')) {
+    window._builder = new CustomizationBuilder('customBuilderMount', 'id_customization_data', existingData);
+  }
+});
+
+function previewNewImages(input) {
+  const grid = document.getElementById('imgGrid');
+  const addSlot = grid.lastElementChild; // keep the "Add" label at end
+
+  Array.from(input.files).forEach(file => {
+    // Create a new hidden file input for each individual file
+    const newInput = document.createElement('input');
+    newInput.type  = 'file';
+    newInput.name  = 'images';
+    newInput.style.display = 'none';
+    // Transfer the single file via DataTransfer
+    try {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      newInput.files = dt.files;
+    } catch(e) {/* fallback: original input still holds all files */}
+    document.querySelector('form').appendChild(newInput);
+
+    // Preview tile
+    const url = URL.createObjectURL(file);
+    const div = document.createElement('div');
+    div.className = 'img-slot has-image';
+    div.style.position = 'relative';
+    div.innerHTML = `
+      <img src="${url}" style="width:100%;height:100%;object-fit:cover;" alt="">
+      <span class="img-slot-label" style="font-size:0.55rem;">New</span>
+      <button type="button" class="img-slot-remove" title="Remove"
+        onclick="this.parentElement.remove(); newInput.remove()">✕</button>`;
+    // Wire the remove button to also remove the hidden input
+    div.querySelector('.img-slot-remove').addEventListener('click', () => {
+      newInput.remove();
+    });
+    grid.insertBefore(div, addSlot);
+  });
+
+  // Reset original input so the same files can be re-selected if needed
+  input.value = '';
+}
+
+function removeImage(pk) {
+  fetch(`/manage/products/image/${pk}/delete/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+  }).then(r => r.json()).then(d => {
+    if(d.success) document.getElementById(`imgSlot${pk}`)?.remove();
+  });
+}
+
+function confirmDelete(url, name) {
+  document.getElementById('deleteForm').action = url;
+  document.getElementById('deleteModal').classList.add('show');
+}
+</script>
+{% endblock %}

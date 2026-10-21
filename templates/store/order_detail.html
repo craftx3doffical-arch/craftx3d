@@ -1,0 +1,155 @@
+{% extends 'store/base.html' %}
+{% block title %}Order #{{ order.order_id }} — CraftX3D{% endblock %}
+{% block content %}
+<div class="orders-page">
+  <a href="{% url 'store:my_orders' %}" style="font-size:0.85rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:20px;">← My Orders</a>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+    <div>
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:1.8rem;font-weight:800;">Order #{{ order.order_id }}</h1>
+      <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px;">Placed on {{ order.created_at|date:"d M Y, g:i A" }}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="order-status-badge status-{{ order.status }}" style="font-size:0.9rem;padding:8px 18px;">{{ order.get_status_display }}</span>
+      {% if order.status != 'cancelled' and order.payment_status == 'paid' %}
+      <a href="{% url 'store:customer_invoice' order.order_id %}"
+         target="_blank"
+         style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#1C1C1E;color:#fff;border-radius:8px;text-decoration:none;font-size:0.84rem;font-weight:600;">
+        📄 View Invoice
+      </a>
+      {% endif %}
+      <a href="https://wa.me/919751342480?text=Hi%2C%20I%20need%20help%20with%20order%20{{ order.order_id }}"
+         target="_blank" rel="noopener"
+         style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#25D366;color:#fff;border-radius:8px;text-decoration:none;font-size:0.84rem;font-weight:600;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Contact Us
+      </a>
+    </div>
+  </div>
+
+  <!-- Status Timeline — hidden for cancelled orders -->
+  {% if order.status == 'cancelled' %}
+  <div style="background:#fff1f0;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px;">
+    <span style="font-size:1.6rem;flex-shrink:0;">❌</span>
+    <div>
+      <div style="font-weight:700;font-size:0.95rem;color:#C0392B;margin-bottom:4px;">Order Cancelled</div>
+      <div style="font-size:0.84rem;color:#7f1d1d;line-height:1.55;">
+        {% if order.payment_status == 'paid' %}
+          This order was cancelled after payment. A full refund of <strong>₹{{ order.total }}</strong> will be processed to your original payment method within 5–7 business days.
+        {% else %}
+          This order was cancelled before payment was completed. No amount has been charged to your account.
+        {% endif %}
+        <br>If you have any questions, <a href="https://wa.me/919751342480" target="_blank" rel="noopener" style="color:#C0392B;font-weight:600;">contact us on WhatsApp →</a>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div style="background:#fff;border:1.5px solid var(--cream-border);border-radius:var(--radius);padding:24px;margin-bottom:20px;">
+    <div style="display:flex;gap:0;position:relative;">
+      {% for step_key, step_label in steps %}
+      <div style="flex:1;text-align:center;position:relative;">
+        {% if not forloop.last %}
+        <div style="position:absolute;top:14px;left:50%;width:100%;height:2px;background:{% if step_key in passed_steps %}var(--teal){% else %}var(--cream-border){% endif %};z-index:0;"></div>
+        {% endif %}
+        <div style="width:28px;height:28px;border-radius:50%;background:{% if step_key == order.status %}var(--gold){% elif step_key in passed_steps %}var(--teal){% else %}var(--cream-border){% endif %};color:{% if step_key == order.status %}var(--charcoal){% elif step_key in passed_steps %}#fff{% else %}var(--text-muted){% endif %};display:flex;align-items:center;justify-content:center;margin:0 auto 6px;position:relative;z-index:1;font-size:0.75rem;font-weight:800;">
+          {% if step_key in passed_steps %}✓{% elif step_key == order.status %}●{% else %}○{% endif %}
+        </div>
+        <div style="font-size:0.7rem;font-weight:600;color:{% if step_key == order.status %}var(--gold){% elif step_key in passed_steps %}var(--teal){% else %}var(--text-muted){% endif %};">{{ step_label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if order.tracking_number %}
+  <div style="background:var(--teal-light);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+    <span style="font-size:1.2rem;">🚚</span>
+    <div>
+      <div style="font-weight:700;font-size:0.9rem;color:var(--teal);">Your order is on the way!</div>
+      <div style="font-size:0.82rem;color:var(--text-muted);">{{ order.courier }} · Tracking: <strong>{{ order.tracking_number }}</strong></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="order-detail-grid">
+    <!-- Items -->
+    <div>
+      <div style="background:#fff;border:1.5px solid var(--cream-border);border-radius:var(--radius);overflow:hidden;">
+        <div style="padding:16px 20px;background:var(--cream);border-bottom:1px solid var(--cream-border);font-weight:700;">Items Ordered</div>
+        {% for entry in items_data %}
+        {% with item=entry.item %}
+        <div style="padding:16px 20px;border-bottom:1px solid var(--cream-border);">
+        <div style="display:flex;gap:14px;">
+          <div style="width:64px;height:64px;background:var(--cream);border-radius:8px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+            {% if item.product and item.product.main_image %}
+              <img src="{{ item.product.main_image.image.url }}" alt="{{ item.product_name }}" style="width:100%;height:100%;object-fit:contain;padding:6px;" loading="lazy">
+            {% else %}
+              <span style="font-size:1.5rem;">📦</span>
+            {% endif %}
+          </div>
+          <div style="flex:1;">
+            <div style="font-weight:600;margin-bottom:2px;">{{ item.product_name }}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Qty: {{ item.quantity }} × ₹{{ item.unit_price }}</div>
+          </div>
+          <div style="font-weight:700;white-space:nowrap;">₹{{ item.total_price }}</div>
+        </div>
+        {% if entry.choices or entry.order_images %}
+            <!-- Customization Details — same structured table style as the staff invoice -->
+            <div style="margin-top:10px;background:#F8F6F2;border-radius:12px;padding:14px 16px;">
+              <div style="font-size:0.7rem;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">✏️ Customization Details</div>
+              {% for f in entry.choices %}
+              <div style="display:grid;grid-template-columns:minmax(90px,38%) 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #ECE8E0;font-size:0.84rem;">
+                <span style="font-weight:700;color:var(--charcoal);overflow-wrap:anywhere;">{{ f.label }}</span>
+                {% if f.kind == 'font' %}
+                <span style="overflow-wrap:anywhere;"><span style="font-family:'{{ f.value }}',serif;font-size:1.05rem;">{{ f.value }}</span> <span style="color:var(--text-muted);font-size:0.76rem;">({{ f.value }})</span></span>
+                {% else %}
+                <span style="overflow-wrap:anywhere;color:var(--charcoal-light);">{{ f.value }}</span>
+                {% endif %}
+              </div>
+              {% endfor %}
+              {% if entry.order_images %}
+              <div style="font-size:0.7rem;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-muted);margin:12px 0 8px;">📷 Uploaded Photos / Files</div>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                {% for img in entry.order_images %}
+                <a href="{{ img.image.url }}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;text-align:center;">
+                  <div style="width:74px;height:74px;border-radius:8px;overflow:hidden;border:2px solid #CDE9DB;background:#fff;">
+                    <img src="{{ img.image.url }}" alt="{{ img.slot_label|default:'Photo' }}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+                  </div>
+                  <div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px;max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ img.slot_label|default:"Photo" }}</div>
+                </a>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+        {% endif %}
+        </div>
+        {% endwith %}
+        {% endfor %}
+        <div style="padding:16px 20px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);"><span>Subtotal</span><span>₹{{ order.subtotal }}</span></div>
+          {% if order.parcel_charge_total %}<div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);"><span>📦 Parcel &amp; Packaging</span><span>₹{{ order.parcel_charge_total }}</span></div>{% endif %}
+          {% if order.discount_amount %}<div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--teal);"><span>Discount ({{ order.coupon_code }})</span><span>−₹{{ order.discount_amount }}</span></div>{% endif %}
+          {% if order.gift_wrap %}<div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);"><span>🎁 Gift Wrap</span><span>₹{{ order.gift_wrap_price }}</span></div>{% endif %}
+          <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1.1rem;border-top:1px solid var(--cream-border);padding-top:10px;"><span>Total</span><span>₹{{ order.total }}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar info -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div style="background:#fff;border:1.5px solid var(--cream-border);border-radius:var(--radius);padding:20px;">
+        <div style="font-weight:700;margin-bottom:12px;">📍 Delivery Address</div>
+        <div style="font-weight:600;">{{ order.full_name }}</div>
+        <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px;line-height:1.7;">
+          {{ order.address }}<br>{{ order.city }}, {{ order.state }} - {{ order.pincode }}<br>
+          📱 {{ order.phone }}
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid var(--cream-border);border-radius:var(--radius);padding:20px;">
+        <div style="font-weight:700;margin-bottom:12px;">💳 Payment</div>
+        <div style="font-size:0.88rem;color:var(--text-muted);">{{ order.payment_method|title }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'manage/base.html' %}
+{% block title %}Manage Logins — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}Manage Logins{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Manage Staff Logins</h1><p class="page-sub">{{ staff_users.count }} staff accounts</p></div>
+  <button class="m-btn m-btn-primary" onclick="document.getElementById('addStaffModal').classList.add('show')">+ Add Staff</button>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>STAFF</th><th>USERNAME</th><th>ROLE</th><th class="hide-mobile">LAST LOGIN</th><th class="hide-mobile">LOGINS</th><th>STATUS</th><th>ACTION</th></tr></thead>
+      <tbody>
+        {% for s in staff_users %}
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:34px;height:34px;border-radius:50%;background:var(--m-accent);display:flex;align-items:center;justify-content:center;font-weight:800;color:#1A1A1A;">{{ s.full_name|first|upper }}</div><span style="font-weight:600;">{{ s.full_name }}</span></div></td>
+          <td><code style="font-size:0.85rem;">{{ s.username }}</code></td>
+          <td><span class="m-badge {% if s.role == 'admin' %}badge-purple{% else %}badge-info{% endif %}">{{ s.role|title }}</span></td>
+          <td style="font-size:0.75rem;color:var(--m-muted);">{{ s.last_login|date:"d M Y, g:i A"|default:"Never" }}</td>
+          <td>{{ s.total_logins }}</td>
+          <td><span class="m-badge {% if s.is_active %}badge-success{% else %}badge-danger{% endif %}">{{ s.is_active|yesno:"Active,Inactive" }}</span></td>
+          <td>
+            {% if s.username != request.session.staff_username %}
+            <button class="m-btn-icon" onclick="deleteStaff({{ s.pk }},'{{ s.full_name|escapejs }}')" title="Delete">🗑️</button>
+            {% else %}
+            <span style="font-size:0.72rem;color:var(--m-muted);">You</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--m-muted);">No staff accounts</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<!-- Add Staff Modal -->
+<div class="m-modal-overlay" id="addStaffModal" role="dialog" aria-modal="true">
+  <div class="m-modal" style="max-width:440px;">
+    <div class="m-modal-header"><span class="m-modal-title">Add Staff Account</span><button class="m-modal-close" onclick="document.getElementById('addStaffModal').classList.remove('show')">✕</button></div>
+    <div class="m-modal-body">
+      <form method="post" action="{% url 'manage:manage_logins' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_staff">
+        <div class="m-form-group-light"><label class="m-form-label-light">Full Name <span class="req">*</span></label><input type="text" name="full_name" class="m-field" required aria-required="true"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Username <span class="req">*</span></label><input type="text" name="username" class="m-field" required aria-required="true"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Password <span class="req">*</span></label><input type="password" name="password" class="m-field" required aria-required="true"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Role</label><select name="role" class="m-field m-field-select"><option value="staff">Staff</option><option value="admin">Admin</option></select></div>
+        <div class="m-modal-footer" style="padding:0;margin-top:16px;"><button type="button" class="m-btn m-btn-outline" onclick="document.getElementById('addStaffModal').classList.remove('show')">Cancel</button><button type="submit" class="m-btn m-btn-primary">Create Account</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function deleteStaff(pk, name) {
+  if(!confirm(`Delete staff account "${name}"?`)) return;
+  const f=document.createElement('form');f.method='POST';f.action=`/manage/logins/${pk}/delete/`;f.innerHTML='<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">';document.body.appendChild(f);f.submit();
+}
+document.getElementById('addStaffModal').addEventListener('click',e=>{if(e.target.id==='addStaffModal')e.target.classList.remove('show');});
+</script>
+{% endblock %}

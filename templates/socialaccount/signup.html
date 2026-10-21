@@ -1,0 +1,49 @@
+{% extends 'store/base.html' %}
+{% block title %}Finish Signing Up — CraftX3D{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo" style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:2rem;margin-bottom:4px;">🖨️</div>
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.3rem;font-weight:700;">Craft<span class="accent">X3D</span></div>
+    </div>
+    <h1 class="auth-title">Almost there!</h1>
+    <p class="auth-sub">Confirm your details to finish creating your account with Google</p>
+
+    {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+    {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+    <form method="post" action="{% url 'socialaccount_signup' %}" novalidate>
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label" for="{{ form.full_name.id_for_label }}">Full Name</label>
+        <div class="input-icon-wrap">
+          <span class="input-icon">👤</span>
+          {{ form.full_name }}
+        </div>
+        {% if form.full_name.errors %}<div class="field-err show" style="display:flex;">⚠ {{ form.full_name.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="{{ form.email.id_for_label }}">Email Address</label>
+        <div class="input-icon-wrap">
+          <span class="input-icon">✉️</span>
+          {{ form.email }}
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">From your Google account.</div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:9px;margin:6px 0 18px;">
+        <input type="checkbox" id="{{ form.agree_terms.id_for_label }}" name="{{ form.agree_terms.html_name }}" required style="width:17px;height:17px;margin-top:2px;accent-color:var(--forest);flex-shrink:0;">
+        <label for="{{ form.agree_terms.id_for_label }}" style="font-size:0.8rem;color:var(--text-muted);line-height:1.5;cursor:pointer;">
+          I agree to the <a href="{% url 'store:terms' %}" target="_blank" style="color:var(--teal);font-weight:600;">Terms &amp; Conditions</a> and Privacy Policy.
+        </label>
+      </div>
+      {% if form.agree_terms.errors %}<div class="field-err show" style="display:flex;margin-top:-10px;margin-bottom:14px;">⚠ {{ form.agree_terms.errors|striptags }}</div>{% endif %}
+
+      <button type="submit" class="btn-auth">Complete Sign Up →</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

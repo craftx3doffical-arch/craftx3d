@@ -1,0 +1,422 @@
+{% extends 'store/base.html' %}
+{% load static store_extras %}
+
+{% block title %}CraftX3D — Premium 3D Printed Products{% endblock %}
+
+{% block content %}
+
+
+<!-- ═══ HERO BANNER CAROUSEL ════════════════════════════ -->
+{% if banner_slides %}
+<section id="heroBanner" style="position:relative;overflow:hidden;background:#111;touch-action:pan-y;" aria-label="Homepage banners">
+  <!-- Slide track — JS moves this with transform -->
+  <div id="bannerTrack" style="display:flex;transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);will-change:transform;">
+    {% for slide in banner_slides %}
+    <div style="flex:0 0 100%;width:100%;min-width:100%;position:relative;">
+      <a href="{{ slide.link }}" style="display:block;text-decoration:none;">
+        <img src="{{ slide.url }}" alt="Banner"
+             style="width:100%;height:56vw;max-height:500px;min-height:180px;object-fit:cover;display:block;"
+             loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
+        <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:2;white-space:nowrap;">
+          <span style="display:inline-block;padding:9px 22px;background:var(--gold);color:#1C1C1E;font-weight:800;font-size:0.85rem;border-radius:var(--radius-pill);box-shadow:0 4px 14px rgba(0,0,0,0.3);">
+            {{ slide.cta_text }} →
+          </span>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if banner_slides|length > 1 %}
+  <!-- Dots -->
+  <div id="bannerDots" style="position:absolute;bottom:50px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:3;"></div>
+  <!-- Arrows -->
+  <button id="prevBanner" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:3;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:1.5rem;width:34px;height:34px;border-radius:50%;cursor:pointer;backdrop-filter:blur(4px);">‹</button>
+  <button id="nextBanner" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);z-index:3;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:1.5rem;width:34px;height:34px;border-radius:50%;cursor:pointer;backdrop-filter:blur(4px);">›</button>
+  {% endif %}
+</section>
+{% else %}
+<section style="background:var(--charcoal);padding:40px 24px;text-align:center;color:#fff;">
+  <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:1.8rem;font-weight:800;margin-bottom:16px;">CraftX3D — Premium 3D Prints</h1>
+  <a href="{% url 'store:products' %}" style="display:inline-block;padding:12px 28px;background:var(--gold);color:var(--charcoal);font-weight:800;border-radius:var(--radius-pill);text-decoration:none;">Shop Now →</a>
+</section>
+{% endif %}
+<!-- ═══ SHOP BY CATEGORY — static grid, "Find your piece" ═══════════════ -->
+{% if categories %}
+<section class="section category-section" aria-label="Shop by Category">
+  <div class="container">
+    <div class="section-header-center">
+      <div class="section-eyebrow-line"><span>Shop By Category</span></div>
+      <h2 class="section-title">Find Your Piece</h2>
+    </div>
+    <div class="find-piece-grid">
+      {% for cat in categories %}
+      <a href="{% url 'store:products' %}?category={{ cat.slug }}" class="fp-card" aria-label="Shop {{ cat.name }}">
+        <div class="fp-card-img">
+          {% if cat.images.first %}<img src="{{ cat.images.first.image.url }}" alt="{{ cat.name }}" loading="lazy">
+          {% else %}<span>📦</span>{% endif %}
+        </div>
+        <span class="fp-card-name">{{ cat.name }}</span>
+        <span class="fp-card-shop">Shop <span class="fp-card-arrow">→</span></span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══ OUR PRODUCTS — same grid & card as /products/ page ════ -->
+{% if all_products %}
+<section class="section" style="background:#fff;" aria-label="Our Products">
+  <div class="container">
+    <div class="section-header section-header-flex">
+      <div>
+        <div class="section-eyebrow">Handpicked Just For You</div>
+        <h2 class="section-title">Our Products</h2>
+        <p class="section-sub">Handpicked gems from our collection</p>
+      </div>
+      <a href="{% url 'store:products' %}" class="btn-outline section-header-btn">View All →</a>
+    </div>
+    <div class="home-products-wrap">
+    <div class="products-grid">
+      {% for product in all_products %}
+      <div class="product-card{% if not product.is_in_stock %} product-card-oos{% endif %}">
+        <a href="{% url 'store:product_detail' product.slug %}" aria-label="{{ product.name }}">
+          <div class="product-img-wrap" data-images="{% for img in product.images.all %}{{ img.image.url }}{% if not forloop.last %}|{% endif %}{% endfor %}">
+            {% if product.main_image %}
+              <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" loading="lazy" class="prod-cycle-img">
+            {% else %}<div style="font-size:3.5rem;">📦</div>{% endif %}
+            {% if not product.is_in_stock %}
+            <div class="oos-overlay"><span class="oos-badge">🔔 Coming Soon</span></div>
+            {% elif product.discount_percent %}
+            <span class="discount-badge">-{{ product.discount_percent }}%</span>
+            {% endif %}
+            {% if product.is_in_stock %}
+            <a href="{% url 'store:product_detail' product.slug %}" class="quick-view-btn" onclick="event.stopPropagation();">Quick view <span class="qv-eye">👁</span></a>
+            {% endif %}
+          </div>
+        </a>
+        <button type="button" class="fav-btn{% if product.pk in favorite_product_ids %} is-favorited{% endif %}" onclick="toggleFavorite({{ product.pk }},this,event)" aria-pressed="{% if product.pk in favorite_product_ids %}true{% else %}false{% endif %}" aria-label="Favourite">
+          <svg viewBox="0 0 24 24"><path d="M12 21s-6.7-4.35-9.3-8.1C.9 10.1 1.4 6.6 4.2 4.9c2.4-1.5 5.3-.8 7 1.2l.8 1 .8-1c1.7-2 4.6-2.7 7-1.2 2.8 1.7 3.3 5.2 1.5 8-2.6 3.75-9.3 8.1-9.3 8.1z"/></svg>
+        </button>
+        <div class="product-body">
+          {% if product.category %}<div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">{{ product.category.name }}</div>{% endif %}
+          <div class="product-name">{{ product.name }}</div>
+          {% if product.rating_count %}
+          <div class="product-rating-row">
+            <span class="stars-mini">{% for i in "12345" %}<span class="star-mini{% if forloop.counter <= product.avg_rating|round_int %} filled{% endif %}">★</span>{% endfor %}</span>
+            <span class="rating-count">({{ product.rating_count }})</span>
+          </div>
+          {% elif product.is_new %}
+          <div class="product-rating-row"><span class="yml-new-chip">✦ New</span></div>
+          {% endif %}
+          <div class="product-price-row">
+            {% if product.compare_price %}<span class="price-original">₹{{ product.compare_price }}</span>{% endif %}
+            <span class="price-current">₹{{ product.base_price }}</span>
+          </div>
+          {% if not product.is_in_stock %}
+          <a href="{% url 'store:product_detail' product.slug %}" class="btn-add-cart btn-coming-soon">🔔 Coming Soon</a>
+          {% elif product.customization_type == 'none' %}
+          <button type="button" class="btn-add-cart" onclick="quickAddToCart({{ product.pk }},this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Add to Cart</button>
+          {% else %}
+          <a href="{% url 'store:product_detail' product.slug %}" class="btn-add-cart"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Choose options</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    </div><!-- /home-products-wrap -->
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══ FEATURES STRIP
+<section class="section-sm" style="background:var(--charcoal);color:#fff;">
+  <div class="container">
+    <div class="features-strip-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:center;">
+      <div><div style="font-size:1.8rem;margin-bottom:8px;">🎨</div><div style="font-weight:700;font-size:0.9rem;">100% Customizable</div><div style="font-size:0.8rem;color:rgba(255,255,255,0.55);margin-top:4px;">Tailored to your vision</div></div>
+      <div><div style="font-size:1.8rem;margin-bottom:8px;">💎</div><div style="font-weight:700;font-size:0.9rem;">Premium Quality</div><div style="font-size:0.8rem;color:rgba(255,255,255,0.55);margin-top:4px;">Top-grade PLA & PETG</div></div>
+      <div><div style="font-size:1.8rem;margin-bottom:8px;">🚀</div><div style="font-weight:700;font-size:0.9rem;">Fast Delivery</div><div style="font-size:0.8rem;color:rgba(255,255,255,0.55);margin-top:4px;">7-10 days standard</div></div>
+      <div><div style="font-size:1.8rem;margin-bottom:8px;">🤝</div><div style="font-weight:700;font-size:0.9rem;">Customer First</div><div style="font-size:0.8rem;color:rgba(255,255,255,0.55);margin-top:4px;">We're here for you</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURED PRODUCTS — same grid & card as /products/ page ═ -->
+{% if featured_products %}
+<section class="section" aria-label="Featured Products">
+  <div class="container">
+    <div class="section-header" style="display:flex;align-items:flex-end;justify-content:space-between;">
+      <div>
+        <div class="section-eyebrow">Editor's Picks</div>
+        <h2 class="section-title">Featured Products</h2>
+      </div>
+      <a href="{% url 'store:products' %}" class="btn-outline" style="margin-bottom:8px">Shop All →</a>
+    </div>
+    <div class="home-products-wrap">
+    
+    <div class="products-grid">
+    {% for product in products %}
+    <div class="product-card{% if not product.is_in_stock %} product-card-oos{% endif %}">
+      <a href="{% url 'store:product_detail' product.slug %}" aria-label="{{ product.name }}">
+        <div class="product-img-wrap" data-images="{% for img in product.images.all %}{{ img.image.url }}{% if not forloop.last %}|{% endif %}{% endfor %}">
+          {% if product.main_image %}
+            <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" loading="lazy" class="prod-cycle-img">
+          {% else %}<div style="font-size:3.5rem;">📦</div>{% endif %}
+          {% if not product.is_in_stock %}
+          <div class="oos-overlay"><span class="oos-badge">🔔 Coming Soon</span></div>
+          {% elif product.discount_percent %}
+          <span class="discount-badge">{{ product.discount_percent }}% off</span>
+          {% endif %}
+        </div>
+      </a>
+      <button type="button" class="fav-btn{% if product.pk in favorite_product_ids %} is-favorited{% endif %}" onclick="toggleFavorite({{ product.pk }}, this, event)" aria-pressed="{% if product.pk in favorite_product_ids %}true{% else %}false{% endif %}" aria-label="{% if product.pk in favorite_product_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-6.7-4.35-9.3-8.1C.9 10.1 1.4 6.6 4.2 4.9c2.4-1.5 5.3-.8 7 1.2l.8 1 .8-1c1.7-2 4.6-2.7 7-1.2 2.8 1.7 3.3 5.2 1.5 8-2.6 3.75-9.3 8.1-9.3 8.1z"/></svg>
+      </button>
+      <div class="product-body">
+        {% if product.category %}
+        <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">{{ product.category.name }}</div>
+        {% endif %}
+        <div class="product-name">{{ product.name }}</div>
+        {% if product.is_new %}<div class="product-rating-row"><span class="yml-new-chip">✦ New</span></div>{% endif %}
+        <div class="product-price-row">
+          {% if product.compare_price %}<span class="price-original">₹{{ product.compare_price }}</span>{% endif %}
+          <span class="price-current">₹{{ product.base_price }}</span>
+        </div>
+        {% if not product.is_in_stock %}
+        <a href="{% url 'store:product_detail' product.slug %}" class="btn-add-cart btn-coming-soon">🔔 Coming Soon</a>
+        {% elif product.customization_type == 'none' %}
+        <button type="button" class="btn-add-cart" onclick="quickAddToCart({{ product.pk }}, this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Add to Cart</button>
+        {% else %}
+        <a href="{% url 'store:product_detail' product.slug %}" class="btn-add-cart"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Choose options</a>
+        {% endif %}
+      </div>
+    </div>
+      {% endfor %}
+    </div>
+    </div><!-- /home-products-wrap -->
+  </div>
+</section>
+{% endif %}
+
+
+<!-- ═══ CUSTOMER REVIEWS — "Loved by our customers" ═══════════════════ -->
+{% if best_reviews %}
+<section class="section" style="background:#fff;" aria-label="Customer Reviews">
+  <div class="container">
+    <div class="loved-header">
+      <h2 class="section-title">Loved By Our Customers</h2>
+      <div class="loved-rating-row">
+        <span class="loved-stars">{% for i in "12345" %}<span class="star-mini{% if forloop.counter <= reviews_avg|round_int %} filled{% endif %}">★</span>{% endfor %}</span>
+        <span class="loved-score">{{ reviews_avg }}★</span>
+        <span class="loved-count">({{ reviews_total }})</span>
+        <span class="loved-verified">✅ Verified</span>
+      </div>
+    </div>
+
+    <div class="loved-track-clip">
+      <div class="loved-track" id="lovedTrack">
+        {% for review in best_reviews %}
+        <div class="loved-card">
+          <div class="loved-card-media">
+            {% if review.photo %}
+            <img src="{{ review.photo.url }}" alt="Review photo" loading="lazy" onclick="openPhotoModal('{{ review.photo.url }}')" style="cursor:pointer;">
+            {% else %}
+            <div class="loved-avatar-fallback">{{ review.reviewer_name|first|upper }}</div>
+            {% endif %}
+          </div>
+          <div class="loved-card-body">
+            <div class="loved-card-quote">{{ review.title|default:review.body|truncatechars:60 }}</div>
+            <div class="review-stars">{% for i in "12345" %}<span style="font-size:1em;color:{% if forloop.counter <= review.rating %}var(--forest,#1B4332){% else %}#ddd{% endif %};">★</span>{% endfor %}</div>
+            <div class="loved-card-name">{{ review.reviewer_name }} <span class="loved-check" title="Verified">✔</span></div>
+            {% if review.product %}<div class="loved-card-product">{{ review.product.name|truncatechars:26 }}</div>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="loved-arrow prev" onclick="lovedNav(-1)" aria-label="Previous reviews">‹</button>
+      <button type="button" class="loved-arrow next" onclick="lovedNav(1)" aria-label="Next reviews">›</button>
+    </div>
+
+    <div style="text-align:center;margin-top:32px">
+      <a href="{% url 'store:write_review' %}" class="btn-primary">✍️ Write a Review</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ══ "Loved by our customers" — simple left/right scroll ══
+function lovedNav(dir) {
+  var track = document.getElementById('lovedTrack');
+  if (!track) return;
+  var card = track.querySelector('.loved-card');
+  var step = card ? (card.offsetWidth + 16) * 2 : 320;
+  track.scrollBy({ left: dir * step, behavior: 'smooth' });
+}
+</script>
+<script>
+// ══ BANNER CAROUSEL — transform-based, touch swipe, auto-play ══════════════
+(function () {
+  var track   = document.getElementById('bannerTrack');
+  var dotsWrap= document.getElementById('bannerDots');
+  var prev    = document.getElementById('prevBanner');
+  var next    = document.getElementById('nextBanner');
+  if (!track) return;
+
+  var slides  = track.children;
+  var total   = slides.length;
+  var cur     = 0;
+  var timer;
+
+  // Build dots dynamically
+  if (dotsWrap && total > 1) {
+    for (var i = 0; i < total; i++) {
+      (function(idx){
+        var d = document.createElement('button');
+        d.style.cssText = 'width:'+(idx===0?'18':'7')+'px;height:7px;border-radius:10px;border:none;background:'+(idx===0?'rgba(255,255,255,0.95)':'rgba(255,255,255,0.4)')+';cursor:pointer;padding:0;transition:all 0.2s;';
+        d.addEventListener('click', function(){ clearInterval(timer); go(idx); start(); });
+        dotsWrap.appendChild(d);
+      })(i);
+    }
+  }
+
+  function go(n) {
+    cur = ((n % total) + total) % total;
+    track.style.transform = 'translateX(-' + (cur * 100) + '%)';
+    // Update dots
+    if (dotsWrap) {
+      Array.from(dotsWrap.children).forEach(function(d, i) {
+        d.style.width = i === cur ? '18px' : '7px';
+        d.style.background = i === cur ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)';
+      });
+    }
+  }
+
+  function start() { if (total > 1) timer = setInterval(function(){ go(cur + 1); }, 4500); }
+
+  if (prev) prev.addEventListener('click', function(){ clearInterval(timer); go(cur - 1); start(); });
+  if (next) next.addEventListener('click', function(){ clearInterval(timer); go(cur + 1); start(); });
+
+  // Touch swipe
+  var touchX = 0;
+  var trackEl = document.getElementById('heroBanner');
+  if (trackEl) {
+    trackEl.addEventListener('touchstart', function(e){ touchX = e.touches[0].clientX; }, { passive: true });
+    trackEl.addEventListener('touchend', function(e){
+      var dx = touchX - e.changedTouches[0].clientX;
+      if (Math.abs(dx) > 40) { clearInterval(timer); go(cur + (dx > 0 ? 1 : -1)); start(); }
+    }, { passive: true });
+  }
+
+  if (total > 1) start();
+})();
+
+// ── Swipeable/draggable banner image galleries ──
+// Touch swipe already works natively via CSS scroll-snap. This adds mouse
+// click-and-drag support for desktop, dot navigation, and a gentle
+// auto-advance that steps back whenever the customer interacts manually.
+document.querySelectorAll('[data-hero-scroll]').forEach(scroller => {
+  const wrap = scroller.closest('.hero-image-side');
+  const dotsWrap = wrap.querySelector('.hero-img-dots');
+  const dots = dotsWrap ? dotsWrap.querySelectorAll('.hero-img-dot') : [];
+  const slideCount = scroller.children.length;
+  if (slideCount < 2) return; // nothing to navigate
+
+  let isDown = false, startX = 0, startScroll = 0, autoTimer = null, scrollRAF = null;
+
+  function slideWidth() { return scroller.clientWidth; }
+
+  function updateActiveDot() {
+    const idx = Math.round(scroller.scrollLeft / slideWidth());
+    dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  }
+
+  function goTo(idx) {
+    scroller.scrollTo({ left: idx * slideWidth(), behavior: 'smooth' });
+  }
+
+  function pauseAuto() { clearInterval(autoTimer); }
+  function resumeAuto() {
+    pauseAuto();
+    autoTimer = setInterval(() => {
+      const idx = Math.round(scroller.scrollLeft / slideWidth());
+      goTo((idx + 1) % slideCount);
+    }, 4200);
+  }
+
+  // Mouse drag-to-scroll (desktop) — touch already works natively.
+  scroller.addEventListener('mousedown', e => {
+    isDown = true;
+    scroller.classList.add('is-dragging');
+    startX = e.pageX;
+    startScroll = scroller.scrollLeft;
+    pauseAuto();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!isDown) return;
+    isDown = false;
+    scroller.classList.remove('is-dragging');
+    // Snap to nearest slide after a free-drag
+    const idx = Math.round(scroller.scrollLeft / slideWidth());
+    goTo(idx);
+    resumeAuto();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDown) return;
+    e.preventDefault();
+    scroller.scrollLeft = startScroll - (e.pageX - startX);
+  });
+
+  // Touch interaction also pauses auto-advance while the customer is swiping.
+  scroller.addEventListener('touchstart', pauseAuto, { passive: true });
+  scroller.addEventListener('touchend', resumeAuto, { passive: true });
+
+  scroller.addEventListener('scroll', () => {
+    if (scrollRAF) cancelAnimationFrame(scrollRAF);
+    scrollRAF = requestAnimationFrame(updateActiveDot);
+  }, { passive: true });
+
+  dots.forEach((dot, i) => dot.addEventListener('click', () => { pauseAuto(); goTo(i); resumeAuto(); }));
+
+  resumeAuto();
+});
+</script>
+
+<!-- Photo lightbox modal -->
+<div id="photoModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;" onclick="closePhotoModal()">
+  <img id="photoModalImg" src="" alt="Review photo" style="max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+  <button onclick="closePhotoModal()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.6rem;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+</div>
+<script>
+function openPhotoModal(url) {
+  var m = document.getElementById('photoModal');
+  document.getElementById('photoModalImg').src = url;
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  history.pushState({ craftixPhotoModal: true }, '', location.href);
+}
+function closePhotoModal() {
+  var m = document.getElementById('photoModal');
+  if (!m || m.style.display !== 'flex') return;
+  m.style.display = 'none';
+  document.body.style.overflow = '';
+  if (history.state && history.state.craftixPhotoModal) { history.back(); }
+}
+// ← THIS WAS MISSING: catch back/swipe-back to close modal, stay on home page
+window.addEventListener('popstate', function() {
+  var m = document.getElementById('photoModal');
+  if (m && m.style.display === 'flex') {
+    m.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+});
+document.addEventListener('keydown', function(e) { if(e.key==='Escape') closePhotoModal(); });
+</script>
+
+{% endblock %}

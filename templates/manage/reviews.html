@@ -1,0 +1,72 @@
+{% extends 'manage/base.html' %}
+{% block title %}Reviews — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Community{% endblock %}
+{% block breadcrumb_current %}Reviews{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Customer Reviews</h1><p class="page-sub">{{ reviews.count }} reviews</p></div>
+</div>
+<div class="tab-filters-wrap" style="display:flex;gap:4px;margin-bottom:20px;">
+  <a href="{% url 'manage:reviews' %}" class="tab-filter {% if not status_filter %}active{% endif %}">All</a>
+  <a href="?status=pending" class="tab-filter {% if status_filter == 'pending' %}active{% endif %}">⏳ Pending</a>
+  <a href="?status=approved" class="tab-filter {% if status_filter == 'approved' %}active{% endif %}">✅ Approved</a>
+  <a href="?status=rejected" class="tab-filter {% if status_filter == 'rejected' %}active{% endif %}">❌ Rejected</a>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>REVIEWER</th><th>PRODUCT</th><th>RATING</th><th>REVIEW</th><th class="hide-mobile">DATE</th><th>STATUS</th><th>FEATURED</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for r in reviews %}
+        <tr>
+          <td><div style="font-weight:600;">{{ r.reviewer_name }}</div></td>
+          <td style="font-size:0.82rem;color:var(--m-muted);">{{ r.product.name|default:"General"|truncatechars:24 }}</td>
+          <td><span style="color:var(--m-accent);font-size:0.9rem;">{% for i in "12345" %}{% if forloop.counter <= r.rating %}★{% else %}☆{% endif %}{% endfor %}</span></td>
+          <td><div style="font-weight:600;font-size:0.82rem;">{{ r.title }}</div><div style="font-size:0.75rem;color:var(--m-muted);">{{ r.body|truncatechars:60 }}</div></td>
+          <td style="font-size:0.75rem;color:var(--m-muted);">{{ r.created_at|date:"d M Y" }}</td>
+          <td><span class="m-badge {% if r.status == 'approved' %}badge-success{% elif r.status == 'rejected' %}badge-danger{% else %}badge-warning{% endif %}">{{ r.status|title }}</span></td>
+          <td>
+            {% if r.status == 'approved' %}
+            <div class="toggle-switch" title="Show in the 'What Customers Say' section on the home page">
+              <input type="checkbox" class="toggle-input" id="feat-{{ r.pk }}" {% if r.featured_on_home %}checked{% endif %} onchange="toggleFeature({{ r.pk }})">
+              <label class="toggle-track" for="feat-{{ r.pk }}"></label>
+            </div>
+            {% else %}
+            <span style="font-size:0.72rem;color:var(--m-muted);">Approve first</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              {% if r.status != 'approved' %}<button class="m-btn m-btn-success m-btn-sm" onclick="reviewAction({{ r.pk }},'approve')">✓</button>{% endif %}
+              {% if r.status != 'rejected' %}<button class="m-btn m-btn-outline m-btn-sm" onclick="reviewAction({{ r.pk }},'reject')">✕</button>{% endif %}
+              <button class="m-btn-icon" onclick="reviewAction({{ r.pk }},'delete')" title="Delete">🗑️</button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--m-muted);">No reviews found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function reviewAction(pk, action) {
+  const form = document.createElement('form'); form.method='POST'; form.action=`/manage/reviews/${pk}/${action}/`;
+  form.innerHTML='<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">'; document.body.appendChild(form); form.submit();
+}
+function toggleFeature(pk) {
+  fetch(`/manage/reviews/${pk}/toggle-feature/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken':'{{ csrf_token }}','X-Requested-With':'XMLHttpRequest'},
+  }).then(r=>r.json()).then(d=>{
+    if (!d.success) {
+      alert(d.message || 'Could not update.');
+      document.getElementById(`feat-${pk}`).checked = !document.getElementById(`feat-${pk}`).checked;
+    }
+  });
+}
+</script>
+{% endblock %}

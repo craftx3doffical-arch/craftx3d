@@ -1,0 +1,89 @@
+{% extends 'manage/base.html' %}
+{% block title %}{{ category.name|default:"Add Category" }} — CraftX3D Staff{% endblock %}
+{% block breadcrumb_parent %}Categories{% endblock %}
+{% block breadcrumb_current %}{% if category.pk %}Edit{% else %}Add{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">{% if category.pk %}Edit Category: {{ category.name }}{% else %}Add Category{% endif %}</h1></div>
+  <a href="{% url 'manage:categories' %}" class="m-btn m-btn-outline">← Back to Categories</a>
+</div>
+<form method="post" action="{% if category.pk %}{% url 'manage:category_edit' category.pk %}{% else %}{% url 'manage:category_add' %}{% endif %}" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="category-form-grid">
+    <div>
+      <div class="form-section-card">
+        <div class="form-section-header">📝 Category Info</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><label class="m-form-label-light">Name <span class="req">*</span></label><input type="text" name="name" class="m-field" value="{{ category.name|default:'' }}" required aria-required="true" placeholder="e.g. Miniatures, Keychains"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Description</label><textarea name="description" class="m-field m-field-textarea" rows="3" placeholder="Short description of this category">{{ category.description|default:'' }}</textarea></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Display Order</label><input type="number" name="display_order" class="m-field" value="{{ category.display_order|default:0 }}" min="0"></div>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">🖼️ Category Images</div>
+        <div class="form-section-body">
+          {% if category.pk %}
+          <div class="cat-img-preview-grid" id="existingImgs">
+            {% for img in category.images.all %}
+            <div style="position:relative;width:80px;height:80px;">
+              <img src="{{ img.image.url }}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" alt="" loading="lazy">
+              <button type="button" class="img-slot-remove" onclick="removeImage({{ img.pk }})" title="Remove" style="position:absolute;top:4px;right:4px;">✕</button>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <label class="m-form-label-light" style="margin-bottom:6px;">Upload Images</label>
+          <input type="file" name="images" class="m-field" multiple accept="image/*" aria-label="Category images">
+          <p class="m-form-hint">You can select multiple images. First image will be the primary.</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="form-section-card">
+        <div class="form-section-header">⚙️ Visibility</div>
+        <div class="form-section-body">
+          <div class="toggle-switch">
+            <input type="checkbox" class="toggle-input" id="catActive" name="is_active" {% if not category.pk or category.is_active %}checked{% endif %}>
+            <label class="toggle-track" for="catActive"></label>
+            <span class="toggle-label">Active (visible in store)</span>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="m-btn m-btn-primary" style="width:100%;padding:14px;justify-content:center;font-size:1rem;">
+        💾 {% if category.pk %}Update Category{% else %}Save Category{% endif %}
+      </button>
+      {% if category.pk %}
+      <div style="margin-top:12px;text-align:center;">
+        <button type="button" class="m-btn m-btn-danger m-btn-sm" onclick="confirmDelete('{% url 'manage:category_delete' category.pk %}','{{ category.name|escapejs }}')">🗑️ Delete Category</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</form>
+
+{% if category.pk %}
+<!-- Delete Confirmation -->
+<div class="m-modal-overlay" id="deleteModal" role="dialog">
+  <div class="m-modal" style="max-width:360px;">
+    <div class="m-modal-header"><span class="m-modal-title">⚠️ Confirm Delete</span><button class="m-modal-close" onclick="document.getElementById('deleteModal').classList.remove('show')">✕</button></div>
+    <div class="m-modal-body"><p>Delete category <strong>{{ category.name }}</strong>? This cannot be undone.</p></div>
+    <div class="m-modal-footer"><button class="m-btn m-btn-outline" onclick="document.getElementById('deleteModal').classList.remove('show')">Cancel</button><form id="deleteForm" method="post" action="{% url 'manage:category_delete' category.pk %}"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><button type="submit" class="m-btn m-btn-danger">Delete</button></form></div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+{% if category.pk %}
+function removeImage(pk) {
+  if (!confirm('Remove this image?')) return;
+  fetch('/manage/categories/image/' + pk + '/delete/', {
+    method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token }}'}
+  }).then(r => r.json()).then(d => { if (d.success) location.reload(); });
+}
+function confirmDelete(url, name) {
+  document.getElementById('deleteModal').classList.add('show');
+}
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,229 @@
+{% extends 'store/base.html' %}
+{% load static %}
+{% block title %}Customer Reviews — CraftX3D{% endblock %}
+{% block content %}
+<div style="background:#fff;min-height:100vh;">
+<div class="reviews-hero">
+  <h1>Customer Reviews</h1>
+  <p style="margin-top:8px;color:rgba(255,255,255,0.7);">See what customers are saying about our 3D printed products.</p>
+</div>
+
+<div class="container" style="padding:0 24px;">
+  <!-- Summary Card -->
+  <div class="reviews-summary-card">
+    <div style="text-align:center;">
+      <div class="big-rating">{{ avg_rating|floatformat:1 }}</div>
+      <div class="rating-stars-large" style="position:relative;display:inline-block;margin:4px 0;">
+        <span class="amz-stars-wrap" style="font-size:1.6rem;">
+          <span class="amz-stars-empty">★★★★★</span>
+          <span class="amz-stars-filled" style="width:{% widthratio avg_rating 5 100 %}%;">★★★★★</span>
+        </span>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text-muted);">Based on {{ total_reviews }} review{{ total_reviews|pluralize }}</div>
+    </div>
+    <div class="rating-bars">
+      {% for i in "54321" %}
+      {% with star=i|add:"0" count=rating_counts|default:0 %}
+      <div class="rating-bar-row">
+        <span>{{ i }}</span>
+        <span class="stars">★</span>
+        <div class="rating-bar-bg">
+          <div class="rating-bar-fill" style="width:{% if total_reviews %}{% widthratio rating_counts|default:0 total_reviews 100 %}%{% else %}0%{% endif %}"></div>
+        </div>
+        <span class="rating-bar-count">0</span>
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+    <div style="text-align:center;">
+      <a href="{% url 'store:write_review' %}" class="btn-write-review">✍️ Write a Review</a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="reviews-sort-bar">
+    <div class="reviews-sort-label">Sort by</div>
+    <div class="reviews-sort-group" role="group" aria-label="Sort reviews">
+      <a href="?sort=newest" class="sort-pill {% if sort == 'newest' %}active{% endif %}">🕒 Most Recent</a>
+      <a href="?sort=highest" class="sort-pill {% if sort == 'highest' %}active{% endif %}">⭐ Highest First</a>
+      <a href="?sort=lowest" class="sort-pill {% if sort == 'lowest' %}active{% endif %}">Lowest First</a>
+    </div>
+    <div class="reviews-sort-count">{{ total_reviews }} review{{ total_reviews|pluralize }}</div>
+  </div>
+
+  <!-- Customer Photos — swipeable gallery, one photo at a time in lightbox -->
+  {% if reviews %}
+  <div style="margin-bottom:40px;">
+    <div style="font-weight:700;font-size:0.9rem;margin-bottom:14px;color:var(--charcoal);">📸 Customer Photos</div>
+    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;
+                scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;" id="photoRow">
+      {% for review in reviews %}{% if review.photo %}
+      <img src="{{ review.photo.url }}"
+           data-photo="{{ review.photo.url }}"
+           alt="Photo by {{ review.reviewer_name }}"
+           style="width:110px;height:110px;flex-shrink:0;object-fit:cover;border-radius:10px;
+                  cursor:pointer;scroll-snap-align:start;border:1.5px solid var(--cream-border);
+                  touch-action:manipulation;"
+           loading="lazy" onclick="openGallery(this)">
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+
+  <!-- Gallery lightbox with prev / next -->
+  <div id="photoModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.94);flex-direction:column;align-items:center;justify-content:center;touch-action:pan-y;">
+    <button onclick="closeGallery()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.5rem;width:38px;height:38px;border-radius:50%;cursor:pointer;z-index:2;">✕</button>
+    <button onclick="prevPhoto()" id="gallPrev" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:2rem;width:44px;height:44px;border-radius:50%;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center;">‹</button>
+    <button onclick="nextPhoto()" id="gallNext" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:2rem;width:44px;height:44px;border-radius:50%;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center;">›</button>
+    <img id="photoModalImg" src="" alt="" style="max-width:92vw;max-height:80vh;border-radius:10px;object-fit:contain;">
+    <div id="gallCounter" style="color:rgba(255,255,255,0.6);font-size:0.82rem;margin-top:12px;letter-spacing:0.05em;"></div>
+  </div>
+  {% endif %}
+
+  <!-- Reviews Grid -->
+  {% if reviews %}
+  <div class="reviews-grid" style="margin-bottom:48px;">
+    {% for review in reviews %}
+    <article class="review-card">
+      <div class="review-header">
+        <div class="review-avatar">{{ review.reviewer_name|first|upper }}</div>
+        <div class="review-header-info">
+          <div class="review-name">{{ review.reviewer_name }}</div>
+          {% if review.product %}<div class="review-product-tag">{{ review.product.name }}</div>{% endif %}
+        </div>
+        <div class="review-date">{{ review.created_at|date:"d/m/y" }}</div>
+      </div>
+      <div class="review-stars">{% for i in "12345" %}<span style="font-size:1em;color:{% if forloop.counter <= review.rating %}#FFB800{% else %}#ddd{% endif %};">★</span>{% endfor %}</div>
+      {% if review.title %}<div class="review-title">{{ review.title }}</div>{% endif %}
+      <div class="review-body">{{ review.body }}</div>
+      {% if review.photo %}
+      <img src="{{ review.photo.url }}"
+           data-photo="{{ review.photo.url }}"
+           alt="Review photo by {{ review.reviewer_name }}" class="review-photo" loading="lazy"
+           style="cursor:pointer;margin-top:10px;width:100%;max-height:160px;object-fit:cover;border-radius:8px;touch-action:manipulation;"
+           onclick="openGallery(this)">
+      {% endif %}
+      {% if review.staff_reply %}
+      <div class="review-reply">
+        <div class="review-reply-label">✅ Thank you for your feedback.</div>
+        <div>{{ review.staff_reply }}</div>
+      </div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:60px 20px;">
+    <div style="font-size:3rem;margin-bottom:16px;">✍️</div>
+    <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:8px;">No reviews yet</h3>
+    <p style="color:var(--text-muted);margin-bottom:20px;">Be the first to share your experience!</p>
+    <a href="{% url 'store:write_review' %}" class="btn-primary">Write a Review</a>
+  </div>
+  {% endif %}
+</div>
+
+
+</div><!-- /white background wrapper -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dynamic rating bars
+document.querySelectorAll('.rating-bar-fill').forEach((bar, i) => {
+  const counts = {{ rating_counts|safe }};
+  const total = {{ total_reviews }};
+  const stars = [5,4,3,2,1][i];
+  const count = counts[stars] || 0;
+  bar.style.width = total ? Math.round((count/total)*100)+'%' : '0%';
+  bar.closest('.rating-bar-row').querySelector('.rating-bar-count').textContent = count;
+});
+
+// ── Gallery lightbox with prev/next navigation ────────────────────────────
+var _galleryPhotos = [];
+var _gallIdx = 0;
+var _gallTouchX = 0;
+
+function _buildGallery() {
+  // Rebuild every time so lazy-loaded images are included
+  _galleryPhotos = [];
+  document.querySelectorAll('#photoRow img').forEach(function(img) {
+    var url = img.getAttribute('data-photo') || img.getAttribute('src') || img.src;
+    if (url) _galleryPhotos.push(url);
+  });
+}
+
+function _renderGallery() {
+  var img = document.getElementById('photoModalImg');
+  var ctr = document.getElementById('gallCounter');
+  var prev = document.getElementById('gallPrev');
+  var next = document.getElementById('gallNext');
+  if (img) img.src = _galleryPhotos[_gallIdx] || '';
+  if (ctr) ctr.textContent = (_gallIdx + 1) + ' / ' + _galleryPhotos.length;
+  var showNav = _galleryPhotos.length > 1;
+  if (prev) prev.style.display = showNav ? '' : 'none';
+  if (next) next.style.display = showNav ? '' : 'none';
+}
+
+function prevPhoto() {
+  if (!_galleryPhotos.length) return;
+  _gallIdx = (_gallIdx - 1 + _galleryPhotos.length) % _galleryPhotos.length;
+  _renderGallery();
+}
+
+function nextPhoto() {
+  if (!_galleryPhotos.length) return;
+  _gallIdx = (_gallIdx + 1) % _galleryPhotos.length;
+  _renderGallery();
+}
+
+function openGallery(idxOrEl) {
+  _buildGallery();
+  if (!_galleryPhotos.length) return;
+  if (typeof idxOrEl === 'number') {
+    _gallIdx = Math.max(0, Math.min(idxOrEl, _galleryPhotos.length - 1));
+  } else {
+    // Use data-photo attribute for reliable matching
+    var url = idxOrEl.getAttribute('data-photo') || idxOrEl.getAttribute('src') || idxOrEl.src;
+    var found = _galleryPhotos.indexOf(url);
+    _gallIdx = found >= 0 ? found : 0;
+  }
+  _renderGallery();
+  var m = document.getElementById('photoModal');
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  history.pushState({ craftixPhotoModal: true }, '', location.href);
+}
+
+function closeGallery() {
+  var m = document.getElementById('photoModal');
+  if (!m || m.style.display !== 'flex') return;
+  m.style.display = 'none';
+  document.body.style.overflow = '';
+  if (history.state && history.state.craftixPhotoModal) { history.back(); }
+}
+
+// popstate = back pressed while modal open → close it, stay on page
+window.addEventListener('popstate', function(e) {
+  var m = document.getElementById('photoModal');
+  if (m && m.style.display === 'flex') {
+    m.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+});
+
+// Touch swipe inside the lightbox
+var _modal = document.getElementById('photoModal');
+if (_modal) {
+  _modal.addEventListener('touchstart', function(e){ _gallTouchX = e.touches[0].clientX; }, {passive:true});
+  _modal.addEventListener('touchend', function(e){
+    var dx = _gallTouchX - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 40) { dx > 0 ? nextPhoto() : prevPhoto(); }
+  }, {passive:true});
+}
+
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') closeGallery();
+  if (e.key === 'ArrowLeft') prevPhoto();
+  if (e.key === 'ArrowRight') nextPhoto();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'store/base.html' %}
+{% block title %}About Us — CraftX3D{% endblock %}
+{% block content %}
+
+<div class="about-hero">
+  <div class="container" style="max-width:700px;margin:0 auto;">
+    <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:14px;">Our Story</div>
+    <h1>{{ content.hero_heading }}</h1>
+    <p>{{ content.hero_subheading }}</p>
+  </div>
+</div>
+
+<!-- Our Story -->
+<section class="section story-section">
+  <div class="container">
+    <div class="story-grid">
+      <div class="story-content">
+        <h2>{{ content.story_title }}</h2>
+        {% for para in content.story_content.splitlines %}
+          {% if para.strip %}<p>{{ para.strip }}</p>{% endif %}
+        {% endfor %}
+        <div class="mission-box">
+          <p>{{ content.mission_statement }}</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;justify-content:center;">
+        <div style="background:var(--cream);border-radius:var(--radius);padding:32px;text-align:center;border:1.5px solid var(--cream-border);">
+          <div style="font-size:3rem;margin-bottom:12px;">🖨️</div>
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.1rem;font-weight:700;">CraftX3D</div>
+          <div style="font-size:0.85rem;color:var(--text-muted);margin-top:6px;">Where imagination meets precision.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="background:#fff;border-radius:var(--radius-sm);padding:16px;text-align:center;border:1.5px solid var(--cream-border);">
+            <div style="font-size:1.6rem;font-weight:800;color:var(--forest);">100%</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Customizable</div>
+          </div>
+          <div style="background:#fff;border-radius:var(--radius-sm);padding:16px;text-align:center;border:1.5px solid var(--cream-border);">
+            <div style="font-size:1.6rem;font-weight:800;color:var(--forest);">4+</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Team Members</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- What Sets Us Apart -->
+<section class="section" style="background:#ffffff;">
+  <div class="container">
+    <div class="section-header" style="text-align:center;">
+      <div class="section-eyebrow">Why Choose CraftX3D</div>
+      <h2 class="section-title">What Sets Us Apart</h2>
+      <p class="section-sub">Our core values guide every product we create</p>
+    </div>
+    <div class="values-grid">
+      <div class="value-card"><div class="value-icon">🎨</div><div class="value-title">100% Customizable</div><div class="value-desc">Every product is uniquely tailored to your vision. No two pieces are exactly alike — that's the CraftX3D promise.</div></div>
+      <div class="value-card"><div class="value-icon">⚡</div><div class="value-title">Innovation First</div><div class="value-desc">We use modern 3D printing technology to bring ideas to life that traditional manufacturing simply can't achieve.</div></div>
+      <div class="value-card"><div class="value-icon">💎</div><div class="value-title">Premium Quality</div><div class="value-desc">Every item is printed with top-grade materials and inspected for perfection before it reaches your hands.</div></div>
+      <div class="value-card"><div class="value-icon">🚀</div><div class="value-title">Fast Delivery</div><div class="value-desc">We know you can't wait to hold your creation. We work hard to get your order crafted and delivered quickly.</div></div>
+      <div class="value-card"><div class="value-icon">💛</div><div class="value-title">Made with Passion</div><div class="value-desc">Behind every order is a team that genuinely loves what they do. That passion shows in every detail of your product.</div></div>
+      <div class="value-card"><div class="value-icon">🤝</div><div class="value-title">Customer First</div><div class="value-desc">Your satisfaction is our success. We listen, iterate, and go the extra mile to make sure you love what you receive.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Team -->
+<section class="section team-section">
+  <div class="container" style="max-width:700px;margin:0 auto;text-align:center;">
+    <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:14px;">Meet The Makers</div>
+    <h2>{{ content.team_section_title }}</h2>
+    <p style="color:rgba(255,255,255,0.6);margin-top:8px;">{{ content.team_subtitle }}</p>
+    <div class="team-quote-box" style="margin:24px auto;">
+      <p>"{{ content.team_quote }}"</p>
+    </div>
+    <a href="{% url 'store:products' %}" class="btn-primary" style="margin-top:8px;">Explore Our Products →</a>
+  </div>
+</section>
+
+{% endblock %}

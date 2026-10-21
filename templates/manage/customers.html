@@ -1,0 +1,50 @@
+{% extends 'manage/base.html' %}
+{% block title %}Customers — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Community{% endblock %}
+{% block breadcrumb_current %}Customers{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Customers</h1><p class="page-sub">{{ customers.count }} registered customers</p></div>
+  <a href="{% url 'manage:export_customers' %}" class="m-btn m-btn-outline">⬇ Export</a>
+</div>
+<div class="filter-row">
+  <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;">
+    <div class="filter-search-wrap"><span class="filter-search-icon">🔍</span><input type="text" name="q" value="{{ search }}" placeholder="Name, email, phone..." class="filter-search" aria-label="Search customers"></div>
+    <button type="submit" class="m-btn m-btn-primary m-btn-sm">Search</button>
+    {% if search %}<a href="{% url 'manage:customers' %}" class="m-btn m-btn-outline m-btn-sm">✕</a>{% endif %}
+  </form>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>CUSTOMER</th><th>CONTACT</th><th class="hide-mobile">CITY</th><th class="hide-mobile">JOINED</th><th>ORDERS</th><th>STATUS</th><th>ACTION</th></tr></thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:36px;height:36px;border-radius:50%;background:var(--m-accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;color:#1A1A1A;flex-shrink:0;">{{ c.user.first_name|first|upper|default:c.user.email|first|upper }}</div><div><div style="font-weight:600;font-size:0.88rem;">{{ c.user.get_full_name|default:c.user.username }}</div><div style="font-size:0.72rem;color:var(--m-muted);">{{ c.user.email }}</div></div></div></td>
+          <td style="font-size:0.82rem;">{{ c.phone|default:"—" }}</td>
+          <td style="font-size:0.82rem;color:var(--m-muted);">{{ c.city|default:"—" }}</td>
+          <td style="font-size:0.78rem;color:var(--m-muted);">{{ c.user.date_joined|date:"d M Y" }}</td>
+          <td style="font-weight:700;">{{ c.user.orders.count }}</td>
+          <td><span class="m-badge {% if c.is_blocked %}badge-danger{% else %}badge-success{% endif %}">{{ c.is_blocked|yesno:"Blocked,Active" }}</span></td>
+          <td><button class="m-btn m-btn-ghost m-btn-sm" onclick="blockCustomer({{ c.pk }})">{{ c.is_blocked|yesno:"Unblock,Block" }}</button></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--m-muted);">No customers yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function blockCustomer(pk) {
+  fetch(`/manage/customers/${pk}/block/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' }
+  }).then(r => r.json()).then(() => location.reload())
+    .catch(() => location.reload());
+}
+</script>
+{% endblock %}

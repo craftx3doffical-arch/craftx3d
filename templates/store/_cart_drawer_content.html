@@ -1,0 +1,148 @@
+  <!-- Header -->
+  <div class="cart-drawer-header">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:1.3rem;">🛒</span>
+      <span class="cart-drawer-title">Your cart (<span id="cartCountLabel">{{ cart_count }}</span>)</span>
+    </div>
+    <button class="cart-drawer-close" onclick="closeCartDrawer()" aria-label="Close cart">✕</button>
+  </div>
+
+  <!-- Cart Items -->
+  <div class="cart-drawer-body" id="cartDrawerBody">
+    {% if cart_items %}
+    <div id="cartItemsList">
+      {% for item in cart_items %}
+      <div class="cart-drawer-item" id="drawer-item-{{ item.pk }}">
+        <div class="cart-drawer-img">
+          {% if item.product.main_image %}
+          <img src="{{ item.product.main_image.image.url }}" alt="{{ item.product.name }}" loading="lazy">
+          {% else %}<span style="font-size:1.5rem;">📦</span>{% endif %}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="cart-drawer-item-name">{{ item.product.name }}</div>
+          {% if item.selected_size %}<div style="font-size:0.75rem;color:var(--text-muted);">Size: {{ item.selected_size }}</div>{% endif %}
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+            <div class="cart-drawer-qty">
+              <button onclick="drawerUpdateCart({{ item.pk }},'decrease')" class="cart-drawer-qty-btn">−</button>
+              <span id="drawer-qty-{{ item.pk }}" class="cart-drawer-qty-num">{{ item.quantity }}</span>
+              <button onclick="drawerUpdateCart({{ item.pk }},'increase')" class="cart-drawer-qty-btn">+</button>
+            </div>
+            <button onclick="drawerUpdateCart({{ item.pk }},'remove')" class="cart-drawer-remove">Remove</button>
+          </div>
+        </div>
+        <div class="cart-drawer-price" id="drawer-price-{{ item.pk }}">₹{{ item.total_price }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="cart-drawer-empty" id="cartEmptyState">
+      <div style="font-size:3.5rem;margin-bottom:16px;">🛒</div>
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Your cart is empty</div>
+      <div style="font-size:0.85rem;color:var(--text-muted);">Add items to get started</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Bottom Actions -->
+  <div class="cart-drawer-footer">
+    <div class="cart-drawer-footer-scroll">
+    <!-- Coupon -->
+    <div class="cart-coupon-row" id="cartCouponRow">
+      <button class="cart-coupon-toggle" onclick="toggleDrawerCoupon()">
+        <span class="cart-coupon-icon">%</span>
+        <span style="font-weight:600;color:var(--forest);">Coupons</span>
+        <span style="margin-left:auto;color:var(--text-muted);">›</span>
+      </button>
+    </div>
+    <div id="drawerCouponSection" style="{% if not cart.coupon %}display:none;{% endif %}border-bottom:1px solid var(--cream-border);padding:12px 0;">
+      <div id="drawerAppliedCouponBadge" style="{% if cart.coupon %}display:flex;{% else %}display:none;{% endif %}align-items:center;justify-content:space-between;background:#e8f8ef;border:1.5px solid #2ecc71;border-radius:9px;padding:10px 12px 10px 14px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#27ae60;font-size:1.1rem;">✓</span>
+          <div>
+            <div id="drawerAppliedCode" style="font-weight:800;font-size:0.88rem;color:#1a6641;">{{ cart.coupon.code|default:'' }}</div>
+            <div style="font-size:0.75rem;color:#27ae60;">Saving ₹<span id="drawerAppliedSaving">{{ cart.discount_amount|floatformat:0|default:'0' }}</span></div>
+          </div>
+        </div>
+        <button onclick="removeDrawerCoupon()" class="coupon-remove-btn" title="Remove coupon" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Remove
+        </button>
+      </div>
+      <div id="drawerCouponFormRow" style="{% if cart.coupon %}display:none;{% endif %}">
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="drawerCouponInput" placeholder="DISCOUNT CODE" class="cart-drawer-coupon-input" style="text-transform:uppercase;">
+          <button onclick="applyDrawerCoupon()" class="cart-drawer-coupon-btn">Apply</button>
+        </div>
+        <div id="drawerCouponMsg" style="font-size:0.78rem;margin-bottom:8px;"></div>
+      </div>
+      {% if available_coupons %}
+      <div id="drawerAvailableCoupons" style="{% if cart.coupon %}display:none;{% endif %}">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px;">Available Coupons</div>
+      {% for c in available_coupons %}
+      <div class="drawer-coupon-card" onclick="applyThisCoupon('{{ c.code }}')">
+        <div class="drawer-coupon-pill">
+          <span style="font-size:0.62rem;font-weight:800;text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg);color:#fff;padding:4px 0;">{{ c.discount_value|floatformat:0 }}% OFF</span>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:0.9rem;">{{ c.code }}</div>
+          <div style="font-size:0.78rem;color:var(--teal);">Flat {{ c.discount_value|floatformat:0 }}% OFF</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">Min purchase ₹{{ c.min_order_value }}</div>
+        </div>
+        <button class="drawer-coupon-apply-btn">APPLY</button>
+      </div>
+      {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Notes -->
+    <div style="border-bottom:1px solid var(--cream-border);padding:10px 0;">
+      <button onclick="toggleDrawerNotes()" style="background:none;border:none;font-size:0.82rem;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:6px;">
+        ✏️ <span>Add notes regarding your order</span>
+      </button>
+      <div id="drawerNotesArea" style="display:none;margin-top:8px;">
+        <textarea id="drawerNotesInput" rows="2" class="form-input" placeholder="Special instructions..." style="font-size:0.82rem;margin:0;resize:none;"></textarea>
+      </div>
+    </div>
+
+    <!-- Gift wrap -->
+    {% if store_settings.gift_wrap_enabled %}
+    <div style="padding:10px 0;border-bottom:1px solid var(--cream-border);display:flex;align-items:center;gap:10px;">
+      <input type="checkbox" id="drawerGiftWrap" {% if cart.gift_wrap %}checked{% endif %} onchange="toggleDrawerGiftWrap()" style="width:18px;height:18px;accent-color:var(--forest);">
+      <label for="drawerGiftWrap" style="font-size:0.85rem;cursor:pointer;">🎁 Gift Wrap this order!</label>
+      <span style="margin-left:auto;font-size:0.85rem;font-weight:600;">₹{{ store_settings.gift_wrap_price }}</span>
+    </div>
+    {% endif %}
+    </div><!-- /cart-drawer-footer-scroll -->
+
+    <!-- Pinned bottom bar: total + checkout (always visible) -->
+    <div class="cart-drawer-footer-pinned">
+      <!-- Breakdown -->
+      <div style="padding-top:10px;display:flex;flex-direction:column;gap:5px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-muted);">
+          <span>Subtotal</span><span id="drawerSubtotal">₹{{ cart.subtotal|default:0 }}</span>
+        </div>
+        <div id="drawerParcelChargeRow" style="display:{% if cart.parcel_charge_total %}flex{% else %}none{% endif %};justify-content:space-between;font-size:0.82rem;color:var(--text-muted);">
+          <span>📦 Parcel &amp; Packaging</span><span id="drawerParcelCharge">₹{{ cart.parcel_charge_total|default:0|floatformat:2 }}</span>
+        </div>
+        {% if cart.discount_amount %}
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--teal);">
+          <span>Discount</span><span>−₹{{ cart.discount_amount|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Total -->
+      <div style="padding:8px 0 8px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--cream-border);margin-top:4px;">
+        <span style="font-size:0.88rem;color:var(--text-muted);">Estimated total</span>
+        <span style="font-size:1.3rem;font-weight:800;" id="drawerTotal">₹{{ cart.total|default:0 }}</span>
+      </div>
+
+      <!-- Checkout -->
+      {% if request.user.is_authenticated %}
+      <a href="{% url 'store:checkout' %}" class="cart-drawer-checkout">⚡ Checkout</a>
+      {% else %}
+      <a href="{% url 'store:login' %}?next={% url 'store:checkout' %}" class="cart-drawer-checkout">🔒 Login to Checkout</a>
+      {% endif %}
+    </div>
+  </div>

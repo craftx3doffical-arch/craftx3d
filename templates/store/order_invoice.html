@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Invoice #{{ order.order_id }} — CraftX3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600;700;800&family=Pacifico&family=Dancing+Script&family=Great+Vibes&family=Cinzel&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#eef0f3;color:#1a1a1a;min-height:100vh;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+/* toolbar */
+.toolbar{width:860px;margin:24px auto 0;display:flex;justify-content:flex-end;gap:10px}
+@media(max-width:900px){.toolbar{width:100%;padding:0 16px}}
+
+/* page */
+.inv-page{width:860px;margin:20px auto 40px;background:#fff;padding:52px 52px 44px;box-shadow:0 6px 40px rgba(0,0,0,.12);border-radius:4px}
+@media(max-width:900px){.inv-page{width:100%;margin:0;padding:24px 20px 32px;box-shadow:none;border-radius:0}.toolbar{display:none}}
+
+/* header */
+.inv-hd{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:28px;border-bottom:3.5px solid #1C1C1E;margin-bottom:32px;gap:16px}
+.brand-name{font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:800;color:#1C1C1E}
+.brand-accent{color:#F5A623}
+.brand-sub{font-size:12px;color:#999;margin-top:4px}
+.inv-right{text-align:right}
+.inv-word{font-size:32px;font-weight:900;color:#1C1C1E;letter-spacing:3px}
+.inv-meta{font-size:13px;color:#666;margin-top:6px;line-height:1.9}
+
+/* addr */
+.addr-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;padding-bottom:26px;margin-bottom:26px;border-bottom:1px solid #efefef}
+@media(max-width:600px){.addr-grid{grid-template-columns:1fr}}
+.addr-block h4{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:10px;font-weight:700}
+.addr-block p{font-size:14px;line-height:1.85;color:#333}
+
+/* timeline */
+.tl{display:flex;gap:0;margin-bottom:28px}
+.tl-step{flex:1;text-align:center;position:relative}
+.tl-line{position:absolute;top:13px;left:50%;width:100%;height:2px;z-index:0}
+.tl-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;position:relative;z-index:1;font-size:0.7rem;font-weight:800}
+.tl-lbl{font-size:0.68rem;font-weight:600}
+
+/* table */
+table{width:100%;border-collapse:collapse;margin-bottom:28px}
+thead tr{background:#1C1C1E}
+th{color:#fff;padding:11px 15px;font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;text-align:left;white-space:nowrap}
+th:last-child,td:last-child{text-align:right}
+td{padding:16px 15px;border-bottom:1px solid #f2f2f2;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even) td{background:#fafafa}
+.item-name{font-weight:700;font-size:14px;color:#111;margin-bottom:2px}
+.item-sku{font-size:11px;color:#ccc}
+
+/* customization box */
+.cbox{margin-top:12px;background:#ffffff;border:1.5px solid #daeadf;border-radius:9px;padding:14px 16px}
+.cbox-ttl{font-size:10px;font-weight:800;color:#1a6641;letter-spacing:2px;text-transform:uppercase;margin-bottom:11px}
+.crow{display:grid;grid-template-columns:104px 1fr;gap:4px 12px;margin-bottom:8px;align-items:start;text-align:left}
+.crow:last-child{margin-bottom:0}
+.clbl{font-size:11px;font-weight:700;color:#888;padding-top:2px;overflow-wrap:anywhere}
+.cval{font-size:13px;color:#222;line-height:1.55;word-break:break-word;text-align:left}
+.pill-g{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;background:#e6f9ee;color:#1a6641;border:1px solid #5dd692}
+
+/* totals */
+.tot-wrap{display:flex;justify-content:flex-end;margin-bottom:32px}
+.tot-box{width:290px}
+.trow{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;color:#666;border-bottom:1px solid #f2f2f2}
+.trow.disc{color:#1a6641}
+.trow.grand{font-size:19px;font-weight:900;color:#111;border-top:2.5px solid #1C1C1E;border-bottom:none;padding-top:12px;margin-top:4px}
+
+/* footer */
+.inv-foot{border-top:1px solid #efefef;padding-top:22px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px}
+.ty{font-size:17px;font-weight:800;color:#1C1C1E}
+.foot-note{font-size:11px;color:#bbb;text-align:right;line-height:1.7}
+
+/* whatsapp in invoice */
+.wa-badge{display:inline-flex;align-items:center;gap:6px;background:#25D366;color:#fff;padding:6px 14px;border-radius:20px;text-decoration:none;font-size:12px;font-weight:700;margin-top:6px}
+
+@media print{body{background:#fff}.toolbar{display:none}.inv-page{margin:0;box-shadow:none;padding:28px}}
+
+/* Mobile: the items table's first column is very narrow, which was crushing
+   the customization box (the "Uploaded" pill wrapped one letter per line).
+   Let the table scroll horizontally and give each cell a sane minimum. */
+@media(max-width:600px){
+  .inv-page table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;}
+  .inv-page table thead th{font-size:10px;}
+  .cbox{white-space:normal;min-width:240px;}
+  .crow{grid-template-columns:92px 1fr;}
+  .pill-g{white-space:nowrap;}
+}
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <a href="{% url 'store:order_detail' order.order_id %}" style="padding:9px 18px;background:#fff;border:1px solid #ccc;border-radius:8px;text-decoration:none;color:#333;font-size:13px;font-weight:600;">← Back to Order</a>
+  <button onclick="window.print()" style="padding:9px 24px;background:#1C1C1E;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Print / Save PDF</button>
+</div>
+
+<div class="inv-page">
+
+  <!-- Header -->
+  <div class="inv-hd">
+    <div>
+      <div class="brand-name">{{ store_settings.company_legal_name|default:"CraftX3D" }}</div>
+      <div class="brand-sub">Custom 3D Printing &amp; Personalisation</div>
+      {% if store_settings.invoice_enabled %}
+      <div class="brand-sub" style="margin-top:8px;line-height:1.7;">
+        {% if store_settings.company_address %}{{ store_settings.company_address|linebreaksbr }}<br>{% endif %}
+        {% if store_settings.company_phone %}📞 {{ store_settings.company_phone }}{% endif %}
+        {% if store_settings.company_phone and store_settings.company_email %} &nbsp;·&nbsp; {% endif %}
+        {% if store_settings.company_email %}✉️ {{ store_settings.company_email }}{% endif %}
+        {% if store_settings.show_gst_on_invoice and store_settings.gst_number %}<br><strong>GSTIN:</strong> {{ store_settings.gst_number }}{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="inv-right">
+      <div class="inv-word">INVOICE</div>
+      <div class="inv-meta">
+        <strong>Invoice No.</strong> {{ order.order_id }}<br>
+        <strong>Date</strong> {{ order.created_at|date:"d M Y, g:i A" }}<br>
+        <strong>Status</strong>
+        <span class="pill-g" style="font-size:11px;">{{ order.get_status_display }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Addresses -->
+  <div class="addr-grid">
+    <div class="addr-block">
+      <h4>Billed To</h4>
+      <p>
+        <strong>{{ order.full_name }}</strong><br>
+        {{ order.address }}<br>
+        {{ order.city }}, {{ order.state }} – {{ order.pincode }}<br>
+        📱 {{ order.phone }}
+      </p>
+    </div>
+    <div class="addr-block" style="text-align:right">
+      <h4>Payment Info</h4>
+      <p>
+        <strong>Method:</strong> {{ order.payment_method|title|default:"—" }}<br>
+        {% if order.payment_id %}<strong>Txn ID:</strong> {{ order.payment_id }}<br>{% endif %}
+        {% if order.coupon_code %}<strong>Coupon:</strong> {{ order.coupon_code }}<br>{% endif %}
+        {% if order.tracking_number %}<strong>Tracking:</strong> {{ order.tracking_number }}{% endif %}
+      </p>
+    </div>
+  </div>
+
+  <!-- Status timeline -->
+  <div class="tl">
+    {% for step_key, step_label in steps %}
+    <div class="tl-step">
+      {% if not forloop.last %}
+      <div class="tl-line" style="background:{% if step_key in passed_steps %}#1C1C1E{% else %}#e0e0e0{% endif %};"></div>
+      {% endif %}
+      <div class="tl-dot" style="background:{% if step_key == order.status %}#F5A623{% elif step_key in passed_steps %}#1C1C1E{% else %}#e0e0e0{% endif %};color:{% if step_key == order.status %}#1C1C1E{% else %}#fff{% endif %};">
+        {% if step_key in passed_steps %}✓{% elif step_key == order.status %}●{% else %}○{% endif %}
+      </div>
+      <div class="tl-lbl" style="color:{% if step_key == order.status %}#F5A623{% elif step_key in passed_steps %}#1C1C1E{% else %}#bbb{% endif %};">{{ step_label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Items -->
+  <table>
+    <thead>
+      <tr>
+        <th style="width:52%">Item &amp; Customization</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for entry in items_data %}
+    {% with item=entry.item %}
+    <tr>
+      <td>
+        <div class="item-name">{{ item.product_name }}</div>
+        {% if item.selected_size %}<div class="item-sku">Size: {{ item.selected_size }}</div>{% endif %}
+        {% if item.parcel_charge %}<div class="item-sku">📦 Parcel: ₹{{ item.parcel_charge }} × {{ item.quantity }}</div>{% endif %}
+
+        {# ── Customization choices (pre-normalized in view, no key-lookup errors) ── #}
+        {% if entry.choices or entry.order_images %}
+        <div class="cbox">
+          <div class="cbox-ttl">✏️ Your Customization</div>
+
+          {% for field in entry.choices %}
+          <div class="crow">
+            <span class="clbl">{{ field.icon }} {{ field.label }}</span>
+            <span class="cval">
+              {% if field.kind == 'font' %}
+                <span style="font-family:'{{ field.value }}',serif;font-size:1.15rem;">{{ field.value }}</span>
+              {% elif field.kind == 'upload' %}
+                <span class="pill-g">✅ Uploaded</span>
+              {% else %}
+                {{ field.value }}
+              {% endif %}
+            </span>
+          </div>
+          {% endfor %}
+
+          {% for img in entry.order_images %}
+          <div class="crow">
+            <span class="clbl">📷 {{ img.slot_label|default:"Photo" }}</span>
+            <span class="cval"><span class="pill-g">✅ Uploaded</span></span>
+          </div>
+          {% endfor %}
+
+        </div>
+        {% endif %}
+      </td>
+      <td>{{ item.quantity }}</td>
+      <td>₹{{ item.unit_price }}</td>
+      <td style="font-weight:700;">₹{{ item.total_price }}</td>
+    </tr>
+    {% endwith %}
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="tot-wrap">
+    <div class="tot-box">
+      <div class="trow"><span>Subtotal</span><span>₹{{ order.subtotal }}</span></div>
+      {% if order.parcel_charge_total %}
+      <div class="trow"><span>📦 Parcel &amp; Packaging</span><span>₹{{ order.parcel_charge_total }}</span></div>
+      {% endif %}
+      {% if order.discount_amount %}
+      <div class="trow disc"><span>🏷 Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</span><span>– ₹{{ order.discount_amount }}</span></div>
+      {% endif %}
+      {% if order.gift_wrap %}<div class="trow"><span>🎁 Gift Wrap</span><span>₹{{ order.gift_wrap_price }}</span></div>{% endif %}
+      <div class="trow grand"><span>Amount Paid</span><span>₹{{ order.total }}</span></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="inv-foot">
+    <div>
+      <div class="ty">{{ store_settings.invoice_footer_note|default:"Thank you for your order! 🎉" }}</div>
+      {% if store_settings.invoice_enabled %}
+      <div style="font-size:12px;color:#aaa;margin-top:6px;line-height:1.9;">
+        {% if store_settings.company_phone %}📞 {{ store_settings.company_phone }}<br>{% endif %}
+        {% if store_settings.company_email %}✉️ {{ store_settings.company_email }}{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="foot-note">
+      Computer-generated invoice.<br>No physical signature required.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

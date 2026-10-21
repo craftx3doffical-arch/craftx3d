@@ -1,0 +1,144 @@
+{% extends 'store/base.html' %}
+{% block title %}Order Placed — CraftX3D{% endblock %}
+{% block content %}
+<!-- Payment success banner — slides in at top after Razorpay redirect -->
+<div id="paySuccessBanner" style="
+  background:linear-gradient(135deg,#16a34a,#22c55e);
+  color:#fff;text-align:center;padding:14px 16px;
+  font-weight:700;font-size:0.92rem;letter-spacing:0.01em;
+  box-shadow:0 2px 12px rgba(22,163,74,0.35);
+  animation:slideDown 0.45s cubic-bezier(0.4,0,0.2,1);
+">
+  ✅ Payment confirmed — your order has been placed!
+</div>
+<style>
+@keyframes slideDown { from { transform:translateY(-100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
+</style>
+{# Back / swipe-back / scroll-back from Order Placed → Home (skips payment page) #}
+<script>
+(function(){
+  history.replaceState({ orderPlaced: true }, '', window.location.href);
+  history.pushState({ orderGuard: 1 }, '', window.location.href);
+  history.pushState({ orderGuard: 2 }, '', window.location.href);
+  window.addEventListener('popstate', function() {
+    window.location.replace('/');
+  });
+})();
+</script>
+<div class="order-placed-success">
+  <div class="success-icon">🎉</div>
+  <h1 class="success-heading">Order Placed Successfully!</h1>
+  <p style="color:var(--text-muted);margin-bottom:8px;">Thank you for your order, {{ order.full_name.split|first }}!</p>
+  <p style="color:var(--text-muted);font-size:0.9rem;">We'll start working on it right away. You'll receive updates via {{ order.email }}.</p>
+
+  <div class="order-summary-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div style="font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Order ID</div>
+        <div style="font-size:1.3rem;font-weight:800;color:var(--forest);">#{{ order.order_id }}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Date</div>
+        <div style="font-weight:600;">{{ order.created_at|date:"d M Y, g:i A" }}</div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    {% for item in order.items.all %}
+    <div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--cream-border);">
+      <div style="width:44px;height:44px;background:var(--cream);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.2rem;">📦</div>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:0.9rem;">{{ item.product_name }}</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);">Qty: {{ item.quantity }}</div>
+      </div>
+      <div style="font-weight:700;">₹{{ item.total_price }}</div>
+    </div>
+    {% endfor %}
+
+    <!-- Totals -->
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);"><span>Subtotal</span><span>₹{{ order.subtotal }}</span></div>
+      {% if order.parcel_charge_total %}<div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);"><span>📦 Parcel &amp; Packaging</span><span>₹{{ order.parcel_charge_total }}</span></div>{% endif %}
+      {% if order.discount_amount %}<div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--teal);"><span>Discount</span><span>−₹{{ order.discount_amount }}</span></div>{% endif %}
+      {% if order.gift_wrap %}<div style="display:flex;justify-content:space-between;font-size:0.88rem;color:var(--text-muted);"><span>🎁 Gift Wrap</span><span>₹{{ order.gift_wrap_price }}</span></div>{% endif %}
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1.05rem;border-top:1px solid var(--cream-border);padding-top:10px;margin-top:4px;"><span>Total Paid</span><span>₹{{ order.total }}</span></div>
+    </div>
+  </div>
+
+  <!-- Delivery Address -->
+  <div style="background:#fff;border:1.5px solid var(--cream-border);border-radius:var(--radius);padding:20px;text-align:left;margin-bottom:28px;">
+    <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;">📍 Delivering To</div>
+    <div style="font-weight:600;">{{ order.full_name }}</div>
+    <div style="color:var(--text-muted);font-size:0.9rem;margin-top:4px;">
+      {{ order.address }},<br>
+      {{ order.city }}, {{ order.state }} - {{ order.pincode }}<br>
+      📱 {{ order.phone }}
+    </div>
+  </div>
+
+  <!-- Track / Continue buttons -->
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="{% url 'store:my_orders' %}" class="btn-primary" id="trackOrdersBtn"
+       onclick="window.location.replace(this.href);return false;">Track My Orders</a>
+    <a href="{% url 'store:products' %}" class="btn-outline">Continue Shopping</a>
+  </div>
+
+  <div style="margin-top:16px;padding:16px;background:var(--teal-light);border-radius:var(--radius-sm);font-size:0.85rem;color:var(--teal);font-weight:500;">
+    🚀 Standard delivery in {{ order.items.first.product.standard_delivery_days|default:"7-10" }} business days after production.
+  </div>
+</div>
+
+<!-- ── Fixed countdown bar — sticks to the top so it's always visible ── -->
+<div id="redirectBar" style="
+  position:fixed;top:0;left:0;right:0;z-index:99999;
+  background:linear-gradient(135deg,#0f766e,#0d9488);
+  color:#fff;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:12px 16px;font-size:0.88rem;font-weight:600;
+  box-shadow:0 3px 14px rgba(0,0,0,0.22);
+  animation:slideDown 0.45s cubic-bezier(0.4,0,0.2,1);
+">
+  <span style="font-size:1rem;">🎉</span>
+  <span>
+    Taking you to <strong>My Orders</strong> in <strong id="redirectCount">6</strong> sec…
+  </span>
+  <a href="{% url 'store:my_orders' %}"
+     id="goNowLink"
+     onclick="window.location.replace(this.href);return false;"
+     style="color:#fff;font-weight:800;text-decoration:underline;white-space:nowrap;margin-left:4px;">
+    Go now →
+  </a>
+  <button onclick="cancelRedirect()" aria-label="Dismiss"
+          style="margin-left:8px;background:rgba(255,255,255,0.18);border:none;color:#fff;
+                 width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:0.9rem;
+                 display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
+</div>
+
+<script>
+(function(){
+  var count = 6;
+  var el = document.getElementById('redirectCount');
+  var redirectUrl = "{% url 'store:my_orders' %}";
+  var timer = setInterval(function(){
+    count--;
+    if (el) el.textContent = count;
+    if (count <= 0) {
+      clearInterval(timer);
+      window.location.replace(redirectUrl);   // replace() keeps back stack clean
+    }
+  }, 1000);
+
+  window.cancelRedirect = function() {
+    clearInterval(timer);
+    var bar = document.getElementById('redirectBar');
+    if (bar) { bar.style.animation='slideDown 0.3s reverse'; setTimeout(function(){ bar.remove(); },300); }
+  };
+
+  // Also cancel if user clicks any page link (they're taking control)
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('a');
+    if (a && a.id !== 'goNowLink') { clearInterval(timer); }
+  });
+})();
+</script>
+{% endblock %}

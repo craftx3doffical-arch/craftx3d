@@ -1,0 +1,74 @@
+{% extends 'manage/base.html' %}
+{% block title %}Terms & Conditions — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}Terms & Conditions{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Terms &amp; Conditions</h1><p class="page-sub">Shown to customers at signup and on the Terms page</p></div>
+  <button class="m-btn m-btn-primary" onclick="openTermsModal()">+ Add Section</button>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>#</th><th>TITLE</th><th class="hide-mobile">CONTENT</th><th>ACTIVE</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for t in terms %}
+        <tr>
+          <td style="color:var(--m-muted);">{{ t.display_order }}</td>
+          <td style="font-weight:600;font-size:0.88rem;">{{ t.title|truncatechars:60 }}</td>
+          <td style="font-size:0.8rem;color:var(--m-muted);">{{ t.content|truncatechars:80 }}</td>
+          <td><span class="m-badge {% if t.is_active %}badge-success{% else %}badge-muted{% endif %}">{{ t.is_active|yesno:"Yes,No" }}</span></td>
+          <td><div class="btn-group"><button class="m-btn-icon" onclick="editTerms({{ t.pk }},'{{ t.title|escapejs }}',`{{ t.content|escapejs }}`,{{ t.display_order }},{{ t.is_active|yesno:'true,false' }})" title="Edit">✏️</button><button class="m-btn-icon" onclick="deleteTerms({{ t.pk }})" title="Delete">🗑️</button></div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--m-muted);">No terms sections yet. Add one so customers have Terms to accept at signup.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="m-modal-overlay" id="termsModal" role="dialog" aria-modal="true">
+  <div class="m-modal"><div class="m-modal-header"><span class="m-modal-title" id="termsModalTitle">Add Section</span><button class="m-modal-close" onclick="closeTermsModal()">✕</button></div>
+  <div class="m-modal-body">
+    <form method="post" id="termsForm" action="{% url 'manage:terms_add' %}">
+      {% csrf_token %}
+      <div class="m-form-group-light"><label class="m-form-label-light">Title <span class="req">*</span></label><input type="text" name="title" id="termsTitle" class="m-field" required placeholder="e.g. 1. Orders & Payment" aria-required="true"></div>
+      <div class="m-form-group-light"><label class="m-form-label-light">Content <span class="req">*</span></label><textarea name="content" id="termsContent" class="m-field m-field-textarea" rows="6" required placeholder="Section text..." aria-required="true"></textarea></div>
+      <div class="m-form-row">
+        <div class="m-form-group-light"><label class="m-form-label-light">Display Order</label><input type="number" name="display_order" id="termsOrder" class="m-field" value="10"></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Active</label><div class="toggle-switch" style="margin-top:10px;"><input type="checkbox" class="toggle-input" id="termsActive" name="is_active" checked><label class="toggle-track" for="termsActive"></label></div></div>
+      </div>
+      <div class="m-modal-footer" style="padding:0;margin-top:16px;"><button type="button" class="m-btn m-btn-outline" onclick="closeTermsModal()">Cancel</button><button type="submit" class="m-btn m-btn-primary" id="termsSubmitBtn">Add Section</button></div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function openTermsModal() {
+  document.getElementById('termsModalTitle').textContent = 'Add Section';
+  document.getElementById('termsForm').action = "{% url 'manage:terms_add' %}";
+  document.getElementById('termsTitle').value = '';
+  document.getElementById('termsContent').value = '';
+  document.getElementById('termsOrder').value = 10;
+  document.getElementById('termsActive').checked = true;
+  document.getElementById('termsSubmitBtn').textContent = 'Add Section';
+  document.getElementById('termsModal').classList.add('show');
+}
+function closeTermsModal() { document.getElementById('termsModal').classList.remove('show'); }
+function editTerms(pk, title, content, order, active) {
+  document.getElementById('termsModalTitle').textContent = 'Edit Section';
+  document.getElementById('termsForm').action = `/manage/terms/${pk}/edit/`;
+  document.getElementById('termsTitle').value = title;
+  document.getElementById('termsContent').value = content;
+  document.getElementById('termsOrder').value = order;
+  document.getElementById('termsActive').checked = active;
+  document.getElementById('termsSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('termsModal').classList.add('show');
+}
+function deleteTerms(pk) {
+  if(!confirm('Delete this terms section?')) return;
+  const f=document.createElement('form');f.method='POST';f.action=`/manage/terms/${pk}/delete/`;f.innerHTML='<input name="csrfmiddlewaretoken" value="{{ csrf_token }}">';document.body.appendChild(f);f.submit();
+}
+</script>
+{% endblock %}

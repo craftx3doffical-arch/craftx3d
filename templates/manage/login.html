@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Portal Login — CraftX3D</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/manage.css' %}">
+</head>
+<body>
+<div class="manage-login-page">
+  <div class="manage-login-card">
+    <div class="manage-login-logo">🖨️</div>
+    <div style="display:inline-flex;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:999px;padding:4px 14px;font-size:0.72rem;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:20px;">✦ CraftX3D</div>
+    <h1 class="manage-login-title">Staff Portal</h1>
+    <p class="manage-login-sub">Sign in with your portal credentials</p>
+
+    {% if error %}
+    <div style="background:rgba(217,83,79,0.15);border:1px solid rgba(217,83,79,0.3);border-radius:8px;padding:10px 14px;color:#ff8080;font-size:0.82rem;margin-bottom:20px;">❌ {{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'manage:login' %}" novalidate>
+      {% csrf_token %}
+      <div class="m-form-group">
+        <label class="m-form-label" for="username">Username</label>
+        <div class="m-input-wrap">
+          <span class="m-input-icon">👤</span>
+          <input type="text" id="username" name="username" class="m-input" placeholder="your username" required autofocus autocomplete="username" aria-required="true">
+        </div>
+      </div>
+      <div class="m-form-group">
+        <label class="m-form-label" for="password">Password</label>
+        <div class="m-input-wrap">
+          <span class="m-input-icon">🔒</span>
+          <input type="password" id="password" name="password" class="m-input" placeholder="••••••••" required autocomplete="current-password" aria-required="true">
+          <button type="button" class="m-toggle-pw" onclick="togglePw()" aria-label="Toggle password">👁️</button>
+        </div>
+      </div>
+      <button type="submit" class="m-btn m-btn-primary" style="width:100%;padding:12px;justify-content:center;border-radius:10px;font-size:0.9rem;margin-top:8px;">Sign In →</button>
+    </form>
+
+    <p class="manage-login-note">staff access only<br>Credentials are managed inside the portal. Contact your admin to create or reset access.</p>
+  </div>
+</div>
+<script>
+function togglePw() {
+  const inp = document.getElementById('password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+</script>
+</body>
+</html>

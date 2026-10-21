@@ -1,0 +1,162 @@
+{% extends 'manage/base.html' %}
+{% block title %}Products — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Catalogue{% endblock %}
+{% block breadcrumb_current %}Products{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Products</h1>
+    <p class="page-sub">{{ products.count }} total products</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'manage:export_inventory' %}" class="m-btn m-btn-outline">⬇ Export</a>
+    <a href="{% url 'manage:product_add' %}" class="m-btn m-btn-primary">+ Add Product</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-row">
+  <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;width:100%;">
+    <div class="filter-search-wrap">
+      <span class="filter-search-icon">🔍</span>
+      <input type="text" name="q" value="{{ search }}" placeholder="Search products..." class="filter-search" aria-label="Search">
+    </div>
+    <select name="category" class="filter-select" onchange="this.form.submit()" aria-label="Filter by category">
+      <option value="">All Categories</option>
+      {% for cat in categories %}<option value="{{ cat.pk }}" {% if selected_cat == cat.pk|stringformat:"d" %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+    </select>
+    <select name="status" class="filter-select" onchange="this.form.submit()" aria-label="Filter by status">
+      <option value="">All Status</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+      <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+    </select>
+    <select name="view" class="filter-select" onchange="this.form.submit()" aria-label="View mode">
+      <option value="grid" {% if view_mode == 'grid' %}selected{% endif %}>Grid View</option>
+      <option value="table" {% if view_mode == 'table' %}selected{% endif %}>Table View</option>
+    </select>
+    <button type="submit" class="m-btn m-btn-primary m-btn-sm">Search</button>
+    {% if search or selected_cat or status_filter %}<a href="{% url 'manage:products' %}" class="m-btn m-btn-outline m-btn-sm">✕ Clear</a>{% endif %}
+  </form>
+</div>
+
+{% if products %}
+  {% if view_mode == 'table' %}
+  <!-- Table View -->
+  <div class="m-card">
+    <div class="m-table-wrap">
+      <table class="m-table">
+        <thead><tr><th>PRODUCT</th><th>CATEGORY</th><th>PRICE</th><th>STOCK</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+        <tbody>
+          {% for p in products %}
+          <tr>
+            <td>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <div style="width:44px;height:44px;background:var(--m-bg);border-radius:8px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                  {% if p.main_image %}<img src="{{ p.main_image.image.url }}" style="width:100%;height:100%;object-fit:contain;padding:4px;" alt="" loading="lazy">{% else %}📦{% endif %}
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.88rem;">{{ p.name }}</div>
+                  <div style="font-size:0.72rem;color:var(--m-muted);">{{ p.slug }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ p.category.name|default:"—" }}</td>
+            <td style="font-weight:700;">₹{{ p.base_price }}{% if p.compare_price %}<div style="font-size:0.72rem;color:var(--m-muted);text-decoration:line-through;">₹{{ p.compare_price }}</div>{% endif %}</td>
+            <td><span class="m-badge {% if p.stock == 0 %}badge-danger{% elif p.stock < 5 %}badge-warning{% else %}badge-success{% endif %}">{{ p.stock }}</span></td>
+            <td>
+              <label class="toggle-switch" title="Toggle active">
+                <input type="checkbox" class="toggle-input" {% if p.is_active %}checked{% endif %} onchange="toggleProduct({{ p.pk }}, this)" aria-label="Toggle {{ p.name }}">
+                <span class="toggle-track"></span>
+              </label>
+            </td>
+            <td>
+              <div class="btn-group">
+                <a href="{% url 'manage:product_edit' p.pk %}" class="m-btn-icon" title="Edit">✏️</a>
+                <button class="m-btn-icon" onclick="confirmDelete('{% url 'manage:product_delete' p.pk %}', '{{ p.name|escapejs }}')" title="Delete">🗑️</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <!-- Grid View -->
+  <div class="m-products-grid">
+    {% for p in products %}
+    <div class="m-product-card">
+      <div class="m-product-img">
+        {% if p.main_image %}<img src="{{ p.main_image.image.url }}" alt="{{ p.name }}" loading="lazy">{% else %}<span style="font-size:2.5rem;opacity:0.3;">📦</span>{% endif %}
+        <div class="m-product-badge">
+          <span class="m-badge {% if p.is_active %}badge-success{% else %}badge-muted{% endif %}">{{ p.is_active|yesno:"Active,Inactive" }}</span>
+        </div>
+      </div>
+      <div class="m-product-body">
+        <div class="m-product-cat">{{ p.category.name|default:"Uncategorized" }}</div>
+        <div class="m-product-name">{{ p.name }}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <span class="m-product-price">₹{{ p.base_price }}</span>
+          <span class="m-badge {% if p.stock == 0 %}badge-danger{% elif p.stock < 5 %}badge-warning{% else %}badge-success{% endif %}">Stock: {{ p.stock }}</span>
+        </div>
+      </div>
+      <div class="m-product-actions">
+        <a href="{% url 'manage:product_edit' p.pk %}" class="m-btn m-btn-outline m-btn-sm" style="flex:1;justify-content:center;">✏️ Edit</a>
+        <button class="m-btn m-btn-ghost m-btn-sm" onclick="toggleProduct({{ p.pk }}, this)" data-active="{{ p.is_active|yesno:'true,false' }}" title="Toggle active">{{ p.is_active|yesno:"🟢,⚫" }}</button>
+        <button class="m-btn-icon" onclick="confirmDelete('{% url 'manage:product_delete' p.pk %}', '{{ p.name|escapejs }}')" title="Delete">🗑️</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon">📦</div>
+  <h3>No products yet</h3>
+  <p>Start by adding your first product</p>
+  <a href="{% url 'manage:product_add' %}" class="m-btn m-btn-primary" style="margin-top:16px;">+ Add Product</a>
+</div>
+{% endif %}
+
+<!-- Delete Confirm Modal -->
+<div class="m-modal-overlay" id="deleteModal" role="dialog" aria-modal="true">
+  <div class="m-modal" style="max-width:400px;">
+    <div class="m-modal-header"><span class="m-modal-title">⚠️ Confirm Delete</span><button class="m-modal-close" onclick="closeDeleteModal()">✕</button></div>
+    <div class="m-modal-body"><p>Delete <strong id="deleteTarget"></strong>? This action cannot be undone.</p></div>
+    <div class="m-modal-footer">
+      <button class="m-btn m-btn-outline" onclick="closeDeleteModal()">Cancel</button>
+      <form id="deleteForm" method="post"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><button type="submit" class="m-btn m-btn-danger">Delete</button></form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(url, name) {
+  document.getElementById('deleteTarget').textContent = name;
+  document.getElementById('deleteForm').action = url;
+  document.getElementById('deleteModal').classList.add('show');
+}
+function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('show'); }
+document.getElementById('deleteModal').addEventListener('click', e => { if(e.target === e.currentTarget) closeDeleteModal(); });
+
+function toggleProduct(pk, el) {
+  fetch(`/manage/products/${pk}/toggle/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' }
+  }).then(r => r.json()).then(data => {
+    showMToast(data.is_active ? 'Product activated' : 'Product deactivated', 'success');
+  });
+}
+
+function showMToast(msg, type='info') {
+  const c = document.getElementById('mToastContainer');
+  const t = document.createElement('div');
+  t.style.cssText = 'background:#1A1A2E;color:#fff;padding:10px 16px;border-radius:8px;font-size:0.82rem;box-shadow:0 4px 16px rgba(0,0,0,0.2);display:flex;align-items:center;gap:8px;border-left:3px solid '+(type==='success'?'#1A9B77':type==='error'?'#D9534F':'#F5A623');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+</script>
+{% endblock %}

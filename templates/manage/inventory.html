@@ -1,0 +1,86 @@
+{% extends 'manage/base.html' %}
+{% block title %}Inventory — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Catalogue{% endblock %}
+{% block breadcrumb_current %}Inventory{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Inventory</h1><p class="page-sub">Manage stock levels and pricing</p></div>
+  <a href="{% url 'manage:export_inventory' %}" class="m-btn m-btn-outline">⬇ Export</a>
+</div>
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>PRODUCT</th><th>CATEGORY</th><th>PRICE</th><th>TRACK</th><th>STOCK</th><th>STATUS</th><th>ACTION</th></tr></thead>
+      <tbody>
+        {% for p in products %}
+        <tr id="row-{{ p.pk }}">
+          <td><div style="font-weight:600;font-size:0.88rem;">{{ p.name }}</div></td>
+          <td style="font-size:0.82rem;color:var(--m-muted);">{{ p.category.name|default:"—" }}</td>
+          <td><input type="number" value="{{ p.base_price }}" class="m-field" style="width:90px;padding:6px;" id="price-{{ p.pk }}" onblur="saveInventory({{ p.pk }})" aria-label="Price for {{ p.name }}"></td>
+          <td>
+            <div class="toggle-switch">
+              <input type="checkbox" class="toggle-input" id="track-{{ p.pk }}" {% if p.track_inventory %}checked{% endif %} onchange="toggleTracking({{ p.pk }}, this.checked)">
+              <label class="toggle-track" for="track-{{ p.pk }}"></label>
+            </div>
+          </td>
+          <td><input type="number" value="{{ p.stock }}" class="m-field" style="width:80px;padding:6px;{% if not p.track_inventory %}opacity:0.5;{% endif %}" id="stock-{{ p.pk }}" {% if not p.track_inventory %}readonly{% endif %} onblur="saveInventory({{ p.pk }})" aria-label="Stock for {{ p.name }}"></td>
+          <td><span class="m-badge {% if not p.track_inventory %}badge-info{% elif p.stock == 0 %}badge-danger{% elif p.stock < 5 %}badge-warning{% else %}badge-success{% endif %}" id="badge-{{ p.pk }}">{% if not p.track_inventory %}Made to Order{% elif p.stock == 0 %}Out of Stock{% elif p.stock < 5 %}Low Stock{% else %}In Stock{% endif %}</span></td>
+          <td><span id="save-{{ p.pk }}" style="font-size:0.75rem;color:var(--m-teal);display:none;">✓ Saved</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--m-muted);">No products yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function saveInventory(pk) {
+  const price = document.getElementById(`price-${pk}`).value;
+  const stock = document.getElementById(`stock-${pk}`).value;
+  fetch(`/manage/inventory/${pk}/update/`, {
+    method:'POST',
+    headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/x-www-form-urlencoded'},
+    body:`price=${price}&stock=${stock}`
+  }).then(r=>r.json()).then(d=>{
+    if(d.success){
+      const s=document.getElementById(`save-${pk}`); s.style.display='inline'; setTimeout(()=>s.style.display='none',2000);
+      const badge = document.getElementById(`badge-${pk}`);
+      const tracking = document.getElementById(`track-${pk}`).checked;
+      if (tracking) {
+        const stockVal = parseInt(stock);
+        badge.className = 'm-badge ' + (stockVal === 0 ? 'badge-danger' : stockVal < 5 ? 'badge-warning' : 'badge-success');
+        badge.textContent = stockVal === 0 ? 'Out of Stock' : stockVal < 5 ? 'Low Stock' : 'In Stock';
+      }
+    }
+  });
+}
+
+function toggleTracking(pk, tracking) {
+  const stockInput = document.getElementById(`stock-${pk}`);
+  stockInput.readOnly = !tracking;
+  stockInput.style.opacity = tracking ? '1' : '0.5';
+  const badge = document.getElementById(`badge-${pk}`);
+
+  fetch(`/manage/inventory/${pk}/toggle-tracking/`, {
+    method:'POST',
+    headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/x-www-form-urlencoded'},
+    body:`track_inventory=${tracking}`
+  }).then(r=>r.json()).then(d=>{
+    if(d.success){
+      const s=document.getElementById(`save-${pk}`); s.style.display='inline'; setTimeout(()=>s.style.display='none',2000);
+      if (!tracking) {
+        badge.className = 'm-badge badge-info';
+        badge.textContent = 'Made to Order';
+      } else {
+        const stockVal = parseInt(stockInput.value);
+        badge.className = 'm-badge ' + (stockVal === 0 ? 'badge-danger' : stockVal < 5 ? 'badge-warning' : 'badge-success');
+        badge.textContent = stockVal === 0 ? 'Out of Stock' : stockVal < 5 ? 'Low Stock' : 'In Stock';
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,199 @@
+{% extends 'manage/base.html' %}
+{% block title %}Order #{{ order.order_id }} — CraftX3D Staff{% endblock %}
+{% block breadcrumb_parent %}Orders{% endblock %}
+{% block breadcrumb_current %}#{{ order.order_id }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">#{{ order.order_id }}</h1>
+    <p class="page-sub">{{ order.full_name }} · {{ order.created_at|date:"d M Y, g:i A" }}</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'manage:order_invoice' order.order_id %}" class="m-btn m-btn-outline" target="_blank" title="View Professional Invoice">📄 Invoice</a>
+    <a href="{% url 'manage:printing_invoice' order.order_id %}" class="m-btn m-btn-outline" target="_blank" title="4×6&quot; courier-style printing invoice">🖨️ Printing Invoice</a>
+    <form method="post" action="{% url 'manage:resend_order_email' order.order_id %}" style="display:inline;" onsubmit="return confirm('Resend the order confirmation email to {{ order.email }}?');">
+      {% csrf_token %}
+      <button type="submit" class="m-btn m-btn-outline" title="Resend order confirmation email">✉️ Resend Email</button>
+    </form>
+    <a href="{% url 'manage:orders' %}" class="m-btn m-btn-ghost">← Orders</a>
+    <select class="filter-select" onchange="updateStatus('{{ order.order_id }}', this.value)" aria-label="Update order status">
+      {% for val, label in order_statuses %}
+      <option value="{{ val }}" {% if order.status == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+<!-- Status Stepper -->
+<div class="order-status-stepper">
+  {% for step_key, step_label in steps %}
+  <div class="status-step">
+    <div class="step-dot {% if step_key == order.status %}active{% elif step_key in passed_steps %}done{% endif %}">
+      {% if step_key in passed_steps %}✓{% else %}{{ forloop.counter }}{% endif %}
+    </div>
+    <div class="step-label {% if step_key == order.status %}active{% endif %}">{{ step_label }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="order-detail-grid">
+  <!-- Items + Tracking -->
+  <div>
+    <!-- Order Items -->
+    <div class="m-card" style="margin-bottom:16px;">
+      <div class="m-card-header">
+        <span class="m-card-title">📦 Items Ordered</span>
+        <a href="{% url 'manage:order_invoice' order.order_id %}" class="m-btn m-btn-outline m-btn-sm" target="_blank">📄 View Invoice</a>
+        <a href="{% url 'manage:printing_invoice' order.order_id %}" class="m-btn m-btn-outline m-btn-sm" target="_blank">🖨️ Printing Invoice</a>
+      </div>
+      {% for item in order.items.all %}
+      <div style="padding:16px 20px;border-bottom:1px solid var(--m-border);">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <!-- Product thumbnail -->
+          <div style="width:60px;height:60px;background:var(--m-bg);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--m-border);">
+            {% if item.product and item.product.main_image %}
+              <img src="{{ item.product.main_image.image.url }}" alt="" style="width:100%;height:100%;object-fit:contain;padding:4px;" loading="lazy">
+            {% else %}📦{% endif %}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:0.95rem;margin-bottom:2px;">{{ item.product_name }}</div>
+            <div style="font-size:0.78rem;color:var(--m-muted);">Qty: {{ item.quantity }} × ₹{{ item.unit_price }} = <strong>₹{{ item.total_price }}</strong>
+              {% if item.selected_size %} · Size: <strong>{{ item.selected_size }}</strong>{% endif %}
+              {% if item.parcel_charge %} · 📦 Parcel: <strong>₹{{ item.parcel_charge }} × {{ item.quantity }} = ₹{{ item.parcel_charge_total }}</strong>{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Customization Data (clean display) -->
+        {% if item.customization_data %}
+        <div style="margin-top:12px;background:var(--m-bg);border-radius:8px;padding:12px 14px;border:1px solid var(--m-border);">
+          <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--m-muted);margin-bottom:8px;">📝 Customization Details</div>
+          {% with cd=item.customization_data %}
+          {% if cd.choices %}
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;">
+              {% for label, value in cd.choices.items %}
+              {% if 'photo' not in label|lower and 'logo' not in label|lower and 'image' not in label|lower %}
+              <div style="font-size:0.82rem;">
+                <span style="color:var(--m-muted);font-weight:700;">{{ label }}:</span>
+                <span style="margin-left:4px;color:var(--m-text);">{{ value|truncatechars:60 }}</span>
+              </div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          {% else %}
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;">
+              {% for k, v in cd.items %}
+                {% if v and k != '_builder' and k != 'uploaded_photos' and k != 'uploaded_files' and 'photo' not in k|lower and 'logo' not in k|lower and 'image' not in k|lower %}
+                <div style="font-size:0.8rem;">
+                  <span style="color:var(--m-muted);font-weight:600;">{{ k }}:</span>
+                  <span style="margin-left:4px;color:var(--m-text);">{{ v|truncatechars:60 }}</span>
+                </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+          {% endwith %}
+        </div>
+        {% endif %}
+
+        <!-- Uploaded Customization Images -->
+        {% if item.images.exists %}
+        <div style="margin-top:12px;">
+          <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--m-muted);margin-bottom:8px;">📸 Uploaded Photos / Files</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            {% for img in item.images.all %}
+            <div style="text-align:center;">
+              <a href="{{ img.image.url }}" target="_blank">
+                <img src="{{ img.image.url }}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--m-border);display:block;" alt="{{ img.slot_label }}" loading="lazy">
+              </a>
+              <a href="{{ img.image.url }}" download style="display:inline-block;margin-top:4px;padding:3px 8px;background:var(--m-teal);color:#fff;border-radius:4px;font-size:0.65rem;font-weight:700;text-decoration:none;">⬇ Download</a>
+              <div style="font-size:0.65rem;color:var(--m-muted);margin-top:2px;">{{ img.slot_label|default:"Photo" }}</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      <!-- Order Totals -->
+      <div style="padding:14px 20px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--m-muted);margin-bottom:4px;"><span>Subtotal</span><span>₹{{ order.subtotal }}</span></div>
+        {% if order.parcel_charge_total %}<div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--m-muted);margin-bottom:4px;"><span>📦 Parcel &amp; Packaging</span><span>₹{{ order.parcel_charge_total }}</span></div>{% endif %}
+        {% if order.discount_amount %}<div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--m-teal);margin-bottom:4px;"><span>Discount ({{ order.coupon_code }})</span><span>−₹{{ order.discount_amount }}</span></div>{% endif %}
+        {% if order.gift_wrap %}<div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--m-muted);margin-bottom:4px;"><span>🎁 Gift Wrap</span><span>₹{{ order.gift_wrap_price }}</span></div>{% endif %}
+        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1rem;border-top:1px solid var(--m-border);padding-top:8px;margin-top:4px;"><span>Total</span><span style="color:var(--m-accent);">₹{{ order.total }}</span></div>
+      </div>
+    </div>
+
+    <!-- Tracking -->
+    <div class="m-card">
+      <div class="m-card-header"><span class="m-card-title">🚚 Shipping & Tracking</span></div>
+      <div class="m-card-body">
+        <form method="post" action="{% url 'manage:order_status' order.order_id %}" class="tracking-form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="{{ order.status }}">
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Courier Name</label>
+            <input type="text" name="courier" class="m-field" value="{{ order.courier|default:'' }}" placeholder="e.g. India Post, Delhivery">
+          </div>
+          <div class="m-form-group-light">
+            <label class="m-form-label-light">Tracking Number</label>
+            <input type="text" name="tracking_number" class="m-field" value="{{ order.tracking_number|default:'' }}" placeholder="AWB / Tracking ID">
+          </div>
+          <div style="grid-column:1/-1;">
+            <button type="submit" class="m-btn m-btn-primary">Save Tracking Info</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer Info -->
+  <div class="order-cust-col">
+    <div class="m-card">
+      <div class="m-card-header"><span class="m-card-title">👤 Customer</span></div>
+      <div class="m-card-body" style="font-size:0.85rem;">
+        <div style="font-weight:700;margin-bottom:4px;">{{ order.full_name }}</div>
+        <div style="color:var(--m-muted);">📱 {{ order.phone }}</div>
+        {% if order.alternate_phone %}<div style="color:var(--m-muted);">📱 {{ order.alternate_phone }}</div>{% endif %}
+        {% if order.email %}<div style="color:var(--m-muted);">✉️ {{ order.email }}</div>{% endif %}
+      </div>
+    </div>
+    <div class="m-card">
+      <div class="m-card-header"><span class="m-card-title">📍 Delivery Address</span></div>
+      <div class="m-card-body" style="font-size:0.85rem;line-height:1.7;color:var(--m-muted);">
+        {{ order.address }},<br>
+        {{ order.city }}, {{ order.state }}<br>
+        PIN: {{ order.pincode }}
+      </div>
+    </div>
+    <div class="m-card">
+      <div class="m-card-header"><span class="m-card-title">💳 Payment</span></div>
+      <div class="m-card-body">
+        <span class="m-badge {% if order.payment_status == 'paid' %}badge-success{% elif order.payment_status == 'failed' %}badge-danger{% else %}badge-warning{% endif %}">{% if order.payment_status == 'paid' %}✅ PAID{% elif order.payment_status == 'failed' %}❌ FAILED{% else %}⏳ PENDING{% endif %}</span>
+        <div style="margin-top:8px;font-weight:700;color:var(--m-accent);">₹{{ order.total }}</div>
+      </div>
+    </div>
+    {% if order.notes %}
+    <div class="m-card">
+      <div class="m-card-header"><span class="m-card-title">📝 Customer Notes</span></div>
+      <div class="m-card-body" style="font-size:0.85rem;color:var(--m-muted);font-style:italic;">{{ order.notes }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateStatus(orderId, status) {
+  fetch(`/manage/orders/${orderId}/status/`, {
+    method:'POST',
+    headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/x-www-form-urlencoded'},
+    body:`status=${status}`
+  }).then(r=>r.json()).then(d=>{ if(d.success) location.reload(); });
+}
+</script>
+{% endblock %}

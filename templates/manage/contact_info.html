@@ -1,0 +1,35 @@
+{% extends 'manage/base.html' %}
+{% block title %}Contact Info — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Config{% endblock %}
+{% block breadcrumb_current %}Contact Info{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Contact Info</h1><p class="page-sub">Shown on the Contact page and in the site footer</p></div>
+</div>
+<form method="post" action="{% url 'manage:contact_info' %}">
+  {% csrf_token %}
+  <div class="settings-grid">
+    <div>
+      <div class="form-section-card">
+        <div class="form-section-header">✉️ Email &amp; Phone</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><label class="m-form-label-light">Support Email</label><input type="email" name="email" class="m-field" value="{{ info.email }}" placeholder="support@yourdomain.com"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Phone Number</label><input type="text" name="phone" class="m-field" value="{{ info.phone }}" placeholder="+91 XXXXX XXXXX"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">WhatsApp Number</label><input type="text" name="whatsapp_number" class="m-field" value="{{ info.whatsapp_number }}" placeholder="919500295991 (digits only, with country code)"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="form-section-card">
+        <div class="form-section-header">📍 Address &amp; Hours</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light"><label class="m-form-label-light">Address</label><textarea name="address_line" class="m-field m-field-textarea" rows="3" placeholder="Full business address">{{ info.address_line }}</textarea></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Business Hours</label><input type="text" name="business_hours" class="m-field" value="{{ info.business_hours }}" placeholder="Mon–Sat, 9 AM – 7 PM"></div>
+          <div class="m-form-group-light"><label class="m-form-label-light">Google Maps Embed URL (optional)</label><input type="url" name="map_embed_url" class="m-field" value="{{ info.map_embed_url }}" placeholder="https://www.google.com/maps/embed?..."></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button type="submit" class="m-btn m-btn-primary" style="margin-top:16px;">Save Changes</button>
+</form>
+{% endblock %}
