@@ -5,238 +5,164 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Printing Invoice #{{ order.order_id }} — CraftX3D</title>
 <style>
+  /* Built for 4x6in thermal label printers (203 dpi, 1-bit black & white):
+     pure black text only, no greys / tints / emoji, sizes in pt (never tiny px),
+     bold for anything that must be read at a glance, thick solid rules. */
   * { margin:0; padding:0; box-sizing:border-box; }
-  html, body { background:#dcdcdc; font-family: Arial, Helvetica, sans-serif; color:#111; }
+  html, body {
+    background:#dcdcdc; color:#000;
+    font-family: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", Verdana, sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    text-rendering: geometricPrecision;
+  }
 
-  .no-print { max-width:4.6in; margin:20px auto 0; display:flex; gap:10px; justify-content:center; }
-  .btn-print, .btn-back { padding:9px 18px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+  .no-print { max-width:4.6in; margin:20px auto 0; display:flex; gap:10px; justify-content:center; font-family:Arial,sans-serif; }
+  .btn-print, .btn-back { padding:9px 18px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
   .btn-print { background:#1A4332; color:#fff; border:none; }
   .btn-back  { background:#fff; color:#1a1a1a; border:1.5px solid #ccc; }
+  .print-tip { max-width:4.6in; margin:8px auto 0; font:12px/1.4 Arial,sans-serif; color:#444; text-align:center; }
 
-  /* ── The 4x6in sheet ─────────────────────────────────────────────── */
+  /* ── The 4x6in label ─────────────────────────────────────────────── */
   .sheet {
-    width:4in;
-    min-height:6in;
-    margin:20px auto 40px;
+    width:4in; min-height:6in;
+    margin:16px auto 40px;
     background:#fff;
     box-shadow:0 4px 24px rgba(0,0,0,0.18);
-    padding:0.16in 0.18in;
-    font-size:7.3px;
-    line-height:1.4;
-    color:#111;
+    padding:0.12in 0.14in;
+    font-size:9pt;            /* body text — clear at 203 dpi */
+    line-height:1.25;
+    color:#000;
   }
+  .sheet b, .sheet .b { font-weight:700; }
 
-  .sh-top { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1.5px solid #111; padding-bottom:5px; margin-bottom:6px; }
-  .sh-brand { font-size:12px; font-weight:800; letter-spacing:0.01em; }
-  .sh-brand-tag { font-size:6.4px; color:#555; margin-top:1px; }
-  .sh-doctitle { text-align:right; }
-  .sh-doctitle .label { font-size:7.2px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
-  .sh-doctitle .sub { font-size:6.2px; color:#555; }
+  .sh-top { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:5px; }
+  .sh-brand { font-size:14pt; font-weight:800; line-height:1.1; }
+  .sh-doctitle { text-align:right; font-size:9pt; font-weight:800; text-transform:uppercase; }
 
-  .sh-soldby { margin-bottom:6px; }
-  .sh-soldby .h { font-size:6.4px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#555; margin-bottom:1px; }
-  .sh-soldby .addr { font-size:6.8px; line-height:1.5; }
+  .sh-soldby { font-size:8.5pt; margin-bottom:5px; }
+  .sh-soldby .h { font-weight:800; text-transform:uppercase; font-size:8pt; letter-spacing:0.03em; }
 
-  .sh-meta { display:grid; grid-template-columns:1fr 1fr; gap:2px 10px; border-top:1px dashed #999; border-bottom:1px dashed #999; padding:5px 0; margin-bottom:6px; }
-  .sh-meta div { font-size:6.8px; }
-  .sh-meta b { font-weight:700; }
+  .sh-meta { display:grid; grid-template-columns:1fr 1fr; gap:1px 8px; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:4px 0; margin-bottom:5px; font-size:8.5pt; }
 
-  .sh-gst { font-size:6.6px; margin-bottom:6px; }
-
-  table.sh-items { width:100%; border-collapse:collapse; margin-bottom:2px; }
+  table.sh-items { width:100%; border-collapse:collapse; margin-bottom:4px; }
   table.sh-items th {
-    background:#f0f0f0; border:0.75px solid #999; padding:3px 3px;
-    font-size:6.1px; font-weight:700; text-align:center; text-transform:uppercase;
+    border-top:1.5px solid #000; border-bottom:1.5px solid #000;
+    padding:3px 2px; font-size:8pt; font-weight:800; text-transform:uppercase; text-align:left;
   }
-  table.sh-items td {
-    border:0.75px solid #bbb; padding:3px 3px; font-size:6.5px; vertical-align:top;
-  }
-  table.sh-items td.num, table.sh-items th.num { text-align:right; }
-  table.sh-items td.center { text-align:center; }
-  .sh-prod-name { font-weight:700; }
-  .sh-prod-choice { font-size:5.8px; color:#666; margin-top:1px; }
+  table.sh-items td { border-bottom:1px solid #000; padding:3px 2px; font-size:9pt; vertical-align:top; }
+  table.sh-items .num { text-align:right; white-space:nowrap; }
+  table.sh-items .ctr { text-align:center; }
+  .sh-prod-name { font-weight:800; font-size:9.5pt; }
+  .sh-prod-choice { font-size:8pt; font-weight:600; margin-top:1px; }
 
-  .sh-totalrow td { font-weight:800; border-top:1.25px solid #111; background:#fafafa; }
+  .sh-sum { width:100%; border-collapse:collapse; }
+  .sh-sum td { padding:1.5px 2px; font-size:9pt; }
+  .sh-sum td.num { text-align:right; white-space:nowrap; }
+  .sh-sum tr.grand td { border-top:2px solid #000; border-bottom:2px solid #000; font-size:12pt; font-weight:800; padding:4px 2px; }
+  .sh-gstline { font-size:8pt; margin-top:2px; }
 
-  .sh-words { font-size:6.6px; margin:6px 0; padding-top:4px; border-top:1px dashed #999; }
-  .sh-words b { font-weight:700; }
+  .sh-words { font-size:8.5pt; margin:5px 0; }
 
-  .sh-addrgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:6px 0; }
-  .sh-addrbox { border:0.75px dashed #999; padding:5px 6px; }
-  .sh-addrbox .h { font-size:6.2px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; text-decoration:underline; margin-bottom:2px; }
-  .sh-addrbox .body { font-size:6.6px; line-height:1.55; }
+  .sh-ship { border:2px solid #000; padding:5px 7px; margin:5px 0; }
+  .sh-ship .h { font-size:8pt; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:2px; }
+  .sh-ship .name { font-size:11pt; font-weight:800; line-height:1.15; }
+  .sh-ship .body { font-size:10pt; line-height:1.3; font-weight:600; }
+  .sh-ship .phone { font-size:11pt; font-weight:800; margin-top:2px; }
 
-  .sh-footer { margin-top:6px; padding-top:5px; border-top:1px solid #111; font-size:5.7px; line-height:1.6; color:#333; }
-  .sh-footer .rc { margin-bottom:3px; }
-  .sh-footer ol { margin-left:11px; margin-top:2px; }
-  .sh-footer .thanks { font-size:6.4px; font-weight:700; color:#1A4332; margin-top:5px; }
-  .sh-footer .sysgen { font-size:5.7px; color:#555; margin-top:4px; font-style:italic; }
+  .sh-footer { margin-top:5px; padding-top:4px; border-top:1.5px solid #000; font-size:8pt; line-height:1.3; }
+  .sh-footer .thanks { font-weight:800; margin-top:2px; }
 
   @media print {
     html, body { background:#fff; }
-    .no-print { display:none !important; }
-    .sheet { box-shadow:none; margin:0 auto; }
+    .no-print, .print-tip { display:none !important; }
+    .sheet { box-shadow:none; margin:0; width:4in; min-height:0; }
     @page { size: 4in 6in; margin:0; }
+    table.sh-items tr, .sh-ship, .sh-sum { page-break-inside:avoid; }
   }
 </style>
 </head>
 <body>
 
 <div class="no-print">
-  <a href="{% url 'manage:order_detail' order.order_id %}" class="btn-back">← Back to Order</a>
-  <button onclick="window.print()" class="btn-print">🖨️ Print (4×6")</button>
+  <a href="{% url 'manage:order_detail' order.order_id %}" class="btn-back">&larr; Back to Order</a>
+  <button onclick="window.print()" class="btn-print">Print (4x6 in)</button>
 </div>
+<div class="print-tip">Printer settings: paper 4x6 in, margins None, scale 100%, headers/footers off.</div>
 
 <div class="sheet">
 
-  <!-- Top: brand + doc title -->
   <div class="sh-top">
-    <div>
-      <div class="sh-brand">{{ store_settings.company_legal_name|default:store_settings.store_name|default:"CraftX3D" }}</div>
-      <div class="sh-brand-tag">3D Printing Specialists</div>
-    </div>
-    <div class="sh-doctitle">
-      <div class="label">{% if show_gst %}Tax Invoice{% else %}Bill of Supply{% endif %}</div>
-      <div class="sub">(Original for Recipient)</div>
-    </div>
+    <div class="sh-brand">{{ store_settings.company_legal_name|default:store_settings.store_name|default:"CraftX3D" }}</div>
+    <div class="sh-doctitle">{% if show_gst %}Tax Invoice{% else %}Bill of Supply{% endif %}</div>
   </div>
 
-  <!-- Sold By -->
   {% if store_settings.invoice_enabled %}
   <div class="sh-soldby">
-    <div class="h">Sold By</div>
-    <div class="addr">
-      <b>{{ store_settings.company_legal_name|default:store_settings.store_name|default:"CraftX3D" }}</b><br>
-      {% if store_settings.company_address %}{{ store_settings.company_address|linebreaksbr }}{% endif %}
-      {% if store_settings.company_phone %}<br>📞 {{ store_settings.company_phone }}{% endif %}
-      {% if store_settings.company_email %}<br>✉️ {{ store_settings.company_email }}{% endif %}
-    </div>
+    <span class="h">Sold By:</span>
+    {% if store_settings.company_address %}{{ store_settings.company_address|linebreaksbr }}{% endif %}
+    {% if store_settings.company_phone %}<br>Ph: {{ store_settings.company_phone }}{% endif %}
+    {% if show_gst %}<br><b>GSTIN: {{ store_settings.gst_number }}</b>{% endif %}
   </div>
   {% endif %}
 
-  <!-- Order / Invoice meta -->
   <div class="sh-meta">
-    <div><b>Order No:</b> {{ order.order_id }}</div>
-    <div><b>Order Date:</b> {{ order.created_at|date:"d/m/Y" }}</div>
-    <div><b>Invoice No:</b> INV-{{ order.order_id }}</div>
-    <div><b>Invoice Date:</b> {{ printed_at|date:"d/m/Y" }}</div>
+    <div><b>Order:</b> {{ order.order_id }}</div>
+    <div><b>Date:</b> {{ order.created_at|date:"d/m/Y" }}</div>
+    <div><b>Invoice:</b> INV-{{ order.order_id }}</div>
+    <div><b>Printed:</b> {{ printed_at|date:"d/m/Y" }}</div>
   </div>
 
-  {% if show_gst %}
-  <div class="sh-gst"><b>GSTIN:</b> {{ store_settings.gst_number }}</div>
-  {% endif %}
-
-  <!-- Items table -->
   <table class="sh-items">
     <thead>
       <tr>
-        <th style="width:6%;">#</th>
-        <th style="width:30%;">Product</th>
-        <th class="num" style="width:11%;">Unit&nbsp;Price</th>
-        <th class="num" style="width:7%;">Qty</th>
-        <th class="num" style="width:11%;">Net&nbsp;Amt</th>
-        {% if show_gst %}
-        <th class="num" style="width:11%;">Taxable</th>
-        <th class="center" style="width:8%;">Tax%</th>
-        <th class="num" style="width:10%;">Tax&nbsp;Amt</th>
-        {% endif %}
-        <th class="num" style="width:12%;">Total</th>
+        <th style="width:50%;">Item</th>
+        <th class="num" style="width:18%;">Price</th>
+        <th class="ctr" style="width:10%;">Qty</th>
+        <th class="num" style="width:22%;">Amount</th>
       </tr>
     </thead>
     <tbody>
       {% for d in items_data %}
       <tr>
-        <td class="center">{{ d.sno }}</td>
         <td>
           <div class="sh-prod-name">{{ d.item.product_name }}</div>
           {% if d.item.selected_size %}<div class="sh-prod-choice">Size: {{ d.item.selected_size }}</div>{% endif %}
-          {% if d.item.parcel_charge %}<div class="sh-prod-choice">📦 Parcel: ₹{{ d.item.parcel_charge }} × {{ d.item.quantity }}</div>{% endif %}
         </td>
-        <td class="num">₹{{ d.item.unit_price }}</td>
-        <td class="num">{{ d.item.quantity }}</td>
-        <td class="num">₹{{ d.net_amount }}</td>
-        {% if show_gst %}
-        <td class="num">₹{{ d.taxable_amount }}</td>
-        <td class="center">{{ gst_rate }}%</td>
-        <td class="num">₹{{ d.tax_amount }}</td>
-        {% endif %}
-        <td class="num">₹{{ d.net_amount }}</td>
+        <td class="num">Rs.{{ d.item.unit_price }}</td>
+        <td class="ctr b">{{ d.item.quantity }}</td>
+        <td class="num b">Rs.{{ d.net_amount }}</td>
       </tr>
       {% endfor %}
-
-      {% if order.parcel_charge_total %}
-      <tr>
-        <td class="center">—</td>
-        <td colspan="{% if show_gst %}4{% else %}2{% endif %}">📦 Parcel &amp; Packaging Charge</td>
-        <td class="num" colspan="{% if show_gst %}2{% else %}1{% endif %}">—</td>
-        <td class="num">₹{{ order.parcel_charge_total }}</td>
-      </tr>
-      {% endif %}
-
-      {% if order.gift_wrap and order.gift_wrap_price %}
-      <tr>
-        <td class="center">—</td>
-        <td colspan="{% if show_gst %}4{% else %}2{% endif %}">Gift Wrap</td>
-        <td class="num" colspan="{% if show_gst %}2{% else %}1{% endif %}">—</td>
-        <td class="num">₹{{ order.gift_wrap_price }}</td>
-      </tr>
-      {% endif %}
-
-      {% if order.discount_amount %}
-      <tr>
-        <td class="center">—</td>
-        <td colspan="{% if show_gst %}4{% else %}2{% endif %}">Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</td>
-        <td class="num" colspan="{% if show_gst %}2{% else %}1{% endif %}">—</td>
-        <td class="num">−₹{{ order.discount_amount }}</td>
-      </tr>
-      {% endif %}
-
-      <tr class="sh-totalrow">
-        <td colspan="{% if show_gst %}5{% else %}3{% endif %}" style="text-align:right;">Total</td>
-        {% if show_gst %}<td class="num">₹{{ total_tax }}</td>{% endif %}
-        <td class="num">₹{{ order.total }}</td>
-      </tr>
     </tbody>
   </table>
 
-  <!-- Amount in words -->
-  <div class="sh-words"><b>Amount in Words:</b><br>{{ amount_in_words }}</div>
+  <table class="sh-sum">
+    {% if order.parcel_charge_total %}<tr><td>Parcel &amp; Packaging</td><td class="num">Rs.{{ order.parcel_charge_total }}</td></tr>{% endif %}
+    {% if order.gift_wrap and order.gift_wrap_price %}<tr><td>Gift Wrap</td><td class="num">Rs.{{ order.gift_wrap_price }}</td></tr>{% endif %}
+    {% if order.discount_amount %}<tr><td>Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</td><td class="num">-Rs.{{ order.discount_amount }}</td></tr>{% endif %}
+    <tr class="grand"><td>TOTAL</td><td class="num">Rs.{{ order.total }}</td></tr>
+  </table>
+  {% if show_gst %}
+  <div class="sh-gstline">Taxable value Rs.{{ total_taxable }} + GST {{ gst_rate }}% Rs.{{ total_tax }} (included in total)</div>
+  {% endif %}
 
-  <!-- Billing / Shipping -->
-  <div class="sh-addrgrid">
-    <div class="sh-addrbox">
-      <div class="h">Billing Address</div>
-      <div class="body">
-        {{ order.full_name }}<br>
-        {{ order.address }}<br>
-        {{ order.city }} - {{ order.pincode }}<br>
-        {{ order.state }}<br>
-        Contact: {{ order.phone }}
-      </div>
+  <div class="sh-words"><b>In words:</b> {{ amount_in_words }}</div>
+
+  <!-- Billing and shipping are the same person/address, so one clear box -->
+  <div class="sh-ship">
+    <div class="h">Ship To / Bill To</div>
+    <div class="name">{{ order.full_name }}</div>
+    <div class="body">
+      {{ order.address }}<br>
+      {{ order.city }} - {{ order.pincode }}<br>
+      {{ order.state }}
     </div>
-    <div class="sh-addrbox">
-      <div class="h">Shipping Address</div>
-      <div class="body">
-        {{ order.full_name }}<br>
-        {{ order.address }}<br>
-        {{ order.city }} - {{ order.pincode }}<br>
-        {{ order.state }}<br>
-        Contact: {{ order.phone }}
-      </div>
-    </div>
+    <div class="phone">Ph: {{ order.phone }}</div>
   </div>
 
-  <!-- Footer -->
   <div class="sh-footer">
-    <div class="rc">Whether tax is payable under reverse charge: No</div>
-    <div>Thank you for shopping with {{ store_settings.store_name|default:"CraftX3D" }}.</div>
-    <ol>
-      <li>Please refer to the Return/Refund Policy published on our website for eligibility.</li>
-      <li>For customized/made-to-order items, exchanges may not be applicable.</li>
-      <li>Any disputes are subject to the jurisdiction where the seller is registered.</li>
-    </ol>
-    <div class="thanks">Thank you for shopping with us! 🎉</div>
-    <div class="sysgen">This is a system-generated invoice and does not require a signature.</div>
+    Reverse charge: No. Refund/return terms are on our website; made-to-order items may not be exchangeable. System-generated invoice, no signature required.
+    <div class="thanks">Thank you for shopping with {{ store_settings.store_name|default:"CraftX3D" }}!</div>
   </div>
 
 </div>
