@@ -5209,29 +5209,30 @@ label.field-invalid {
 }
 
 
-/* ═══ HOME BANNER — always show the whole image, never crop it ═══════════ */
+/* ═══ HOME BANNER — fixed to half the screen height; slides scroll inside it ═══ */
+#heroBanner { height: 50vh; height: 50svh; min-height: 220px; max-height: 560px; }
+#bannerTrack { height: 100%; }
 .banner-slide {
-  flex: 0 0 100%; width: 100%; min-width: 100%;
+  flex: 0 0 100%; width: 100%; min-width: 100%; height: 100%;
   position: relative; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   background: #111;
 }
-/* Soft blurred copy of the banner fills any spare space at the sides/top, so a
-   banner that is not exactly the page's shape never shows ugly empty bars. */
+/* Soft blurred copy of the banner fills any spare space at the sides, so a
+   banner that is not exactly the box's shape never shows ugly empty bars. */
 .banner-slide-bg {
   position: absolute; inset: -20px;
   background-size: cover; background-position: center;
   filter: blur(22px) brightness(.8); transform: scale(1.05);
 }
-.banner-slide-link { position: relative; display: block; width: 100%; text-decoration: none; z-index: 1; }
+.banner-slide-link { position: relative; display: block; width: 100%; height: 100%; text-decoration: none; z-index: 1; }
 .banner-slide-img {
   display: block; margin: 0 auto;
-  width: 100%; height: auto;                 /* natural proportions = no cropping */
-  max-height: calc(100vh - 130px);           /* never taller than the screen */
-  object-fit: contain;
+  width: 100%; height: 100%;                 /* fill the half-screen box */
+  object-fit: contain;                       /* whole image visible, never cropped */
 }
 .banner-slide-cta {
-  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%);
   z-index: 2; white-space: nowrap;
 }
 .banner-slide-cta span {
@@ -5241,7 +5242,7 @@ label.field-invalid {
   box-shadow: 0 4px 14px rgba(0,0,0,.3);
 }
 @media (max-width: 640px) {
-  .banner-slide-cta { bottom: 10px; }
+  .banner-slide-cta { bottom: 26px; }
   .banner-slide-cta span { padding: 7px 18px; font-size: 0.78rem; }
 }
 

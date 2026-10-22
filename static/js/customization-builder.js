@@ -279,12 +279,17 @@ CustomizationBuilder.prototype._renderTextColours = function(s) {
     html += '<div class="cb-field-row"><label class="cb-label-sm">Title for this colour slot</label>';
     html += '<input type="text" class="m-field" data-bind="text_colours.slots.'+i+'.title" value="' + this._esc(sl.title||'') + '" placeholder="e.g. Main Text Colour"></div>';
     (sl.colours||[]).forEach(function(col,j) {
-      html += '<div class="cb-item-row">' +
-        '<input type="text" class="m-field" data-bind="text_colours.slots.'+i+'.colours.'+j+'.name" value="' + this._esc(col.name||'') + '" placeholder="Colour name">' +
-        '<div style="display:flex;align-items:center;gap:4px"><input type="color" class="cb-color-input" data-bind="text_colours.slots.'+i+'.colours.'+j+'.hex" value="' + (col.hex||'#000000') + '"><span class="cb-color-preview" style="background:' + (col.hex||'#000000') + '"></span></div>' +
+      var base = 'text_colours.slots.'+i+'.colours.'+j;
+      var dual = !!col.dual;
+      html += '<div style="flex-wrap:wrap" class="cb-item-row cb-tc-row' + (dual ? ' cb-tc-dual' : '') + '">' +
+        '<input type="text" class="m-field" data-bind="'+base+'.name" value="' + this._esc(col.name||'') + '" placeholder="' + (dual ? 'Dual colour name, e.g. Red & Gold' : 'Colour name') + '">' +
+        '<div style="display:flex;align-items:center;gap:4px"><input type="color" class="cb-color-input" data-bind="'+base+'.hex" value="' + (col.hex||'#000000') + '"><span class="cb-color-preview" style="background:' + (col.hex||'#000000') + '"></span></div>' +
+        (dual ? '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:0.8rem;color:#9CA3AF">+</span><input type="color" class="cb-color-input" data-bind="'+base+'.hex2" value="' + (col.hex2||'#FFFFFF') + '"><span class="cb-color-preview" style="background:' + (col.hex2||'#FFFFFF') + '"></span></div>' : '') +
+        '<button type="button" class="cb-add-btn-sm" style="margin:0;white-space:nowrap" data-action="toggle-tc-dual" data-slot="'+i+'" data-idx="'+j+'" title="Switch between single and dual colour">' + (dual ? 'Make single' : 'Make dual') + '</button>' +
         '<button type="button" class="cb-remove-btn" data-action="remove-tc-colour" data-slot="'+i+'" data-idx="'+j+'">✕</button></div>';
     }, this);
-    html += '<button type="button" class="cb-add-btn-sm" data-action="add-tc-colour" data-slot="'+i+'">+ Add Colour</button></div>';
+    html += '<button type="button" class="cb-add-btn-sm" data-action="add-tc-colour" data-slot="'+i+'">+ Add Colour</button> ' +
+            '<button type="button" class="cb-add-btn-sm" data-action="add-tc-dual-colour" data-slot="'+i+'">+ Add Dual Colour</button></div>';
   }, this);
   return html;
 };
@@ -463,6 +468,18 @@ CustomizationBuilder.prototype._handleAction = function(action, data) {
       s.text_colours.slots[si].colours.push({name:'',hex:'#000000'});
       break;
     }
+    case 'add-tc-dual-colour': {
+      var sd = parseInt(data.slot);
+      if (!s.text_colours.slots[sd]) s.text_colours.slots[sd] = {title:'Text Colour '+(sd+1),colours:[]};
+      s.text_colours.slots[sd].colours.push({name:'',hex:'#000000',dual:true,hex2:'#FFFFFF'});
+      break;
+    }
+    case 'toggle-tc-dual': {
+      var tc = s.text_colours.slots[parseInt(data.slot)].colours[parseInt(data.idx)];
+      tc.dual = !tc.dual;
+      if (tc.dual && !tc.hex2) tc.hex2 = '#FFFFFF';
+      break;
+    }
     case 'remove-tc-colour': s.text_colours.slots[parseInt(data.slot)].colours.splice(parseInt(data.idx),1); break;
     case 'add-size': s.size_options.sizes.push({label:'',extra_price:0}); break;
     case 'remove-size': s.size_options.sizes.splice(parseInt(data.idx),1); break;
@@ -489,6 +506,7 @@ CustomizationBuilder.prototype._handleAction = function(action, data) {
     'add-model-option':'select_model', 'remove-model-option':'select_model',
     'add-colour-combo':'colour_combos', 'remove-colour-combo':'colour_combos',
     'add-tc-colour':'text_colours', 'remove-tc-colour':'text_colours',
+    'add-tc-dual-colour':'text_colours', 'toggle-tc-dual':'text_colours',
     'add-size':'size_options', 'remove-size':'size_options',
     'add-pack':'pack_options', 'remove-pack':'pack_options',
     'add-font':'personalisation', 'remove-font':'personalisation',

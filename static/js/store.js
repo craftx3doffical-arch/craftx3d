@@ -545,7 +545,8 @@ function initCustomizationRenderer() {
         html += '<div style="margin-bottom:12px"><div class="custom-sublabel">' + sl.title + '</div><div class="custom-colour-chips">';
         sl.colours.forEach(function(col, ci) {
           html += '<label class="custom-colour-chip' + (ci === 0 ? ' selected' : '') + '" title="' + col.name + '"><input type="radio" name="custom_tc_' + i + '" value="' + col.name + '" style="display:none"' + (ci === 0 ? ' checked' : '') + '>';
-          html += '<span class="custom-chip-swatch" style="background:' + col.hex + '"></span><span class="custom-chip-name">' + col.name + '</span></label>';
+          var swBg = (col.dual && col.hex2) ? 'linear-gradient(135deg,' + col.hex + ' 50%,' + col.hex2 + ' 50%)' : col.hex;
+          html += '<span class="custom-chip-swatch" style="background:' + swBg + '"></span><span class="custom-chip-name">' + col.name + '</span></label>';
         });
         html += '</div></div>';
       });
