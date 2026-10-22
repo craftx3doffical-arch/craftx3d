@@ -70,6 +70,11 @@ def manage_logout(request):
 # ─── DASHBOARD ───────────────────────────────────────────────────────────────
 @staff_required
 def dashboard(request):
+    try:
+        from store.views import expire_stale_unpaid_orders
+        expire_stale_unpaid_orders(request=None)
+    except Exception:
+        pass
     today = timezone.now().date()
     seven_days_ago = today - timedelta(days=7)
     stats = {

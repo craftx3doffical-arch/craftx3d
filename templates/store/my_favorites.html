@@ -21,8 +21,6 @@
           <div class="oos-overlay">
             <span class="oos-badge">🔔 Coming Soon</span>
           </div>
-          {% elif product.discount_percent %}
-          <span class="discount-badge">-{{ product.discount_percent }}%</span>
           {% endif %}
           {% if product.is_in_stock %}
           <a href="{% url 'store:product_detail' product.slug %}" class="quick-view-btn" onclick="event.stopPropagation();">Quick view <span class="qv-eye">👁</span></a>
@@ -33,6 +31,7 @@
         <svg viewBox="0 0 24 24"><path d="M12 21s-6.7-4.35-9.3-8.1C.9 10.1 1.4 6.6 4.2 4.9c2.4-1.5 5.3-.8 7 1.2l.8 1 .8-1c1.7-2 4.6-2.7 7-1.2 2.8 1.7 3.3 5.2 1.5 8-2.6 3.75-9.3 8.1-9.3 8.1z"/></svg>
       </button>
       <div class="product-body">
+          {% if product.is_in_stock and product.discount_percent %}<div class="offer-row"><span class="discount-badge-below">-{{ product.discount_percent }}% OFF</span></div>{% endif %}
         {% if product.category %}
         <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">{{ product.category.name }}</div>
         {% endif %}

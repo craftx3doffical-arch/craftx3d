@@ -175,6 +175,7 @@ function initAddToCart() {
     }
 
     // 3. Submit via AJAX
+    syncSizePrice();
     if (addBtn) { addBtn.classList.add('btn-locked'); addBtn.textContent = 'Adding…'; }
     var formData = new FormData(form);
 
@@ -557,7 +558,7 @@ function initCustomizationRenderer() {
       sec.sizes.forEach(function(sz, i) {
         var extra = parseFloat(sz.extra_price) || 0;
         html += '<label class="size-pill' + (i === 0 ? ' active' : '') + '" style="cursor:pointer">' +
-          '<input type="radio" name="custom_size" value="' + sz.label + '" style="display:none"' +
+          '<input type="radio" name="custom_size" value="' + sz.label + '" data-extra="' + extra + '" style="display:none"' +
           (i === 0 ? ' checked' : '') +
           ' onchange="updateSizePrice(' + extra + '); document.querySelectorAll(\'.size-pill\').forEach(p=>p.classList.remove(\'active\')); this.closest(\'.size-pill\').classList.add(\'active\')">' +
           sz.label + (extra > 0 ? ' <span style=\'font-size:0.78em;color:var(--teal);\'>+₹' + extra + '</span>' : '') +
@@ -729,6 +730,29 @@ function initCustomizationRenderer() {
 
 // Clears everything the customer filled into the customization area after the
 // item is added to the cart, so the previews/selections don't linger.
+
+/* Keep the displayed price + highlighted pill in step with the size radio that is
+   actually checked. Runs after the form is (re)built or reset, when the browser
+   restores a form (back button), and again right before Add to Cart, so the price
+   on screen always matches what is sent to the cart. */
+function syncSizePrice() {
+  var r = document.querySelector('#addToCartForm input[name="custom_size"]:checked') ||
+          document.querySelector('#addToCartForm input[name="selected_size"]:checked');
+  if (!r) return;
+  var extra = parseFloat(r.getAttribute('data-extra'));
+  if (isNaN(extra)) {
+    var m = (r.getAttribute('onchange') || '').match(/updateSizePrice\(([-0-9.]+)\)/);
+    extra = m ? parseFloat(m[1]) : 0;
+  }
+  if (typeof updateSizePrice === 'function') updateSizePrice(extra || 0);
+  var pill = r.closest('.size-pill');
+  if (pill) {
+    document.querySelectorAll('#addToCartForm .size-pill').forEach(function(p) { p.classList.remove('active'); });
+    pill.classList.add('active');
+  }
+}
+window.addEventListener('pageshow', function() { setTimeout(syncSizePrice, 50); });
+
 function resetCustomizationForm(form) {
   // 1) JSON-builder fields: re-render them from scratch (regenerates every
   //    photo slot, text field, dropdown, etc. in their pristine state).
@@ -747,6 +771,8 @@ function resetCustomizationForm(form) {
   // 4) Reset quantity back to 1.
   var qty = document.getElementById('qty');
   if (qty) qty.value = 1;
+  // 5) The form is back on the first size — put the price back to match it.
+  syncSizePrice();
 }
 
 function previewCustomPhoto(input, idx) {
@@ -1083,14 +1109,28 @@ function closeCartDrawer() {
   document.body.style.overflow = '';
 }
 
+var _cartBusy = {};
+function _cartCsrf() {
+  var m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+  if (m) return decodeURIComponent(m[1]);
+  return (typeof CSRF_TOKEN !== 'undefined') ? CSRF_TOKEN : '';
+}
 function drawerUpdateCart(itemId, action) {
+  if (_cartBusy[itemId]) return;           // ignore double-taps while a request is running
+  _cartBusy[itemId] = true;
+  var rowEl = document.getElementById('drawer-item-' + itemId);
+  if (rowEl) rowEl.style.opacity = '0.55';
   fetch('/cart/update/' + itemId + '/', {
     method: 'POST',
-    headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { 'X-CSRFToken': _cartCsrf(), 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'action=' + action
-  }).then(function(r) { return r.json(); }).then(function(data) {
-    if (!data.success) return;
-    if (action === 'remove') {
+  }).then(function(r) {
+    if (!r.ok) throw new Error('http ' + r.status);
+    return r.json();
+  }).then(function(data) {
+    _cartBusy[itemId] = false;
+    if (!data.success) throw new Error('not ok');
+    if (action === 'remove' || data.removed || data.already_removed) {
       var el = document.getElementById('drawer-item-' + itemId);
       if (el) el.remove();
       var items = document.querySelectorAll('.cart-drawer-item');
@@ -1099,6 +1139,7 @@ function drawerUpdateCart(itemId, action) {
         if (body) body.innerHTML = '<div class="cart-drawer-empty"><div style="font-size:3.5rem;margin-bottom:16px;">🛒</div><div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Your cart is empty</div><div style="font-size:0.85rem;color:var(--text-muted);">Add items to get started</div></div>';
       }
     } else {
+      if (rowEl) rowEl.style.opacity = '';
       var qEl = document.getElementById('drawer-qty-' + itemId);
       if (qEl) qEl.textContent = data.quantity;
       var pEl = document.getElementById('drawer-price-' + itemId);
@@ -1122,6 +1163,12 @@ function drawerUpdateCart(itemId, action) {
     }
     var countLabel = document.getElementById('cartCountLabel');
     if (countLabel) countLabel.textContent = data.cart_count || 0;
+  }).catch(function() {
+    // Anything went wrong (expired session, network, stale page): never fail
+    // silently — tell the customer and reload the cart from the server.
+    _cartBusy[itemId] = false;
+    if (typeof showToast === 'function') showToast('Cart refreshed — please try again.', 'info');
+    if (typeof refreshCartDrawer === 'function') refreshCartDrawer();
   });
 }
 

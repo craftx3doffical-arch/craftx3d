@@ -22,6 +22,7 @@
         <div>
           <div class="cart-item-name">{{ item.product.name }}</div>
           {% if item.selected_size %}<div style="font-size:0.78rem;color:var(--text-muted);">Size: {{ item.selected_size }}</div>{% endif %}
+          {% for label, value in item.customization_data.choices.items %}<div style="font-size:0.78rem;color:var(--text-muted);line-height:1.4;">{{ label }}: <strong>{{ value|truncatechars:60 }}</strong></div>{% endfor %}
           {% if item.customization_data %}
           <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">
             {% for key, val in item.customization_data.items %}
@@ -192,14 +193,20 @@
 <script>
 const CART_CSRF = '{{ csrf_token }}';
 
+const _cartPageBusy = {};
 function updateCart(itemId, action) {
+  if (_cartPageBusy[itemId]) return;
+  _cartPageBusy[itemId] = true;
+  const _csrfMatch = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+  const _csrf = _csrfMatch ? decodeURIComponent(_csrfMatch[1]) : CART_CSRF;
   fetch(`/cart/update/${itemId}/`, {
     method: 'POST',
-    headers: { 'X-CSRFToken': CART_CSRF, 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { 'X-CSRFToken': _csrf, 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `action=${action}`
-  }).then(r => r.json()).then(data => {
+  }).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(data => {
+    _cartPageBusy[itemId] = false;
     if(data.success) {
-      if(action === 'remove') {
+      if(action === 'remove' || data.removed || data.already_removed) {
         document.getElementById(`cart-item-${itemId}`)?.remove();
       } else {
         const qtyEl = document.getElementById(`qty-${itemId}`);
@@ -234,10 +241,14 @@ function updateCart(itemId, action) {
       if(typeof refreshCartDrawer === 'function') refreshCartDrawer();
       showToast(action === 'remove' ? 'Item removed' : 'Cart updated', 'info');
       // If cart is now empty, reload the page to show the proper empty-cart UI
-      if(action === 'remove' && n === 0) {
+      if((action === 'remove' || data.removed || data.already_removed) && n === 0) {
         setTimeout(() => window.location.reload(), 600);
       }
     }
+  }).catch(() => {
+    _cartPageBusy[itemId] = false;
+    showToast('Cart refreshed — please try again.', 'info');
+    setTimeout(() => window.location.reload(), 700);
   });
 }
 

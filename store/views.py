@@ -463,6 +463,13 @@ def add_to_cart(request, product_id):
 
             elif key == 'size_options':
                 val = request.POST.get('custom_size', '').strip()
+                _valid_sizes = [sz.get('label') for sz in sec.get('sizes', []) if sz.get('label')]
+                if _valid_sizes and val not in _valid_sizes:
+                    _msg = 'Please select a size.'
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'success': False, 'message': _msg}, status=400)
+                    messages.error(request, _msg)
+                    return redirect('store:product_detail', slug=product.slug)
                 if val:
                     customer_choices[sec.get('title') or 'Size'] = val
                     # This is the JSON-builder size selector (distinct from the
@@ -615,8 +622,22 @@ def add_to_cart(request, product_id):
 @require_POST
 def update_cart(request, item_id):
     cart = get_or_create_cart(request)
-    item = get_object_or_404(CartItem, pk=item_id, cart=cart)
     action = request.POST.get('action')
+    item = CartItem.objects.filter(pk=item_id, cart=cart).first()
+    if item is None:
+        # Already removed (double tap, stale drawer, another tab). Treat as
+        # success and return the real cart so the page re-syncs instead of
+        # failing silently with a 404.
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            cart.refresh_from_db()
+            return JsonResponse({
+                'success': True, 'already_removed': True, 'quantity': 0, 'item_total': 0,
+                'cart_subtotal': float(cart.subtotal),
+                'cart_parcel_charge': float(cart.parcel_charge_total),
+                'cart_total': float(cart.total), 'cart_count': cart.item_count,
+            })
+        return redirect('store:cart')
+    removed = False
     if action == 'increase':
         item.quantity += 1
         item.save()
@@ -625,15 +646,18 @@ def update_cart(request, item_id):
             item.quantity -= 1
             item.save()
         else:
-            item.delete()
+            item.delete()      # "−" on quantity 1 removes the line
+            removed = True
     elif action == 'remove':
         item.delete()
+        removed = True
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         cart.refresh_from_db()
         return JsonResponse({
             'success': True,
-            'quantity': item.quantity if action != 'remove' else 0,
-            'item_total': float(item.total_price) if action != 'remove' else 0,
+            'removed': removed,
+            'quantity': 0 if removed else item.quantity,
+            'item_total': 0 if removed else float(item.total_price),
             'cart_subtotal': float(cart.subtotal),
             'cart_parcel_charge': float(cart.parcel_charge_total),
             'cart_total': float(cart.total),
@@ -825,6 +849,9 @@ def pincode_lookup(request, pincode):
 # ─── CHECKOUT ────────────────────────────────────────────────────────────────
 @login_required
 def checkout(request):
+    # Release anything this customer left unpaid earlier (closed tab, etc.)
+    # so stock and their cart are back before we look at the cart.
+    expire_stale_unpaid_orders(request=request, user=request.user)
     cart = get_or_create_cart(request)
     if cart.item_count == 0:
         messages.warning(request, 'Your cart is empty.')
@@ -833,6 +860,10 @@ def checkout(request):
     saved_addresses = request.user.saved_addresses.all()
 
     if request.method == 'POST':
+        # Never create an order we cannot collect payment for.
+        if not (settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET):
+            messages.error(request, 'Online payment is temporarily unavailable, so your order was not placed. Please try again shortly or contact support.')
+            return redirect('store:checkout')
         # ── Option A: customer picked a saved address ──
         selected_id = request.POST.get('selected_address_id', '').strip()
         if selected_id:
@@ -1101,6 +1132,133 @@ def _old_checkout_unused(request):
     return render(request, 'store/checkout.html', context)
 
 
+# ─── UNPAID ORDER HANDLING ───────────────────────────────────────────────────
+# An order only counts as "placed" once payment is verified. Anything else
+# (customer closes the tab, network drops, payment fails, card declined…) is
+# cancelled automatically, stock + coupon are given back, and the items return
+# to the customer's cart. Nothing is ever left sitting in "Awaiting Payment".
+UNPAID_ORDER_TTL_MINUTES = 20
+
+
+def _restore_order_to_cart(order, cart, only_if_empty=False):
+    """Put an unpaid order's items back into the cart, keeping size and
+    customisation, and merging only into an identical line."""
+    if only_if_empty and cart.items.exists():
+        return
+    for item in order.items.select_related('product').all():
+        if item.product is None:
+            continue
+        cust = dict(item.customization_data or {})
+        size = cust.pop('selected_size', '') or ''
+        existing = None
+        for ci in CartItem.objects.filter(cart=cart, product=item.product, selected_size=size):
+            if (ci.customization_data or {}) == cust:
+                existing = ci
+                break
+        if existing:
+            existing.quantity += item.quantity
+            existing.save(update_fields=['quantity'])
+        else:
+            CartItem.objects.create(
+                cart=cart,
+                product=item.product,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                customization_data=cust,
+                selected_size=size,
+                parcel_charge=item.parcel_charge,
+            )
+
+
+def _cancel_unpaid_order(order, cart=None, only_if_cart_empty=False):
+    """Cancel an order that was never paid. Safe to call more than once."""
+    from django.db import transaction
+    from django.db.models import F
+    with transaction.atomic():
+        o = Order.objects.select_for_update().get(pk=order.pk)
+        if o.payment_status == 'paid' or o.status == 'cancelled':
+            return False
+        o.payment_status = 'failed'
+        o.status = 'cancelled'
+        o.save(update_fields=['payment_status', 'status', 'updated_at'])
+        o.restore_stock()
+        if o.coupon_code:
+            Coupon.objects.filter(code=o.coupon_code, used_count__gt=0).update(used_count=F('used_count') - 1)
+    if cart is not None:
+        _restore_order_to_cart(o, cart, only_if_empty=only_if_cart_empty)
+    return True
+
+
+def _mark_order_paid(order, payment_id='', signature='', request=None):
+    """Finalize a verified payment. Idempotent. Returns True if it changed."""
+    from django.db import transaction
+    from django.db.models import F
+    with transaction.atomic():
+        o = Order.objects.select_for_update().get(pk=order.pk)
+        if o.payment_status == 'paid':
+            return False
+        was_cancelled = (o.status == 'cancelled')
+        o.payment_status = 'paid'
+        o.status = 'pending'          # officially placed — visible in manage portal
+        if payment_id:
+            o.razorpay_payment_id = payment_id
+        if signature:
+            o.razorpay_signature = signature
+        o.save(update_fields=['payment_status', 'status', 'razorpay_payment_id', 'razorpay_signature', 'updated_at'])
+        if was_cancelled:
+            # Paid after we had already released the stock (very late payment) — take it again.
+            for it in o.items.select_related('product').all():
+                if it.product_id and it.product.track_inventory:
+                    Product.objects.filter(pk=it.product_id).update(stock=F('stock') - it.quantity)
+            if o.coupon_code:
+                Coupon.objects.filter(code=o.coupon_code).update(used_count=F('used_count') + 1)
+    try:
+        from .emails import send_order_confirmation_email
+        send_order_confirmation_email(o, request=request)
+    except Exception:
+        logger.exception('Order confirmation email failed for order %s', o.order_id)
+    return True
+
+
+def expire_stale_unpaid_orders(request=None, user=None, minutes=UNPAID_ORDER_TTL_MINUTES):
+    """Cancel unpaid orders older than `minutes`. Before cancelling, ask Razorpay
+    whether the customer actually paid (e.g. paid, then closed the browser before
+    we heard back) — if so the order is confirmed instead. If Razorpay can't be
+    reached the order is left alone and re-checked next time, so a paid order is
+    never cancelled by mistake."""
+    cutoff = timezone.now() - timedelta(minutes=minutes)
+    qs = Order.objects.filter(status='awaiting_payment', payment_status='pending', created_at__lt=cutoff)
+    if user is not None:
+        qs = qs.filter(user=user)
+    keys_ok = bool(settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET)
+    client = None
+    done = 0
+    for order in list(qs[:50]):
+        try:
+            if keys_ok and order.razorpay_order_id:
+                try:
+                    import razorpay
+                    if client is None:
+                        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+                    pays = client.order.payments(order.razorpay_order_id).get('items', [])
+                    ok = next((p for p in pays if p.get('status') in ('captured', 'authorized')), None)
+                except Exception:
+                    logger.exception('Could not check Razorpay for order %s; will retry later', order.order_id)
+                    continue
+                if ok:
+                    _mark_order_paid(order, payment_id=ok.get('id', ''), request=request)
+                    done += 1
+                    continue
+            cart = None
+            if request is not None and request.user.is_authenticated and order.user_id == request.user.pk:
+                cart = get_or_create_cart(request)
+            if _cancel_unpaid_order(order, cart=cart, only_if_cart_empty=True):
+                done += 1
+        except Exception:
+            logger.exception('Failed to expire unpaid order %s', order.order_id)
+    return done
+
+
 @login_required
 def payment_page(request, order_id):
     """Creates a Razorpay Order for this store Order and renders the Razorpay
@@ -1111,7 +1269,14 @@ def payment_page(request, order_id):
     if order.payment_status == 'paid':
         return redirect('store:order_placed', order_id=order.order_id)
 
+    if order.status == 'cancelled':
+        messages.info(request, 'That payment session expired. Your items are back in your cart.')
+        return redirect('store:cart')
+
     if not (settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET):
+        # Can't take payment, so don't leave a dead order behind — cancel it
+        # and hand the items back to the cart.
+        _cancel_unpaid_order(order, cart=get_or_create_cart(request))
         return render(request, 'store/payment.html', {
             'order': order,
             'razorpay_key_id': '',
@@ -1196,16 +1361,7 @@ def payment_verify(request, order_id):
         return JsonResponse({'success': False, 'message': 'Verification error. Please contact support.'}, status=500)
 
     if valid:
-        order.payment_status = 'paid'
-        order.status = 'pending'          # Now officially placed — visible in manage portal
-        order.razorpay_payment_id = razorpay_payment_id
-        order.razorpay_signature = razorpay_signature
-        order.save(update_fields=['payment_status', 'status', 'razorpay_payment_id', 'razorpay_signature'])
-        try:
-            from .emails import send_order_confirmation_email
-            send_order_confirmation_email(order, request=request)
-        except Exception:
-            logger.exception('Order confirmation email failed for order %s', order_id)
+        _mark_order_paid(order, payment_id=razorpay_payment_id, signature=razorpay_signature, request=request)
         return JsonResponse({'success': True, 'redirect': reverse('store:order_placed', args=[order.order_id])})
 
     logger.warning('Payment signature verification failed for order %s payment %s', order_id, razorpay_payment_id)
@@ -1223,31 +1379,7 @@ def cancel_payment(request, order_id):
         return redirect('store:home')
 
     if order.payment_status != 'paid':
-        order.payment_status = 'failed'
-        order.status = 'cancelled'
-        order.save(update_fields=['payment_status', 'status'])
-        order.restore_stock()
-
-        # Restore each item back to the customer's cart.
-        # Use get_or_create_cart() so we target exactly the same cart object
-        # that checkout emptied (user-based for authenticated users).
-        cart = get_or_create_cart(request)
-        for item in order.items.select_related('product').all():
-            # Skip if product was deleted since the order was placed
-            if item.product is None:
-                continue
-            existing = CartItem.objects.filter(cart=cart, product=item.product).first()
-            if existing:
-                existing.quantity += item.quantity
-                existing.save(update_fields=['quantity'])
-            else:
-                CartItem.objects.create(
-                    cart=cart,
-                    product=item.product,
-                    quantity=item.quantity,
-                    unit_price=item.unit_price,
-                    parcel_charge=item.parcel_charge,
-                )
+        _cancel_unpaid_order(order, cart=get_or_create_cart(request))
 
     return redirect('store:home')
 
@@ -1269,27 +1401,7 @@ def payment_failed(request, order_id):
     cart_restored = False
 
     if order.payment_status != 'paid':
-        order.payment_status = 'failed'
-        order.status = 'cancelled'
-        order.save(update_fields=['payment_status', 'status'])
-        order.restore_stock()
-
-        cart = get_or_create_cart(request)
-        for item in order.items.select_related('product').all():
-            if item.product is None:
-                continue
-            existing = CartItem.objects.filter(cart=cart, product=item.product).first()
-            if existing:
-                existing.quantity += item.quantity
-                existing.save(update_fields=['quantity'])
-            else:
-                CartItem.objects.create(
-                    cart=cart,
-                    product=item.product,
-                    quantity=item.quantity,
-                    unit_price=item.unit_price,
-                    parcel_charge=item.parcel_charge,
-                )
+        _cancel_unpaid_order(order, cart=get_or_create_cart(request))
         cart_restored = True
 
     return render(request, 'store/payment_failed.html', {
@@ -1309,6 +1421,7 @@ def order_placed(request, order_id):
 # ─── MY ORDERS ───────────────────────────────────────────────────────────────
 @login_required
 def my_orders(request):
+    expire_stale_unpaid_orders(request=request, user=request.user)
     # Show all real orders: paid (active, shipped, delivered, admin-cancelled)
     # AND payment-failed cancellations so customer can see what happened.
     # Only hide 'awaiting_payment' drafts (incomplete checkout, no payment attempted).
@@ -1679,7 +1792,8 @@ def profile(request):
         messages.success(request, 'Your profile has been updated.')
         return redirect('store:profile')
 
-    orders = Order.objects.filter(user=user)
+    expire_stale_unpaid_orders(request=request, user=user)
+    orders = Order.objects.filter(user=user).exclude(status='awaiting_payment')
     context = {
         'profile': profile_obj,
         'order_count': orders.count(),
