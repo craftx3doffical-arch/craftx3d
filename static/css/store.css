@@ -5194,6 +5194,7 @@ label.field-invalid {
   padding: 12px 14px; border: 1.5px solid #E6E3DC; border-radius: 10px;
   transition: border-color .18s, box-shadow .18s;
 }
+.co-card .input-icon-wrap .form-input { padding-left: 44px; }   /* keep text clear of the ✉️ icon */
 .co-card .form-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,155,119,0.10); }
 /* Saved-address pick cards get the same card polish */
 .addr-pick-card {

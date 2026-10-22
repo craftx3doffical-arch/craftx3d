@@ -105,8 +105,18 @@
         <div class="co-card-head"><span class="co-step">2</span> Address &amp; contact</div>
 
       <div class="form-group">
-        <label class="form-label">House No. / Building / Street *</label>
-        <input type="text" name="address" id="address" class="form-input" value="{{ form.address.value|default:'' }}" placeholder="Flat, House no., Area, Street" required>
+        <label class="form-label">Flat, House no., Building, Apartment *</label>
+        <input type="text" name="address_line1" id="address_line1" class="form-input" value="{{ form.address_line1.value|default:'' }}" placeholder="e.g. 12B, Sunrise Apartments" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Area, Street, Sector, Village</label>
+        <input type="text" name="address_line2" id="address_line2" class="form-input" value="{{ form.address_line2.value|default:'' }}" placeholder="e.g. Anna Nagar">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Landmark <span style="font-weight:400;color:var(--text-muted);">(Optional)</span></label>
+        <input type="text" name="landmark" id="landmark" class="form-input" value="{{ form.landmark.value|default:'' }}" placeholder="e.g. Near City Hospital">
       </div>
 
       <div class="form-group">

@@ -72,10 +72,34 @@ class CheckoutForm(forms.Form):
     phone = forms.CharField(max_length=20)
     alternate_phone = forms.CharField(max_length=20, required=False)
     email = forms.EmailField()
-    address = forms.CharField(widget=forms.Textarea(attrs={'rows': 3}))
+    address_line1 = forms.CharField(max_length=250, required=False)   # Flat / House no. / Building
+    address_line2 = forms.CharField(max_length=250, required=False)   # Area / Street / Village
+    landmark = forms.CharField(max_length=200, required=False)
+    # Legacy single-box address (older clients/tests) — used when address_line1 is not sent.
+    address = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows': 3}))
     city = forms.CharField(max_length=100)
     state = forms.CharField(max_length=100)
     pincode = forms.CharField(max_length=10)
+
+    def clean(self):
+        data = super().clean()
+        line1 = (data.get('address_line1') or '').strip()
+        line2 = (data.get('address_line2') or '').strip()
+        landmark = (data.get('landmark') or '').strip()
+        if not line1:
+            legacy = (data.get('address') or '').strip()
+            if not legacy:
+                self.add_error('address_line1', 'Please enter your flat / house no. / building.')
+                return data
+            line1 = legacy
+        parts = [line1]
+        if line2:
+            parts.append(line2)
+        if landmark:
+            parts.append('Near ' + landmark)
+        data['address_line1'], data['address_line2'], data['landmark'] = line1, line2, landmark
+        data['address'] = ', '.join(parts)
+        return data
 
 
 class CustomSocialSignupForm(SocialSignupForm):
