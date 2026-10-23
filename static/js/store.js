@@ -560,7 +560,7 @@ function initCustomizationRenderer() {
       (sec.slots || []).filter(function(sl) { return sl.colours && sl.colours.length; }).forEach(function(sl, i) {
         html += '<div style="margin-bottom:12px"><div class="custom-sublabel">' + sl.title + '</div><div class="custom-colour-chips">';
         sl.colours.forEach(function(col, ci) {
-          html += '<label class="custom-colour-chip' + (ci === 0 ? ' selected' : '') + '" title="' + col.name + '"><input type="radio" name="custom_tc_' + i + '" value="' + col.name + '" style="display:none"' + (ci === 0 ? ' checked' : '') + '>';
+          html += '<label class="custom-colour-chip' + (ci === 0 ? ' selected' : '') + '"' + (col.image_id ? ' data-img="' + col.image_id + '"' : '') + ' title="' + col.name + '"><input type="radio" name="custom_tc_' + i + '" value="' + col.name + '" style="display:none"' + (ci === 0 ? ' checked' : '') + '>';
           var swBg = (col.dual && col.hex2) ? 'linear-gradient(135deg,' + col.hex + ' 50%,' + col.hex2 + ' 50%)' : col.hex;
           html += '<span class="custom-chip-swatch" style="background:' + swBg + '"></span><span class="custom-chip-name">' + col.name + '</span></label>';
         });
@@ -728,13 +728,16 @@ function initCustomizationRenderer() {
   });
   // Pre-selected (first) colour: show its photo straight away, and keep the
   // gallery from auto-rotating away from the chosen colour.
-  var _firstCombo = document.querySelector('.custom-combo-card.selected[data-img]');
+  var _firstCombo = document.querySelector('.custom-combo-card.selected[data-img]') ||
+                    document.querySelector('.custom-colour-chip.selected[data-img]');
   if (_firstCombo && typeof showColourImage === 'function') showColourImage(_firstCombo.dataset.img);
   document.querySelectorAll('.custom-colour-chip').forEach(function(chip) {
     chip.addEventListener('click', function() {
       var r = chip.querySelector('input'); if (!r) return;
       document.querySelectorAll('.custom-colour-chip input[name="' + r.name + '"]').forEach(function(x) { x.closest('.custom-colour-chip').classList.remove('selected'); });
       chip.classList.add('selected'); r.checked = true;
+      // Colour linked to a product photo → bring that photo to the front
+      if (chip.dataset.img && typeof showColourImage === 'function') showColourImage(chip.dataset.img);
     });
   });
   document.querySelectorAll('.size-pill input').forEach(function(r) {

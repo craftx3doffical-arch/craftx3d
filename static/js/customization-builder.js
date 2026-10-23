@@ -277,16 +277,20 @@ CustomizationBuilder.prototype._renderColourCombos = function(s) {
 // Lets staff link a colour to one of the product's own photos — when a customer
 // picks that colour on the product page, the gallery switches to this photo.
 CustomizationBuilder.prototype._renderComboImagePicker = function(c, i) {
+  return this._imagePicker(c.image_id, 'set-combo-image', 'data-idx="' + i + '"');
+};
+
+CustomizationBuilder.prototype._imagePicker = function(curId, action, attrs) {
   var imgs = window.CB_PRODUCT_IMAGES || [];
-  var html = '<div style="margin-top:10px"><label class="cb-label-sm">Product photo for this colour <span style="font-weight:400;color:#9CA3AF">(optional — shown when the customer picks it)</span></label>';
+  var html = '<div style="margin-top:8px;flex-basis:100%;width:100%"><label class="cb-label-sm">Product photo for this colour <span style="font-weight:400;color:#9CA3AF">(optional — shown when the customer picks it)</span></label>';
   if (!imgs.length) {
     return html + '<div style="font-size:.74rem;color:#9CA3AF">Save the product with its photos first, then edit it to link a photo to each colour.</div></div>';
   }
-  var cur = String(c.image_id || '');
+  var cur = String(curId || '');
   html += '<div class="cb-img-pick">';
-  html += '<button type="button" class="cb-img-opt' + (cur ? '' : ' cb-sel') + '" data-action="set-combo-image" data-idx="' + i + '" data-img="" title="No linked photo">None</button>';
+  html += '<button type="button" class="cb-img-opt' + (cur ? '' : ' cb-sel') + '" data-action="' + action + '" ' + attrs + ' data-img="" title="No linked photo">None</button>';
   imgs.forEach(function(im, n) {
-    html += '<button type="button" class="cb-img-opt' + (cur === String(im.id) ? ' cb-sel' : '') + '" data-action="set-combo-image" data-idx="' + i + '" data-img="' + im.id + '" title="Photo ' + (n + 1) + '"><img src="' + im.url + '" alt="Photo ' + (n + 1) + '"></button>';
+    html += '<button type="button" class="cb-img-opt' + (cur === String(im.id) ? ' cb-sel' : '') + '" data-action="' + action + '" ' + attrs + ' data-img="' + im.id + '" title="Photo ' + (n + 1) + '"><img src="' + im.url + '" alt="Photo ' + (n + 1) + '"></button>';
   });
   return html + '</div></div>';
 };
@@ -308,7 +312,8 @@ CustomizationBuilder.prototype._renderTextColours = function(s) {
         '<div style="display:flex;align-items:center;gap:4px"><input type="color" class="cb-color-input" data-bind="'+base+'.hex" value="' + (col.hex||'#000000') + '"><span class="cb-color-preview" style="background:' + (col.hex||'#000000') + '"></span></div>' +
         (dual ? '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:0.8rem;color:#9CA3AF">+</span><input type="color" class="cb-color-input" data-bind="'+base+'.hex2" value="' + (col.hex2||'#FFFFFF') + '"><span class="cb-color-preview" style="background:' + (col.hex2||'#FFFFFF') + '"></span></div>' : '') +
         '<button type="button" class="cb-add-btn-sm" style="margin:0;white-space:nowrap" data-action="toggle-tc-dual" data-slot="'+i+'" data-idx="'+j+'" title="Switch between single and dual colour">' + (dual ? 'Make single' : 'Make dual') + '</button>' +
-        '<button type="button" class="cb-remove-btn" data-action="remove-tc-colour" data-slot="'+i+'" data-idx="'+j+'">✕</button></div>';
+        '<button type="button" class="cb-remove-btn" data-action="remove-tc-colour" data-slot="'+i+'" data-idx="'+j+'">✕</button>' +
+        this._imagePicker(col.image_id, 'set-tc-image', 'data-slot="'+i+'" data-idx="'+j+'"') + '</div>';
     }, this);
     html += '<button type="button" class="cb-add-btn-sm" data-action="add-tc-colour" data-slot="'+i+'">+ Add Colour</button> ' +
             '<button type="button" class="cb-add-btn-sm" data-action="add-tc-dual-colour" data-slot="'+i+'">+ Add Dual Colour</button></div>';
@@ -508,6 +513,7 @@ CustomizationBuilder.prototype._handleAction = function(action, data) {
       if (tc.dual && !tc.hex2) tc.hex2 = '#FFFFFF';
       break;
     }
+    case 'set-tc-image': { var tcc = s.text_colours.slots[parseInt(data.slot)].colours[parseInt(data.idx)]; if (tcc) { if (data.img) tcc.image_id = parseInt(data.img); else delete tcc.image_id; } break; }
     case 'remove-tc-colour': s.text_colours.slots[parseInt(data.slot)].colours.splice(parseInt(data.idx),1); break;
     case 'add-size': s.size_options.sizes.push({label:'',price:0,compare_price:0}); break;
     case 'remove-size': s.size_options.sizes.splice(parseInt(data.idx),1); break;
@@ -534,7 +540,7 @@ CustomizationBuilder.prototype._handleAction = function(action, data) {
     'add-model-option':'select_model', 'remove-model-option':'select_model',
     'add-colour-combo':'colour_combos', 'remove-colour-combo':'colour_combos', 'set-combo-image':'colour_combos',
     'add-tc-colour':'text_colours', 'remove-tc-colour':'text_colours',
-    'add-tc-dual-colour':'text_colours', 'toggle-tc-dual':'text_colours',
+    'add-tc-dual-colour':'text_colours', 'toggle-tc-dual':'text_colours', 'set-tc-image':'text_colours',
     'add-size':'size_options', 'remove-size':'size_options',
     'add-pack':'pack_options', 'remove-pack':'pack_options',
     'add-font':'personalisation', 'remove-font':'personalisation',

@@ -23,7 +23,6 @@
           </div>
           {% endif %}
           {% if product.is_in_stock %}
-          <a href="{% url 'store:product_detail' product.slug %}" class="quick-view-btn" onclick="event.stopPropagation();">Quick view <span class="qv-eye">👁</span></a>
           {% endif %}
         </div>
       </a>
