@@ -5439,11 +5439,11 @@ label.field-invalid {
 .product-card .product-body .btn-add-cart { margin-top: auto; }
 .product-card .product-body .product-price-row { margin-bottom: 12px; }
 
-/* 2) Menu (3-bar) button sits on the LEFT, right after the logo, on mobile */
+/* 2) Menu (3-bar) button is FIRST on the left, then the logo (mobile) */
 @media (max-width: 768px) {
-  .navbar-brand { order: 1; margin-right: 0; }
-  .nav-toggle   { order: 2; margin-left: 2px; margin-right: auto; }
-  .navbar-right { order: 3; }
+  .nav-toggle   { order: 1; margin-left: -6px; margin-right: 0; }   /* menu button first */
+  .navbar-brand { order: 2; margin-right: 0; }                      /* logo right after it */
+  .navbar-right { order: 3; margin-left: auto; }                    /* profile + cart on the right */
 }
 
 /* 3) Quantity + Add to Cart + Buy — pinned to the bottom of the screen */
