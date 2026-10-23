@@ -93,6 +93,13 @@ class Product(models.Model):
     show_mega_deal = models.BooleanField(default=False, help_text='Show the red deal badge and "-X% price / M.R.P." block on the product page')
     mega_deal_label = models.CharField(max_length=60, default='Mega Festival Deal', blank=True, help_text='Text on the red badge')
 
+    # Sale countdown ("Sale ends in 05:46:08") — a real, fixed end time set by staff.
+    show_sale_timer = models.BooleanField(default=False, help_text='Show a sale countdown on the product page until the end time')
+    sale_timer_label = models.CharField(max_length=60, default='Sale ends in:', blank=True)
+    sale_timer_ends_at = models.DateTimeField(null=True, blank=True, help_text='When the sale ends. The countdown hides itself after this time.')
+    show_sale_stock = models.BooleanField(default=False, help_text='Show "Only N left at this price!" using the real stock count')
+    sale_stock_text = models.CharField(max_length=120, default='Only {n} left at this price!', blank=True, help_text='Use {n} where the stock number should appear')
+
     show_parcel_charge = models.BooleanField(default=False, help_text='Charge a separate parcel/packaging fee for this product')
     parcel_charge_title = models.CharField(max_length=100, default='Parcel & Packaging Fee', blank=True, help_text='Label shown next to the fee, e.g. "Parcel & Packaging Fee"')
     parcel_charge_price = models.DecimalField(max_digits=8, decimal_places=2, default=0, blank=True, help_text='Flat fee per unit, e.g. 100.00')
@@ -248,6 +255,18 @@ class Product(models.Model):
         if high < low:
             low, high = high, low
         return today + timedelta(days=low), today + timedelta(days=high)
+
+    @property
+    def sale_timer_active(self):
+        from django.utils import timezone
+        return bool(self.show_sale_timer and self.sale_timer_ends_at and self.sale_timer_ends_at > timezone.now())
+
+    @property
+    def sale_stock_message(self):
+        if not (self.show_sale_stock and self.track_inventory and self.stock > 0):
+            return ''
+        text = (self.sale_stock_text or 'Only {n} left at this price!')
+        return text.replace('{n}', str(self.stock))
 
     @property
     def is_in_stock(self):

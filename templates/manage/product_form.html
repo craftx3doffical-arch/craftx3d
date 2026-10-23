@@ -412,6 +412,35 @@
         </div>
       </div>
 
+      <!-- Sale countdown timer -->
+      <div class="form-section-card">
+        <div class="form-section-header">⏱️ Sale Countdown Timer</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showSaleTimer" name="show_sale_timer" {% if product.show_sale_timer %}checked{% endif %}><label class="toggle-track" for="showSaleTimer"></label><span class="toggle-label">Show “Sale ends in HRS : MIN : SEC” on the product page</span></div>
+          </div>
+          <div class="m-form-row" style="margin-top:10px;">
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Sale ends on (date &amp; time, IST)</label>
+              <input type="datetime-local" name="sale_timer_ends_at" class="m-field" value="{% if product.sale_timer_ends_at %}{{ product.sale_timer_ends_at|date:'Y-m-d\TH:i' }}{% endif %}">
+              <div style="font-size:0.75rem;color:#9CA3AF;margin-top:4px;">Fixed end time. The countdown disappears by itself once it passes.</div>
+            </div>
+            <div class="m-form-group-light">
+              <label class="m-form-label-light">Label</label>
+              <input type="text" name="sale_timer_label" class="m-field" maxlength="60" value="{{ product.sale_timer_label|default:'Sale ends in:' }}" placeholder="Sale ends in:">
+            </div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showSaleStock" name="show_sale_stock" {% if product.show_sale_stock %}checked{% endif %}><label class="toggle-track" for="showSaleStock"></label><span class="toggle-label">Show “Only N left at this price!” (uses the real stock count)</span></div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:10px;">
+            <label class="m-form-label-light">Stock message</label>
+            <input type="text" name="sale_stock_text" class="m-field" maxlength="120" value="{{ product.sale_stock_text|default:'Only {n} left at this price!' }}" placeholder="Only {n} left at this price!">
+            <div style="font-size:0.75rem;color:#9CA3AF;margin-top:4px;">Write <code>{n}</code> where the number goes. Needs “Track inventory” on.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- About Our Craft -->
       <div class="form-section-card">
         <div class="form-section-header">🎨 About Our Craft</div>

@@ -3093,7 +3093,9 @@ label.field-invalid {
   .navbar { padding: 0 14px; height: 70px; gap: 8px; }
   .navbar-brand-logo { height: 32px; max-width: 126px; }
   .navbar-nav { display: none; }
-  .nav-toggle { display: flex; }
+  .nav-toggle { display: flex; order: 3; margin-right: -6px; }   /* menu button moves to the right end */
+  .navbar-brand { order: 1; margin-right: auto; }                 /* logo sits at the far left */
+  .navbar-right { order: 2; }
   .nav-dropdown-panel { display: none; } /* mobile uses the drawer's own category toggle instead */
   .navbar-brand { font-size: 1.1rem; }
   .navbar-nav.open {
@@ -5408,3 +5410,19 @@ label.field-invalid {
 
 /* Nav "Customise" link */
 .nav-item-custom a { white-space: nowrap; }
+
+
+/* ═══ Sale countdown ═══ */
+.sale-timer { margin-top: 14px; padding: 14px 16px 12px; border: 1px solid #F0C27B; border-radius: 12px;
+  background: linear-gradient(135deg, #FFF8EC 0%, #FFF1DD 100%); }
+.sale-timer-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
+.sale-timer-label { font-size: 0.86rem; font-weight: 700; color: #B83A0E; letter-spacing: .01em; }
+.sale-timer-boxes { display: flex; align-items: center; gap: 6px; }
+.st-box { min-width: 46px; padding: 6px 6px 5px; border-radius: 8px; background: #E4470B; color: #fff; text-align: center;
+  box-shadow: 0 2px 6px rgba(228,71,11,0.25); line-height: 1; }
+.st-box b { display: block; font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.st-box small { display: block; margin-top: 3px; font-size: 0.58rem; font-weight: 600; letter-spacing: .08em; opacity: .92; }
+.st-sep { font-size: 1.2rem; font-weight: 800; color: #E4470B; margin-top: -4px; }
+.sale-timer-stock { margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); }
+.sale-timer-row + .sale-timer-stock { padding-top: 9px; border-top: 1px dashed #F0C27B; }
+@media (max-width: 420px) { .st-box { min-width: 42px; } .st-box b { font-size: 1.1rem; } .sale-timer { padding: 12px; } }

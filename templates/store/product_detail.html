@@ -146,6 +146,22 @@
       <div class="deal-tax">Inclusive of all taxes</div>
     </div>
 
+    {% if product.sale_timer_active or product.sale_stock_message %}
+    <div class="sale-timer" id="saleTimer"{% if product.sale_timer_active %} data-end="{{ product.sale_timer_ends_at|date:'c' }}"{% endif %}>
+      {% if product.sale_timer_active %}
+      <div class="sale-timer-row" id="saleTimerRow">
+        <span class="sale-timer-label"><span aria-hidden="true">🔥</span> {{ product.sale_timer_label|default:"Sale ends in:" }}</span>
+        <div class="sale-timer-boxes" role="timer" aria-live="off">
+          <div class="st-box"><b id="stH">00</b><small>HRS</small></div><span class="st-sep">:</span>
+          <div class="st-box"><b id="stM">00</b><small>MIN</small></div><span class="st-sep">:</span>
+          <div class="st-box"><b id="stS">00</b><small>SEC</small></div>
+        </div>
+      </div>
+      {% endif %}
+      {% if product.sale_stock_message %}<div class="sale-timer-stock">{{ product.sale_stock_message }}</div>{% endif %}
+    </div>
+    {% endif %}
+
     <!-- Shipping / parcel bar -->
     <div class="pd-ship-bar">
       <svg class="pd-ship-ico" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h13v10H1z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="5.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>
@@ -751,6 +767,31 @@ function toggleAccord(id, silent) {
   }
 }
 toggleAccord('descAccord1', true);   // open the first section on load, without scrolling
+
+/* ── Sale countdown ──────────────────────────────────────────────────────── */
+(function() {
+  var box = document.getElementById('saleTimer');
+  if (!box || !box.dataset.end) return;
+  var end = new Date(box.dataset.end).getTime();
+  if (isNaN(end)) return;
+  var h = document.getElementById('stH'), m = document.getElementById('stM'), s = document.getElementById('stS');
+  var row = document.getElementById('saleTimerRow');
+  var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+  function tick() {
+    var left = Math.floor((end - Date.now()) / 1000);
+    if (left <= 0) {            // sale is over — remove the countdown
+      clearInterval(t);
+      if (row) row.style.display = 'none';
+      if (!box.querySelector('.sale-timer-stock')) box.style.display = 'none';
+      return;
+    }
+    var hrs = Math.floor(left / 3600);
+    h.textContent = hrs > 99 ? String(hrs) : pad(hrs);   // 100+ hours keeps counting, no day roll-over
+    m.textContent = pad(Math.floor(left % 3600 / 60));
+    s.textContent = pad(left % 60);
+  }
+  var t = setInterval(tick, 1000); tick();
+})();
 
 /* ── Show all reviews ────────────────────────────────────────────────────── */
 function showAllReviews() {

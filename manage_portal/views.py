@@ -188,6 +188,20 @@ def _save_product(request, product=None):
     product.compare_price = float(cp) if cp else None
     if files.get('video'):
         product.video = files['video']
+    product.show_sale_timer = 'show_sale_timer' in data
+    product.sale_timer_label = data.get('sale_timer_label', '').strip() or 'Sale ends in:'
+    product.show_sale_stock = 'show_sale_stock' in data
+    product.sale_stock_text = data.get('sale_stock_text', '').strip() or 'Only {n} left at this price!'
+    _ends = data.get('sale_timer_ends_at', '').strip()
+    if _ends:
+        from django.utils.dateparse import parse_datetime
+        _dt = parse_datetime(_ends)
+        if _dt is not None:
+            if timezone.is_naive(_dt):
+                _dt = timezone.make_aware(_dt, timezone.get_current_timezone())
+            product.sale_timer_ends_at = _dt
+    else:
+        product.sale_timer_ends_at = None
     product.show_mega_deal = 'show_mega_deal' in data
     product.mega_deal_label = data.get('mega_deal_label', '').strip() or 'Mega Festival Deal'
     product.show_parcel_charge = 'show_parcel_charge' in data
