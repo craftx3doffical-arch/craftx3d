@@ -93,6 +93,15 @@
           </div>
           <div style="font-weight:700;white-space:nowrap;">₹{{ item.total_price }}</div>
         </div>
+        {% if order.status == 'delivered' and item.product %}
+        <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          {% if entry.can_review %}
+          <a href="{% url 'store:write_review' %}?product={{ item.product.pk }}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--gold);color:var(--charcoal);font-weight:800;font-size:0.82rem;border-radius:999px;text-decoration:none;">★ Rate &amp; Review this product</a>
+          {% elif entry.reviewed %}
+          <span style="font-size:0.8rem;color:var(--teal);font-weight:700;">✓ You reviewed this product</span>
+          {% endif %}
+        </div>
+        {% endif %}
         {% if entry.choices or entry.order_images %}
             <!-- Customization Details — same structured table style as the staff invoice -->
             <div style="margin-top:10px;background:#F8F6F2;border-radius:12px;padding:14px 16px;">

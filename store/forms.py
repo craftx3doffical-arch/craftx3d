@@ -5,15 +5,33 @@ from allauth.socialaccount.forms import SignupForm as SocialSignupForm
 from .models import Review, Enquiry, UserProfile
 
 
+def normalize_phone(raw):
+    """'+91 95002-95991', '09500295991', '9500295991' -> '9500295991' (last 10 digits)."""
+    digits = ''.join(ch for ch in (raw or '') if ch.isdigit())
+    if len(digits) > 10:
+        digits = digits[-10:]
+    return digits
+
+
 class CustomerRegistrationForm(forms.Form):
     full_name = forms.CharField(max_length=200, widget=forms.TextInput(attrs={'placeholder': 'Full Name'}))
-    phone = forms.CharField(max_length=20, required=False, widget=forms.TextInput(attrs={'placeholder': 'Phone Number'}))
-    email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'Email Address'}))
+    phone = forms.CharField(max_length=20, widget=forms.TextInput(attrs={'placeholder': 'Phone Number'}))
+    email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={'placeholder': 'Email (optional)'}))
     password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': 'Password'}))
     confirm_password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': 'Confirm Password'}))
 
+    def clean_phone(self):
+        phone = normalize_phone(self.cleaned_data.get('phone'))
+        if len(phone) != 10 or phone[0] not in '6789':
+            raise forms.ValidationError("Please enter a valid 10-digit mobile number.")
+        if User.objects.filter(username=phone).exists() or UserProfile.objects.filter(phone__endswith=phone).exists():
+            raise forms.ValidationError("An account with this phone number already exists. Please sign in instead.")
+        return phone
+
     def clean_email(self):
-        email = self.cleaned_data.get('email')
+        email = (self.cleaned_data.get('email') or '').strip()
+        if not email:
+            return ''
         if User.objects.filter(email__iexact=email).exists():
             from allauth.socialaccount.models import SocialAccount
             if SocialAccount.objects.filter(user__email__iexact=email, provider='google').exists():
@@ -71,7 +89,7 @@ class CheckoutForm(forms.Form):
     full_name = forms.CharField(max_length=200)
     phone = forms.CharField(max_length=20)
     alternate_phone = forms.CharField(max_length=20, required=False)
-    email = forms.EmailField()
+    email = forms.EmailField(required=False)
     address_line1 = forms.CharField(max_length=250, required=False)   # Flat / House no. / Building
     address_line2 = forms.CharField(max_length=250, required=False)   # Area / Street / Village
     landmark = forms.CharField(max_length=200, required=False)

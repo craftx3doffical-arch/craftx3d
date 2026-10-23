@@ -56,7 +56,7 @@ from .models import (
     StoreSettings, UserProfile, Coupon, PackagingType, ProductImage, Favorite,
     SavedAddress, INDIAN_STATES,
 )
-from .forms import CustomerRegistrationForm, ReviewForm, EnquiryForm, CheckoutForm
+from .forms import CustomerRegistrationForm, ReviewForm, EnquiryForm, CheckoutForm, normalize_phone
 
 
 def get_or_create_cart(request):
@@ -176,11 +176,33 @@ def product_detail(request, slug):
         'rating_counts': rating_counts,
         'related': related,
         'images': product.images.all(),
+        'can_review': _can_review(request.user, product),
+        'already_reviewed': _already_reviewed(request.user, product),
     }
     return render(request, 'store/product_detail.html', context)
 
 
 # ─── REVIEWS ─────────────────────────────────────────────────────────────────
+def _reviewable_products(user):
+    """Products this customer has actually received (a DELIVERED order) and
+    hasn't reviewed yet — Amazon-style "verified purchase" reviews only."""
+    if not user.is_authenticated:
+        return Product.objects.none()
+    bought = OrderItem.objects.filter(
+        order__user=user, order__status='delivered', product__isnull=False
+    ).values_list('product_id', flat=True)
+    reviewed = Review.objects.filter(user=user, product__isnull=False).values_list('product_id', flat=True)
+    return Product.objects.filter(pk__in=list(bought)).exclude(pk__in=list(reviewed))
+
+
+def _can_review(user, product):
+    return _reviewable_products(user).filter(pk=product.pk).exists()
+
+
+def _already_reviewed(user, product):
+    return user.is_authenticated and Review.objects.filter(user=user, product=product).exists()
+
+
 def reviews_page(request):
     reviews = Review.objects.filter(status=Review.STATUS_APPROVED).order_by('-created_at')
     sort = request.GET.get('sort', 'newest')
@@ -203,47 +225,36 @@ def reviews_page(request):
 
 @login_required
 def write_review(request):
+    """Only customers who RECEIVED a product can review it (one review per
+    product). Reached from My Orders → order → "Write a review"."""
+    products = _reviewable_products(request.user)
+    if not products.exists():
+        messages.info(request, 'You can review a product once your order has been delivered. Check My Orders after delivery.')
+        return redirect('store:my_orders')
+
+    def _render(form):
+        return render(request, 'store/write_review.html', {'form': form, 'products': products})
+
     if request.method == 'POST':
         form = ReviewForm(request.POST, request.FILES)
         if form.is_valid():
-            product_id = request.POST.get('product', '').strip()
-
-            # ── Input validation ─────────────────────────────────────────
             try:
-                product_id_int = int(product_id)
-                if product_id_int <= 0:
-                    raise ValueError()
+                product_id_int = int(request.POST.get('product', '').strip())
             except (ValueError, TypeError):
-                messages.error(request, 'Please select a valid product.')
-                products = Product.objects.filter(is_active=True)
-                return render(request, 'store/write_review.html', {'form': form, 'products': products})
+                product_id_int = 0
+            if not products.filter(pk=product_id_int).exists():
+                messages.error(request, 'Please choose a product from your delivered orders.')
+                return _render(form)
 
             rating = form.cleaned_data.get('rating')
             if not isinstance(rating, int) or not (1 <= rating <= 5):
                 messages.error(request, 'Rating must be between 1 and 5 stars.')
-                products = Product.objects.filter(is_active=True)
-                return render(request, 'store/write_review.html', {'form': form, 'products': products})
+                return _render(form)
 
-            body = form.cleaned_data.get('body', '')
-            if len(body) > 2000:
+            if len(form.cleaned_data.get('body', '')) > 2000:
                 messages.error(request, 'Review text must be 2000 characters or fewer.')
-                products = Product.objects.filter(is_active=True)
-                return render(request, 'store/write_review.html', {'form': form, 'products': products})
+                return _render(form)
 
-            # ── Duplicate / double-submit guard (rate limit: 1 per product per minute) ─
-            from django.utils import timezone
-            from datetime import timedelta
-            one_minute_ago = timezone.now() - timedelta(seconds=60)
-            if Review.objects.filter(
-                user=request.user,
-                product_id=product_id_int,
-                created_at__gte=one_minute_ago,
-            ).exists():
-                messages.warning(request, 'You already submitted a review for this product. Please wait a moment before submitting again.')
-                products = Product.objects.filter(is_active=True)
-                return render(request, 'store/write_review.html', {'form': form, 'products': products})
-
-            # ── Save ─────────────────────────────────────────────────────
             review = form.save(commit=False)
             review.user = request.user
             review.status = Review.STATUS_PENDING
@@ -251,26 +262,20 @@ def write_review(request):
             try:
                 review.save()
             except Exception as e:
-                logger.exception('Review save failed (product=%s, has_photo=%s)', product_id, bool(request.FILES.get('photo')))
-                error_code = f"{type(e).__name__}: {str(e)[:180]}"
+                logger.exception('Review save failed (product=%s, has_photo=%s)', product_id_int, bool(request.FILES.get('photo')))
                 messages.error(
                     request,
                     "We couldn't publish your review just now — this usually "
                     "means the photo upload failed. Please try again, or "
                     "submit without a photo."
                 )
-                messages.error(request, f"Diagnostic code (copy this if it keeps happening): {error_code}")
-                products = Product.objects.filter(is_active=True)
-                return render(request, 'store/write_review.html', {'form': form, 'products': products})
+                return _render(form)
             messages.success(request, 'Thanks for your feedback! Your review will appear once our team has reviewed it.')
-            return redirect('store:reviews')
-    else:
-        initial = {}
-        if request.user.is_authenticated:
-            initial['reviewer_name'] = request.user.get_full_name() or request.user.username
-        form = ReviewForm(initial=initial)
-    products = Product.objects.filter(is_active=True)
-    return render(request, 'store/write_review.html', {'form': form, 'products': products})
+            return redirect('store:my_orders')
+        return _render(form)
+
+    initial = {'reviewer_name': request.user.get_full_name() or ''}
+    return _render(ReviewForm(initial=initial))
 
 
 # ─── ABOUT ───────────────────────────────────────────────────────────────────
@@ -608,6 +613,7 @@ def add_to_cart(request, product_id):
         return JsonResponse({
             'success': True,
             'cart_count': cart.item_count,
+            'checkout_url': reverse('store:checkout'),
             'product_name': product.name,
             'product_price': float(unit_price),
             'cart_subtotal': float(cart.subtotal),
@@ -878,7 +884,7 @@ def checkout(request):
                     'full_name': addr.full_name,
                     'phone': addr.phone,
                     'alternate_phone': addr.alternate_phone,
-                    'email': request.user.email,
+                    'email': request.user.email or '',
                     'address': combined,
                     'city': addr.city,
                     'state': addr.state,
@@ -936,7 +942,7 @@ def checkout(request):
                 full_name=cleaned['full_name'],
                 phone=cleaned['phone'],
                 alternate_phone=cleaned.get('alternate_phone', ''),
-                email=cleaned.get('email', request.user.email),
+                email=cleaned.get('email') or request.user.email or '',
                 address=cleaned['address'],
                 city=cleaned['city'],
                 state=cleaned['state'],
@@ -1413,8 +1419,9 @@ def payment_failed(request, order_id):
     })
 
 
+@login_required
 def order_placed(request, order_id):
-    order = get_object_or_404(Order, order_id=order_id)
+    order = get_object_or_404(Order, order_id=order_id, user=request.user)
     return render(request, 'store/order_placed.html', {'order': order})
 
 
@@ -1519,7 +1526,10 @@ def order_detail(request, order_id):
     items_data = []
     for item in order.items.all():
         choices, order_images = _normalize_order_item_customization(item)
-        items_data.append({'item': item, 'choices': choices, 'order_images': order_images})
+        can_rev = bool(order.status == 'delivered' and item.product_id and _can_review(request.user, item.product))
+        reviewed = bool(item.product_id and Review.objects.filter(user=request.user, product_id=item.product_id).exists())
+        items_data.append({'item': item, 'choices': choices, 'order_images': order_images,
+                           'can_review': can_rev, 'reviewed': reviewed})
 
     return render(request, 'store/order_detail.html', {
         'order': order,
@@ -1615,17 +1625,18 @@ def register(request):
         elif form.is_valid():
             data = form.cleaned_data
             names = data['full_name'].split(' ', 1)
+            # Phone number is the login (username); email is optional.
             user = User.objects.create_user(
-                username=data['email'],
-                email=data['email'],
+                username=data['phone'],
+                email=data.get('email', ''),
                 password=data['password'],
                 first_name=names[0],
                 last_name=names[1] if len(names) > 1 else '',
             )
             # The post_save signal on User already created a blank UserProfile;
             # just fill in the phone number they gave us.
-            UserProfile.objects.update_or_create(user=user, defaults={'phone': data.get('phone', '')})
-            user = authenticate(request, username=data['email'], password=data['password'])
+            UserProfile.objects.update_or_create(user=user, defaults={'phone': data['phone']})
+            user = authenticate(request, username=data['phone'], password=data['password'])
             login(request, user)
             messages.success(request, f"Welcome to CraftiX 3D, {user.first_name}!")
             return redirect('store:home')
@@ -1634,29 +1645,54 @@ def register(request):
     return render(request, 'store/register.html', {'form': form})
 
 
+def _find_users_by_identifier(identifier):
+    """Login id can be a 10-digit phone number (new) or an email (accounts
+    created before phone login existed). Returns candidate User objects."""
+    identifier = (identifier or '').strip()
+    if '@' in identifier:
+        return list(User.objects.filter(email__iexact=identifier, is_active=True)[:5])
+    phone = normalize_phone(identifier)
+    if len(phone) != 10:
+        return []
+    ids = set(User.objects.filter(username=phone, is_active=True).values_list('pk', flat=True))
+    ids |= set(UserProfile.objects.filter(phone__endswith=phone, user__is_active=True).values_list('user_id', flat=True))
+    return list(User.objects.filter(pk__in=ids)[:5])
+
+
+def _safe_next(request, default='store:home'):
+    from django.utils.http import url_has_allowed_host_and_scheme
+    nxt = request.GET.get('next') or request.POST.get('next') or ''
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return nxt
+    return default
+
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('store:home')
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
+        identifier = (request.POST.get('phone') or request.POST.get('email') or '').strip()
         password = request.POST.get('password', '')
 
         from django.core.cache import cache
-        lockout_key = f'customer_login_fail:{email.lower()}'
+        lockout_key = f'customer_login_fail:{identifier.lower()}'
         fail_count = cache.get(lockout_key, 0)
         if fail_count >= 8:
             messages.error(request, 'Too many failed attempts. Please try again in 15 minutes.')
             return render(request, 'store/login.html')
 
-        user = authenticate(request, username=email, password=password)
+        user = None
+        for candidate in _find_users_by_identifier(identifier):
+            user = authenticate(request, username=candidate.username, password=password)
+            if user:
+                break
         if user:
             cache.delete(lockout_key)
             login(request, user)
-            next_url = request.GET.get('next', 'store:home')
-            return redirect(next_url)
+            return redirect(_safe_next(request))
         else:
             cache.set(lockout_key, fail_count + 1, 900)
-            messages.error(request, 'Invalid email or password.')
+            messages.error(request, 'Invalid phone number or password.')
     return render(request, 'store/login.html')
 
 
@@ -1677,11 +1713,10 @@ def forgot_password(request):
             return render(request, 'store/forgot_password.html')
         cache.set(lockout_key, fail_count + 1, 900)
 
-        # Always show the same message regardless of whether the email exists
-        # — this prevents anyone from using this form to discover which
-        # emails have accounts on the site.
+        # Always show the same message regardless of whether the account exists
+        # — this prevents anyone from using this form to discover who has one.
         if email:
-            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            user = next((u for u in _find_users_by_identifier(email) if u.email), None)
             if user:
                 from django.contrib.auth.tokens import default_token_generator
                 from django.utils.http import urlsafe_base64_encode
@@ -1695,7 +1730,7 @@ def forgot_password(request):
                 )
                 send_password_reset_email(user, reset_url)
 
-        messages.success(request, "If an account exists with that email, we've sent a password reset link.")
+        messages.success(request, "If an account exists with that phone number or email and has an email on file, we've sent a password reset link. No email on your account? Contact support.")
         return redirect('store:login')
 
     return render(request, 'store/forgot_password.html')
@@ -1788,7 +1823,14 @@ def profile(request):
             user.first_name = parts[0]
             user.last_name = parts[1] if len(parts) > 1 else ''
             user.save(update_fields=['first_name', 'last_name'])
-        profile_obj.phone = request.POST.get('phone', profile_obj.phone).strip()
+        new_phone = normalize_phone(request.POST.get('phone', profile_obj.phone))
+        if new_phone and new_phone != normalize_phone(profile_obj.phone) and (
+            UserProfile.objects.filter(phone__endswith=new_phone).exclude(user=user).exists()
+            or User.objects.filter(username=new_phone).exclude(pk=user.pk).exists()
+        ):
+            messages.error(request, 'That phone number is already used by another account.')
+            return redirect('store:profile')
+        profile_obj.phone = new_phone or profile_obj.phone
         profile_obj.city = request.POST.get('city', profile_obj.city).strip()
         profile_obj.save()
         messages.success(request, 'Your profile has been updated.')

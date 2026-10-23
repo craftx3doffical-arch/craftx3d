@@ -89,6 +89,10 @@ class Product(models.Model):
     # Parcel / packaging charge — a flat per-unit fee shown separately from
     # the product price (Amazon-style "+ ₹X packaging"), added into the
     # cart/order total as its own line rather than folded into the price.
+    # "Mega Festival Deal" red badge + Amazon-style price block (on/off per product)
+    show_mega_deal = models.BooleanField(default=False, help_text='Show the red deal badge and "-X% price / M.R.P." block on the product page')
+    mega_deal_label = models.CharField(max_length=60, default='Mega Festival Deal', blank=True, help_text='Text on the red badge')
+
     show_parcel_charge = models.BooleanField(default=False, help_text='Charge a separate parcel/packaging fee for this product')
     parcel_charge_title = models.CharField(max_length=100, default='Parcel & Packaging Fee', blank=True, help_text='Label shown next to the fee, e.g. "Parcel & Packaging Fee"')
     parcel_charge_price = models.DecimalField(max_digits=8, decimal_places=2, default=0, blank=True, help_text='Flat fee per unit, e.g. 100.00')

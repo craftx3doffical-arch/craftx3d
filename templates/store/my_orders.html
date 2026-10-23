@@ -65,6 +65,7 @@
               📄 Invoice
             </a>
             <a href="{% url 'store:order_detail' order.order_id %}" style="font-size:0.82rem;color:var(--forest);font-weight:600;text-decoration:underline;">View Details →</a>
+            {% if order.status == 'delivered' %}<a href="{% url 'store:order_detail' order.order_id %}" style="font-size:0.82rem;font-weight:800;color:#1C1C1E;background:var(--gold);padding:5px 12px;border-radius:999px;text-decoration:none;">★ Rate &amp; Review</a>{% endif %}
           </div>
         </div>
       </div>

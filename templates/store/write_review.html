@@ -2,7 +2,7 @@
 {% block title %}Write a Review — CraftX3D{% endblock %}
 {% block content %}
 <div class="review-form-wrap">
-  <a href="{% url 'store:reviews' %}" style="font-size:0.85rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:20px;">← Back to Reviews</a>
+  <a href="{% url 'store:my_orders' %}" style="font-size:0.85rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:20px;">← Back to My Orders</a>
 
   <div class="help-form-card">
     <h1 style="font-size:1.5rem;font-weight:800;margin-bottom:24px;">✍️ Write a Review</h1>
@@ -14,7 +14,7 @@
 
       <!-- Product -->
       <div class="form-group">
-        <label class="form-label" for="id_product">Product Purchased</label>
+        <label class="form-label" for="id_product">Product you received</label>
         <select name="product" id="id_product" class="form-input">
           <option value="">Select a product…</option>
           {% for p in products %}<option value="{{ p.pk }}" {% if form.product.value == p.pk|stringformat:"d" or request.GET.product == p.pk|stringformat:"d" %}selected{% endif %}>{{ p.name }}</option>{% endfor %}

@@ -397,6 +397,21 @@
       {% endif %}
       </script>
 
+      <!-- Mega Festival Deal (on/off) -->
+      <div class="form-section-card">
+        <div class="form-section-header">🔥 Mega Festival Deal</div>
+        <div class="form-section-body">
+          <div class="m-form-group-light">
+            <div class="toggle-switch"><input type="checkbox" class="toggle-input" id="showMegaDeal" name="show_mega_deal" {% if product.show_mega_deal %}checked{% endif %}><label class="toggle-track" for="showMegaDeal"></label><span class="toggle-label">Show deal badge + "-X% price / M.R.P." on the product page</span></div>
+          </div>
+          <div class="m-form-group-light" style="margin-top:10px;">
+            <label class="m-form-label-light">Badge text</label>
+            <input type="text" name="mega_deal_label" class="m-field" maxlength="60" value="{{ product.mega_deal_label|default:'Mega Festival Deal' }}" placeholder="Mega Festival Deal">
+            <div style="font-size:0.75rem;color:#9CA3AF;margin-top:4px;">The discount % comes from Price vs Compare price (MRP) above — set a Compare price for it to show.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- About Our Craft -->
       <div class="form-section-card">
         <div class="form-section-header">🎨 About Our Craft</div>

@@ -138,9 +138,20 @@ function initAddToCart() {
   }
   setTimeout(function() { attachListeners(); checkRequired(); }, 600);
 
+  // ── Buy Now: runs the exact same validation + AJAX add, then goes to checkout ──
+  var buyNowMode = false;
+  var buyBtn = document.getElementById('buyNowBtn');
+  if (buyBtn) {
+    buyBtn.addEventListener('click', function() {
+      buyNowMode = true;
+      if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    });
+  }
+
   // ── Form submit ──
   form.addEventListener('submit', function(e) {
     e.preventDefault();
+    var goCheckout = buyNowMode; buyNowMode = false;
 
     // 1. Validate ALL required customization fields, revealing every error at once
     if (!checkRequired({ forceShowAll: true })) {
@@ -200,6 +211,10 @@ function initAddToCart() {
       }
       return r.json().then(function(data) {
         if (addBtn) { addBtn.innerHTML = '🛒 Add to Cart'; checkRequired(); }
+        if (data.success && goCheckout && data.checkout_url) {
+          window.location.href = data.checkout_url;
+          return;
+        }
         if (data.success) {
           var badge = document.getElementById('cartBadgeNav');
           if (badge) { badge.textContent = data.cart_count; badge.style.display = 'flex'; }

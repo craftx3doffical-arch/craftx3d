@@ -187,6 +187,8 @@ def _save_product(request, product=None):
     product.compare_price = float(cp) if cp else None
     if files.get('video'):
         product.video = files['video']
+    product.show_mega_deal = 'show_mega_deal' in data
+    product.mega_deal_label = data.get('mega_deal_label', '').strip() or 'Mega Festival Deal'
     product.show_parcel_charge = 'show_parcel_charge' in data
     product.parcel_charge_title = data.get('parcel_charge_title', '').strip() or 'Parcel & Packaging Fee'
     pc = data.get('parcel_charge_price', '')

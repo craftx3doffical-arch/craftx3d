@@ -144,22 +144,30 @@
     {% endif %}
 
     <!-- Price -->
+    {% if product.show_mega_deal %}
+    <div class="deal-badge">{{ product.mega_deal_label|default:"Mega Festival Deal" }}</div>
+    <div class="deal-price-row">
+      {% if product.discount_percent %}<span class="deal-off">-{{ product.discount_percent }}%</span>{% endif %}
+      <span class="product-price-large" id="displayPrice">₹{{ product.base_price }}</span>
+    </div>
+    {% if product.compare_price %}<div class="deal-mrp">M.R.P.: <s>₹{{ product.compare_price }}</s></div>{% endif %}
+    <div class="deal-tax">Inclusive of all taxes</div>
+    {% else %}
     <div>
       <span class="product-price-large" id="displayPrice">₹{{ product.base_price }}</span>
       {% if product.compare_price %}<span class="product-price-original">₹{{ product.compare_price }}</span>{% endif %}
     </div>
-
-    {% if product.show_parcel_charge and product.parcel_charge_price %}
-    <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.82rem;color:var(--charcoal);background:var(--cream-dark);border:1px solid var(--cream-border);padding:6px 12px;border-radius:999px;">
-      <span>📦</span>
-      <span>Plus <strong>₹{{ product.parcel_charge_price }} {{ product.parcel_charge_title|default:"Parcel & Packaging Fee" }}</strong> — added at checkout</span>
-    </div>
-    {% else %}
-    <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:0.82rem;color:var(--teal);background:#E8F5E9;border:1px solid #C8E6C9;padding:6px 12px;border-radius:999px;font-weight:700;">
-      <span>🚚</span>
-      <span>{{ product.parcel_charge_free_label|default:"Free Parcel & Packaging" }}</span>
-    </div>
     {% endif %}
+
+    <!-- Shipping / parcel bar -->
+    <div class="pd-ship-bar">
+      <svg class="pd-ship-ico" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h13v10H1z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="5.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>
+      {% if product.show_parcel_charge and product.parcel_charge_price %}
+      <span>Plus <strong>₹{{ product.parcel_charge_price }} {{ product.parcel_charge_title|default:"Parcel & Packaging Fee" }}</strong> — added at checkout</span>
+      {% else %}
+      <span>{{ product.parcel_charge_free_label|default:"Free Parcel & Packaging" }}</span>
+      {% endif %}
+    </div>
 
     <!-- Add to Cart Form -->
     <form id="addToCartForm" method="post" action="{% url 'store:add_to_cart' product.pk %}" enctype="multipart/form-data">
@@ -230,10 +238,14 @@
           <input type="number" name="quantity" id="qty" value="1" min="1" {% if product.track_inventory %}max="{{ product.stock }}"{% endif %} class="qty-num" style="width:48px;text-align:center;border:none;background:none;font-family:inherit;font-size:1.1rem;font-weight:700;" aria-label="Quantity">
           <button type="button" class="qty-btn" onclick="changeQty(1)" aria-label="Increase">+</button>
         </div>
+      </div>
+      <div class="pd-buy-row">
         {% if request.user.is_authenticated %}
-        <button type="submit" class="btn-add-to-cart-large" style="flex:1;" id="addCartBtn">🛒 Add to Cart</button>
+        <button type="submit" class="btn-add-to-cart-large pd-btn-cart" id="addCartBtn">🛒 Add to Cart</button>
+        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">⚡ Buy Now</button>
         {% else %}
-        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large" style="flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">🔒 Login to Buy</a>
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-cart" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">🛒 Add to Cart</a>
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">⚡ Buy Now</a>
         {% endif %}
       </div>
       <div id="cartGateMsg" style="display:none;margin-top:10px;padding:10px 14px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.84rem;color:#856404;font-weight:500;"></div>
@@ -398,7 +410,13 @@
       {% endfor %}
     </div>
     <div class="rvs-write-col">
+      {% if can_review %}
       <a href="{% url 'store:write_review' %}?product={{ product.pk }}" class="rvs-write-btn">Write a review</a>
+      {% elif already_reviewed %}
+      <div style="font-size:0.8rem;color:var(--text-muted);">You've reviewed this product.</div>
+      {% else %}
+      <div style="font-size:0.8rem;color:var(--text-muted);max-width:180px;">Only customers who received this product can review it.</div>
+      {% endif %}
     </div>
   </div>
 
@@ -477,7 +495,7 @@
         </div>
         <span class="yml-cta">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          Choose options
+          Buy
         </span>
       </div>
     </a>

@@ -36,7 +36,7 @@
 {% if store_settings.announcement_bar_enabled and store_settings.announcement_bar_text %}
 <div class="announcement-bar" role="region" aria-label="Announcement">
   <div class="announcement-track">
-    {% for g in "12" %}<div class="announcement-group"{% if g == "2" %} aria-hidden="true"{% endif %}>{% for i in "12345678" %}<span class="announcement-item">{{ store_settings.announcement_bar_text }}</span>{% endfor %}</div>{% endfor %}
+    {% for g in "12" %}<div class="announcement-group"{% if g == "2" %} aria-hidden="true"{% endif %}>{% for i in "12345678" %}<span class="announcement-item">{{ store_settings.announcement_bar_text|cut:'*' }}</span>{% endfor %}</div>{% endfor %}
   </div>
 </div>
 {% endif %}

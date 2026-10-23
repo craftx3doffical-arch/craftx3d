@@ -29,7 +29,7 @@
   <div class="success-icon">🎉</div>
   <h1 class="success-heading">Order Placed Successfully!</h1>
   <p style="color:var(--text-muted);margin-bottom:8px;">Thank you for your order, {{ order.full_name.split|first }}!</p>
-  <p style="color:var(--text-muted);font-size:0.9rem;">We'll start working on it right away. You'll receive updates via {{ order.email }}.</p>
+  <p style="color:var(--text-muted);font-size:0.9rem;">We'll start working on it right away. {% if order.email %}You'll receive updates via {{ order.email }}.{% else %}Track your order any time from My Orders.{% endif %}</p>
 
   <div class="order-summary-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">

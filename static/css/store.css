@@ -72,7 +72,7 @@ input, textarea, select { font-family: inherit; }
   overflow: hidden;
   white-space: nowrap;
 }
-/* Scrolls left → right. Track = 2 identical groups; shifting by 50% loops seamlessly. */
+/* Scrolls right → left. Track = 2 identical groups; shifting by 50% loops seamlessly. */
 .announcement-track {
   display: flex;
   width: max-content;
@@ -84,8 +84,8 @@ input, textarea, select { font-family: inherit; }
 .announcement-item::after { content: "\2022"; margin-left: 96px; opacity: .6; }
 .announcement-bar:hover .announcement-track { animation-play-state: paused; }
 @keyframes announcement-scroll {
-  from { transform: translateX(-50%); }
-  to   { transform: translateX(0); }
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .announcement-track { animation: none; width: 100%; justify-content: center; }
@@ -5256,3 +5256,31 @@ label.field-invalid {
   padding: 4px 11px; border-radius: var(--radius-pill, 999px);
   line-height: 1.2;
 }
+
+
+/* ═══ PRODUCT PAGE: Mega Festival Deal, shipping bar, Add to Cart / Buy Now ═══ */
+.deal-badge {
+  display: inline-block; background: #CC0C39; color: #fff;
+  font-size: 0.82rem; font-weight: 700; padding: 5px 12px; border-radius: 4px;
+  margin: 2px 0 8px;
+}
+.deal-price-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.deal-off { color: #CC0C39; font-size: 1.5rem; font-weight: 500; }
+.deal-mrp { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+.deal-mrp s { text-decoration: line-through; }
+.deal-tax { font-size: 0.85rem; color: var(--charcoal); margin-top: 4px; }
+
+.pd-ship-bar {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 14px; padding: 13px 16px;
+  background: #EAF7F2; border: 1.5px solid #CFEBE0; border-radius: 12px;
+  color: var(--forest, #1A4332); font-size: 0.95rem; font-weight: 600;
+}
+.pd-ship-ico { flex-shrink: 0; color: var(--forest, #1A4332); }
+
+.pd-buy-row { display: flex; gap: 10px; margin-top: 12px; }
+.pd-buy-row .btn-add-to-cart-large { flex: 1; width: auto; margin: 0; }
+.pd-btn-cart { background: #fff !important; color: var(--forest, #1A4332) !important; border: 2px solid var(--forest, #1A4332) !important; }
+.pd-btn-buy { background: #FFC107 !important; color: #1C1C1E !important; border: 2px solid #FFC107 !important; font-weight: 800; }
+.pd-btn-buy:hover { background: #F2B200 !important; }
+@media (max-width: 420px) { .pd-buy-row { flex-direction: column; } }
