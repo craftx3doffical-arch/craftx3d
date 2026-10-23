@@ -56,7 +56,7 @@ from .models import (
     StoreSettings, UserProfile, Coupon, PackagingType, ProductImage, Favorite,
     SavedAddress, INDIAN_STATES,
 )
-from .forms import CustomerRegistrationForm, ReviewForm, EnquiryForm, CheckoutForm, normalize_phone
+from .forms import CustomerRegistrationForm, ReviewForm, EnquiryForm, CustomEnquiryForm, CheckoutForm, normalize_phone
 
 
 def get_or_create_cart(request):
@@ -308,6 +308,33 @@ def help_support(request):
                 'phone': getattr(request.user, 'profile', None) and request.user.profile.phone or '',
             }
     return render(request, 'store/help.html', {'form': form, 'faqs': faqs})
+
+
+# ─── CUSTOMIZATION ENQUIRY ───────────────────────────────────────────────────
+def custom_enquiry(request):
+    """Public form: ask for a customised version of a product (or a custom idea)."""
+    if request.method == 'POST':
+        form = CustomEnquiryForm(request.POST, request.FILES)
+        if not _rate_limit(request, 'custom_enquiry', 5, 600):
+            messages.error(request, 'Too many requests. Please try again in a few minutes.')
+        elif form.is_valid():
+            form.save()
+            messages.success(request, "Thanks! Your customization request has been sent. We'll contact you within 24 hours.")
+            return redirect('store:custom_enquiry')
+    else:
+        initial = {}
+        pid = request.GET.get('product', '')
+        if pid.isdigit():
+            initial['product'] = int(pid)
+        if request.user.is_authenticated:
+            initial['full_name'] = request.user.get_full_name()
+            initial['email'] = request.user.email
+            try:
+                initial['phone'] = request.user.profile.phone
+            except Exception:
+                pass
+        form = CustomEnquiryForm(initial=initial)
+    return render(request, 'store/custom_enquiry.html', {'form': form})
 
 
 # ─── CART ────────────────────────────────────────────────────────────────────

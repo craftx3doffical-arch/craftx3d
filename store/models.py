@@ -805,6 +805,16 @@ class Enquiry(models.Model):
     message = models.TextField()
     image = models.ImageField(upload_to='enquiries/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NEW)
+
+    # General help messages vs. product customization requests (shown on a
+    # separate page in the staff portal).
+    TYPE_GENERAL = 'general'
+    TYPE_CUSTOMIZATION = 'customization'
+    TYPE_CHOICES = [(TYPE_GENERAL, 'General'), (TYPE_CUSTOMIZATION, 'Customization')]
+    enquiry_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_GENERAL, db_index=True)
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='enquiries')
+    quantity = models.PositiveIntegerField(null=True, blank=True)
+    budget = models.CharField(max_length=100, blank=True)
     staff_note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

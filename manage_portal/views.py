@@ -85,7 +85,8 @@ def dashboard(request):
         'new_today': Order.objects.filter(payment_status='paid', created_at__date=today).count(),
         'pending_orders': Order.objects.filter(payment_status='paid', status='pending').count(),
         'pending_reviews': Review.objects.filter(status=Review.STATUS_PENDING).count(),
-        'new_enquiries': Enquiry.objects.filter(status=Enquiry.STATUS_NEW).count(),
+        'new_enquiries': Enquiry.objects.filter(status=Enquiry.STATUS_NEW, enquiry_type=Enquiry.TYPE_GENERAL).count(),
+        'new_custom_enquiries': Enquiry.objects.filter(status=Enquiry.STATUS_NEW, enquiry_type=Enquiry.TYPE_CUSTOMIZATION).count(),
     }
     # Last 7 days revenue chart
     revenue_data = []
@@ -1095,10 +1096,47 @@ def contact_info_edit(request):
 @staff_required
 def enquiries_list(request):
     status_filter = request.GET.get('status', 'all')
-    qs = Enquiry.objects.all()
+    qs = Enquiry.objects.filter(enquiry_type=Enquiry.TYPE_GENERAL)
     if status_filter != 'all':
         qs = qs.filter(status=status_filter)
     return render(request, 'manage/enquiries.html', {'enquiries': qs, 'status_filter': status_filter})
+
+
+@staff_required
+def custom_enquiries_list(request):
+    status_filter = request.GET.get('status', 'all')
+    search = request.GET.get('q', '').strip()
+    base = Enquiry.objects.filter(enquiry_type=Enquiry.TYPE_CUSTOMIZATION).select_related('product')
+    counts = {
+        'all': base.count(),
+        'new': base.filter(status='new').count(),
+        'in_progress': base.filter(status='in_progress').count(),
+        'resolved': base.filter(status='resolved').count(),
+    }
+    qs = base
+    if status_filter in ('new', 'in_progress', 'resolved'):
+        qs = qs.filter(status=status_filter)
+    if search:
+        qs = qs.filter(Q(full_name__icontains=search) | Q(phone__icontains=search) | Q(message__icontains=search) | Q(product__name__icontains=search))
+    return render(request, 'manage/custom_enquiries.html', {
+        'enquiries': qs, 'status_filter': status_filter, 'counts': counts, 'search': search,
+    })
+
+
+@staff_required
+def export_custom_enquiries(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="customization_enquiries.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Name', 'Phone', 'Email', 'Product', 'Quantity', 'Budget', 'Request', 'Status', 'Staff note', 'Date'])
+    def safe(v):
+        v = '' if v is None else str(v)
+        return "'" + v if v[:1] in ('=', '+', '-', '@') else v
+    for e in Enquiry.objects.filter(enquiry_type=Enquiry.TYPE_CUSTOMIZATION).select_related('product'):
+        writer.writerow([safe(e.full_name), safe(e.phone), safe(e.email), safe(e.product.name if e.product else ''),
+                         e.quantity or '', safe(e.budget), safe(e.message), e.status, safe(e.staff_note),
+                         e.created_at.strftime('%d/%m/%Y %H:%M')])
+    return response
 
 
 @staff_required
@@ -1116,11 +1154,13 @@ def enquiry_update_status(request, pk):
 @staff_required
 @require_POST
 def enquiry_delete(request, pk):
-    get_object_or_404(Enquiry, pk=pk).delete()
+    enquiry = get_object_or_404(Enquiry, pk=pk)
+    was_custom = enquiry.enquiry_type == Enquiry.TYPE_CUSTOMIZATION
+    enquiry.delete()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'success': True})
     messages.success(request, 'Enquiry deleted.')
-    return redirect('manage:enquiries')
+    return redirect('manage:custom_enquiries' if was_custom else 'manage:enquiries')
 
 
 @staff_required
@@ -1129,7 +1169,7 @@ def export_enquiries(request):
     response['Content-Disposition'] = 'attachment; filename="enquiries.csv"'
     writer = csv.writer(response)
     writer.writerow(['Name', 'Phone', 'Email', 'Subject', 'Message', 'Status', 'Date'])
-    for e in Enquiry.objects.all():
+    for e in Enquiry.objects.filter(enquiry_type=Enquiry.TYPE_GENERAL):
         writer.writerow([e.full_name, e.phone, e.email, e.subject, e.message, e.status, e.created_at.strftime('%d/%m/%Y %H:%M')])
     return response
 

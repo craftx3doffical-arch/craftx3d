@@ -96,6 +96,8 @@ urlpatterns = [
     path('enquiries/<int:pk>/status/', views.enquiry_update_status, name='enquiry_status'),
     path('enquiries/<int:pk>/delete/', views.enquiry_delete, name='enquiry_delete'),
     path('export/enquiries/', views.export_enquiries, name='export_enquiries'),
+    path('customization-enquiries/', views.custom_enquiries_list, name='custom_enquiries'),
+    path('export/customization-enquiries/', views.export_custom_enquiries, name='export_custom_enquiries'),
 
     # Banners
     path('banners/', views.banners_list, name='banners'),

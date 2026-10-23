@@ -1,0 +1,81 @@
+{% extends 'store/base.html' %}
+{% block title %}Customization Enquiry — CraftX3D{% endblock %}
+{% block content %}
+
+<div style="background:linear-gradient(135deg,var(--forest) 0%,var(--forest-light) 100%);padding:44px 24px;color:#fff;text-align:center;">
+  <div class="container">
+    <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:10px;">Custom Orders</div>
+    <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:2.1rem;font-weight:800;margin-bottom:8px;">Customization Enquiry</h1>
+    <p style="color:rgba(255,255,255,0.75);">Tell us what you have in mind — we'll reply within 24 hours with a quote.</p>
+  </div>
+</div>
+
+<div class="container section">
+  <div class="ce-wrap">
+
+    <div class="ce-steps">
+      <div class="ce-step"><b>1. Send your idea</b>Product, size, colours, text or a reference photo.</div>
+      <div class="ce-step"><b>2. Get a quote</b>We call or WhatsApp you with price &amp; time.</div>
+      <div class="ce-step"><b>3. We print &amp; ship</b>Made to order and delivered to your door.</div>
+    </div>
+
+    <div class="ce-card">
+      <h2>Your request</h2>
+      <p class="ce-sub">Fields marked <span style="color:var(--red)">*</span> are required.</p>
+
+      {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }}" style="margin-bottom:14px;">{{ m }}</div>{% endfor %}{% endif %}
+      {% if form.errors %}
+      <div class="alert alert-error" style="margin-bottom:16px;flex-direction:column;gap:3px;align-items:flex-start;">
+        {% for f, errs in form.errors.items %}{% for e in errs %}<div>• {{ e }}</div>{% endfor %}{% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <div class="ce-grid">
+          <div class="form-group">
+            <label class="form-label" for="ce_name">Full Name <span style="color:var(--red)">*</span></label>
+            <input type="text" id="ce_name" name="full_name" class="form-input" required placeholder="Your name" value="{{ form.full_name.value|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ce_phone">Mobile Number <span style="color:var(--red)">*</span></label>
+            <input type="tel" id="ce_phone" name="phone" class="form-input" required placeholder="10-digit number" inputmode="numeric" value="{{ form.phone.value|default:'' }}">
+          </div>
+          <div class="form-group full">
+            <label class="form-label" for="ce_email">Email <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+            <input type="email" id="ce_email" name="email" class="form-input" placeholder="your@email.com" value="{{ form.email.value|default:'' }}">
+          </div>
+          <div class="form-group full">
+            <label class="form-label" for="ce_product">Which product?</label>
+            <select id="ce_product" name="product" class="form-input">
+              <option value="">Not sure / my own idea</option>
+              {% for p in form.fields.product.queryset %}<option value="{{ p.pk }}" {% if form.product.value|stringformat:"s" == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ce_qty">Quantity</label>
+            <input type="number" id="ce_qty" name="quantity" min="1" class="form-input" placeholder="e.g. 10" value="{{ form.quantity.value|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ce_budget">Budget <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+            <input type="text" id="ce_budget" name="budget" class="form-input" placeholder="e.g. ₹500 – ₹1000" value="{{ form.budget.value|default:'' }}">
+          </div>
+          <div class="form-group full">
+            <label class="form-label" for="ce_msg">What do you want customised? <span style="color:var(--red)">*</span></label>
+            <textarea id="ce_msg" name="message" class="form-input" rows="5" required placeholder="Size, colours, name/text, logo, occasion, deadline…">{{ form.message.value|default:'' }}</textarea>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Reference photo <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+            <label class="ce-upload">
+              <input type="file" name="image" accept="image/*" onchange="document.getElementById('ceFile').textContent = this.files[0] ? this.files[0].name : 'Click to attach an image'">
+              <span style="font-size:1.6rem;">📎</span>
+              <span><span id="ceFile" style="display:block;font-weight:600;font-size:0.9rem;">Click to attach an image</span><span style="font-size:0.75rem;color:var(--text-muted);">JPG or PNG, up to 8 MB</span></span>
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%;padding:14px;justify-content:center;margin-top:6px;">Send Customization Request →</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

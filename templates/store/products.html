@@ -68,7 +68,7 @@
   {% if products %}
   <div class="products-grid">
     {% for product in products %}
-    <div class="product-card{% if not product.is_in_stock %} product-card-oos{% endif %}">
+    <div class="product-card{% if not product.is_in_stock %} product-card-oos{% endif %}" data-href="{% url 'store:product_detail' product.slug %}">
       <a href="{% url 'store:product_detail' product.slug %}" aria-label="{{ product.name }}">
         <div class="product-img-wrap" data-images="{% for img in product.images.all %}{{ img.image.url }}{% if not forloop.last %}|{% endif %}{% endfor %}">
           {% if product.main_image %}
@@ -96,8 +96,6 @@
           <span class="stars-mini">{% for i in "12345" %}<span class="star-mini{% if forloop.counter <= product.avg_rating|round_int %} filled{% endif %}">★</span>{% endfor %}</span>
           <span class="rating-count">({{ product.rating_count }})</span>
         </div>
-        {% elif product.is_new %}
-        <div class="product-rating-row"><span class="yml-new-chip">✦ New</span></div>
         {% endif %}
         <div class="product-price-row">
           {% if product.compare_price %}<span class="price-original">₹{{ product.compare_price }}</span>{% endif %}

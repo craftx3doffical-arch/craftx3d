@@ -9,7 +9,7 @@
   {% if products %}
   <div class="products-grid">
     {% for product in products %}
-    <div class="product-card{% if not product.is_in_stock %} product-card-oos{% endif %}" data-fav-card>
+    <div class="product-card{% if not product.is_in_stock %} product-card-oos{% endif %}" data-fav-card data-href="{% url 'store:product_detail' product.slug %}">
       <a href="{% url 'store:product_detail' product.slug %}" aria-label="{{ product.name }}">
         <div class="product-img-wrap">
           {% if product.main_image %}

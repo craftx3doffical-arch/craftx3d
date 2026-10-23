@@ -1,0 +1,145 @@
+{% extends 'manage/base.html' %}
+{% block title %}Customization Enquiries — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Community{% endblock %}
+{% block breadcrumb_current %}Customization Enquiries{% endblock %}
+{% block content %}
+<style>
+  .ce-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .ce-stat { background:var(--m-card,#fff); border:1px solid var(--m-border,#E5E7EB); border-radius:12px; padding:14px 16px; text-decoration:none; color:inherit; display:block; }
+  .ce-stat.active { border-color:#1A4332; box-shadow:0 0 0 2px rgba(26,67,50,.12); }
+  .ce-stat .n { font-size:1.5rem; font-weight:800; line-height:1.1; }
+  .ce-stat .l { font-size:0.74rem; color:var(--m-muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+  .ce-toolbar { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .ce-toolbar input { flex:1; min-width:200px; padding:9px 14px; border:1.5px solid var(--m-border,#E5E7EB); border-radius:10px; font-size:0.88rem; font-family:inherit; }
+  .ce-thumb { width:46px; height:46px; border-radius:8px; object-fit:cover; border:1px solid var(--m-border,#E5E7EB); background:#f4f4f4; }
+  .ce-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.7rem; font-weight:700; background:#EEF2EF; color:#1A4332; }
+  .ce-row-actions { display:flex; gap:4px; align-items:center; }
+  .ce-detail-grid { display:grid; grid-template-columns:110px 1fr; gap:8px 12px; font-size:0.88rem; margin-bottom:14px; }
+  .ce-detail-grid dt { color:var(--m-muted); font-weight:600; }
+  .ce-detail-grid dd { margin:0; font-weight:600; overflow-wrap:anywhere; }
+  .ce-msg { background:#F8F6F2; border-radius:10px; padding:12px 14px; font-size:0.9rem; line-height:1.65; white-space:pre-wrap; margin-bottom:14px; }
+  @media (max-width:700px){ .ce-stats { grid-template-columns:repeat(2,1fr); } }
+</style>
+
+<div class="page-header">
+  <div><h1 class="page-title">Customization Enquiries</h1><p class="page-sub">{{ counts.all }} total · {{ counts.new }} new — requests from the “Custom Orders” form</p></div>
+  <a href="{% url 'manage:export_custom_enquiries' %}" class="m-btn m-btn-outline">⬇ Export</a>
+</div>
+
+<div class="ce-stats">
+  <a class="ce-stat {% if status_filter == 'all' %}active{% endif %}" href="?"><div class="n">{{ counts.all }}</div><div class="l">All</div></a>
+  <a class="ce-stat {% if status_filter == 'new' %}active{% endif %}" href="?status=new"><div class="n">{{ counts.new }}</div><div class="l">🆕 New</div></a>
+  <a class="ce-stat {% if status_filter == 'in_progress' %}active{% endif %}" href="?status=in_progress"><div class="n">{{ counts.in_progress }}</div><div class="l">⏳ In progress</div></a>
+  <a class="ce-stat {% if status_filter == 'resolved' %}active{% endif %}" href="?status=resolved"><div class="n">{{ counts.resolved }}</div><div class="l">✅ Done</div></a>
+</div>
+
+<form method="get" class="ce-toolbar">
+  {% if status_filter != 'all' %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+  <input type="search" name="q" value="{{ search }}" placeholder="Search name, phone, product or request…" aria-label="Search">
+  <button type="submit" class="m-btn m-btn-outline">Search</button>
+</form>
+
+<div class="m-card">
+  <div class="m-table-wrap">
+    <table class="m-table">
+      <thead><tr><th>CUSTOMER</th><th>PRODUCT / DETAILS</th><th>REQUEST</th><th>DATE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+      <tbody>
+        {% for e in enquiries %}
+        <tr>
+          <td>
+            <div style="font-weight:700;">{{ e.full_name }}</div>
+            <div style="font-size:0.78rem;"><a href="tel:{{ e.phone }}" style="color:var(--m-muted);text-decoration:none;">📞 {{ e.phone }}</a></div>
+            {% if e.email %}<div style="font-size:0.72rem;color:var(--m-muted);">{{ e.email }}</div>{% endif %}
+          </td>
+          <td>
+            <div style="font-size:0.85rem;font-weight:600;">{% if e.product %}{{ e.product.name|truncatechars:34 }}{% else %}Custom idea{% endif %}</div>
+            <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap;">
+              {% if e.quantity %}<span class="ce-pill">Qty {{ e.quantity }}</span>{% endif %}
+              {% if e.budget %}<span class="ce-pill">{{ e.budget }}</span>{% endif %}
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              {% if e.image %}<a href="{{ e.image.url }}" target="_blank" rel="noopener"><img class="ce-thumb" src="{{ e.image.url }}" alt="Reference" loading="lazy"></a>{% endif %}
+              <div style="font-size:0.8rem;color:var(--m-muted);max-width:260px;">{{ e.message|truncatechars:90 }}</div>
+            </div>
+          </td>
+          <td style="font-size:0.75rem;color:var(--m-muted);white-space:nowrap;">{{ e.created_at|date:"d M Y" }}<br>{{ e.created_at|date:"h:i A" }}</td>
+          <td>
+            <select class="filter-select" style="padding:4px 8px;font-size:0.72rem;" onchange="saveCE({{ e.pk }}, {status: this.value})" aria-label="Update status">
+              <option value="new" {% if e.status == 'new' %}selected{% endif %}>New</option>
+              <option value="in_progress" {% if e.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+              <option value="resolved" {% if e.status == 'resolved' %}selected{% endif %}>Done</option>
+            </select>
+          </td>
+          <td>
+            <div class="ce-row-actions">
+              <button class="m-btn-icon" title="View details" onclick='openCE({{ e.pk }})'>👁️</button>
+              <a class="m-btn-icon" title="WhatsApp customer" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;" href="https://wa.me/91{{ e.phone }}?text=Hi%20{{ e.full_name|urlencode }}%2C%20this%20is%20CraftX3D%20about%20your%20customization%20request.">💬</a>
+              <button class="m-btn-icon" title="Delete" onclick="deleteCE({{ e.pk }})">🗑️</button>
+            </div>
+            <template id="ce-data-{{ e.pk }}">
+              <dl class="ce-detail-grid">
+                <dt>Name</dt><dd>{{ e.full_name }}</dd>
+                <dt>Phone</dt><dd><a href="tel:{{ e.phone }}">{{ e.phone }}</a></dd>
+                {% if e.email %}<dt>Email</dt><dd>{{ e.email }}</dd>{% endif %}
+                <dt>Product</dt><dd>{% if e.product %}{{ e.product.name }}{% else %}Custom idea{% endif %}</dd>
+                {% if e.quantity %}<dt>Quantity</dt><dd>{{ e.quantity }}</dd>{% endif %}
+                {% if e.budget %}<dt>Budget</dt><dd>{{ e.budget }}</dd>{% endif %}
+                <dt>Received</dt><dd>{{ e.created_at|date:"d M Y, h:i A" }}</dd>
+              </dl>
+              <div class="ce-msg">{{ e.message }}</div>
+              {% if e.image %}<a href="{{ e.image.url }}" target="_blank" rel="noopener"><img src="{{ e.image.url }}" alt="Reference photo" style="max-width:100%;max-height:260px;border-radius:10px;border:1px solid var(--m-border,#E5E7EB);margin-bottom:14px;"></a>{% endif %}
+              <textarea id="ceNote-{{ e.pk }}" rows="3" placeholder="Staff note (quote, follow-up…)" style="width:100%;padding:10px 12px;border:1.5px solid var(--m-border,#E5E7EB);border-radius:10px;font-family:inherit;font-size:0.88rem;">{{ e.staff_note }}</textarea>
+            </template>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align:center;padding:48px;color:var(--m-muted);">No customization enquiries{% if search or status_filter != 'all' %} match this filter{% else %} yet{% endif %}.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="m-modal-overlay" id="ceModal" role="dialog" aria-modal="true">
+  <div class="m-modal" style="max-width:560px;">
+    <div class="m-modal-header"><span class="m-modal-title">Customization Request</span><button class="m-modal-close" onclick="closeCE()">✕</button></div>
+    <div class="m-modal-body" id="ceBody"></div>
+    <div style="padding:0 20px 18px;display:flex;justify-content:flex-end;gap:8px;">
+      <button class="m-btn m-btn-outline" onclick="closeCE()">Close</button>
+      <button class="m-btn" id="ceSaveBtn" style="background:#1A4332;color:#fff;" onclick="saveNote()">Save note</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+var _ceOpen = null;
+function saveCE(pk, data) {
+  var body = new URLSearchParams(data).toString();
+  return fetch('/manage/enquiries/' + pk + '/status/', {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/x-www-form-urlencoded'}, body: body});
+}
+function openCE(pk) {
+  var t = document.getElementById('ce-data-' + pk);
+  document.getElementById('ceBody').innerHTML = '';
+  document.getElementById('ceBody').appendChild(t.content.cloneNode(true));
+  _ceOpen = pk;
+  document.getElementById('ceModal').classList.add('show');
+}
+function closeCE() { document.getElementById('ceModal').classList.remove('show'); _ceOpen = null; }
+function saveNote() {
+  if (!_ceOpen) return;
+  var note = document.getElementById('ceNote-' + _ceOpen).value;
+  var btn = document.getElementById('ceSaveBtn'); btn.textContent = 'Saving…';
+  saveCE(_ceOpen, {note: note}).then(function(){ btn.textContent = 'Saved ✓'; setTimeout(function(){ btn.textContent = 'Save note'; }, 1200); });
+}
+function deleteCE(pk) {
+  if (!confirm('Delete this enquiry?')) return;
+  var f = document.createElement('form'); f.method = 'POST'; f.action = '/manage/enquiries/' + pk + '/delete/';
+  f.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">';
+  document.body.appendChild(f); f.submit();
+}
+document.getElementById('ceModal').addEventListener('click', function(e){ if (e.target === this) closeCE(); });
+</script>
+{% endblock %}

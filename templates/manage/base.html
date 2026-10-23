@@ -74,9 +74,13 @@
         <span class="sidebar-icon">⭐</span> Reviews
         {% if pending_reviews_count %}<span class="sidebar-badge gold">{{ pending_reviews_count }}</span>{% endif %}
       </a>
-      <a href="{% url 'manage:enquiries' %}" class="sidebar-link {% if 'enquir' in request.resolver_match.url_name %}active{% endif %}">
+      <a href="{% url 'manage:enquiries' %}" class="sidebar-link {% if request.resolver_match.url_name == 'enquiries' %}active{% endif %}">
         <span class="sidebar-icon">💬</span> Enquiries
         {% if new_enquiries_count %}<span class="sidebar-badge">{{ new_enquiries_count }}</span>{% endif %}
+      </a>
+      <a href="{% url 'manage:custom_enquiries' %}" class="sidebar-link {% if request.resolver_match.url_name == 'custom_enquiries' %}active{% endif %}">
+        <span class="sidebar-icon">🎨</span> Customization Enquiries
+        {% if new_custom_enquiries_count %}<span class="sidebar-badge gold">{{ new_custom_enquiries_count }}</span>{% endif %}
       </a>
 
       <div class="sidebar-section" style="margin-top:8px;">CONFIG</div>

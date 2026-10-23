@@ -9,7 +9,8 @@ def manage_sidebar_counts(request):
         return {
             'pending_orders_count': Order.objects.filter(payment_status='paid', status='pending').count(),
             'pending_reviews_count': Review.objects.filter(status=Review.STATUS_PENDING).count(),
-            'new_enquiries_count': Enquiry.objects.filter(status='new').count(),
+            'new_enquiries_count': Enquiry.objects.filter(status='new', enquiry_type='general').count(),
+            'new_custom_enquiries_count': Enquiry.objects.filter(status='new', enquiry_type='customization').count(),
         }
     except Exception:
         return {}

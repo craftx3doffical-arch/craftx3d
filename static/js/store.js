@@ -1338,3 +1338,12 @@ if (document.readyState === 'loading') {
 } else {
   initScrollReveal();
 }
+
+
+// ── Whole product card is clickable (image, name, price, empty space) ──
+document.addEventListener('click', function (e) {
+  var card = e.target.closest('.product-card[data-href]');
+  if (!card) return;
+  if (e.target.closest('a, button, input, select, textarea, label')) return;
+  window.location.href = card.getAttribute('data-href');
+});

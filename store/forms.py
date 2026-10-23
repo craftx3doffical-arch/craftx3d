@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
-from .models import Review, Enquiry, UserProfile
+from .models import Review, Enquiry, UserProfile, Product
 
 
 def normalize_phone(raw):
@@ -83,6 +83,43 @@ class EnquiryForm(forms.ModelForm):
             'subject': forms.TextInput(attrs={'placeholder': 'What can we help you with?'}),
             'message': forms.Textarea(attrs={'rows': 5, 'placeholder': 'Your message...'}),
         }
+
+
+class CustomEnquiryForm(forms.ModelForm):
+    """Customer's product customization request — saved as an Enquiry of type
+    'customization' and shown on its own page in the staff portal."""
+    product = forms.ModelChoiceField(
+        queryset=Product.objects.filter(is_active=True), required=False,
+        empty_label='Not sure / my own idea',
+    )
+
+    class Meta:
+        model = Enquiry
+        fields = ['full_name', 'phone', 'email', 'product', 'quantity', 'budget', 'message', 'image']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['email'].required = False   # phone is the main contact; email is optional
+
+    def clean_phone(self):
+        phone = normalize_phone(self.cleaned_data.get('phone'))
+        if len(phone) != 10:
+            raise forms.ValidationError('Please enter a valid 10-digit mobile number.')
+        return phone
+
+    def clean_image(self):
+        image = self.cleaned_data.get('image')
+        if image and hasattr(image, 'size') and image.size > 8 * 1024 * 1024:
+            raise forms.ValidationError('Image is too large (max 8 MB).')
+        return image
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.enquiry_type = Enquiry.TYPE_CUSTOMIZATION
+        obj.subject = 'Customization: ' + (obj.product.name if obj.product_id else 'custom idea')
+        if commit:
+            obj.save()
+        return obj
 
 
 class CheckoutForm(forms.Form):
