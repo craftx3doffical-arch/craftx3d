@@ -27,6 +27,7 @@ urlpatterns = [
     path('addresses/<int:address_id>/delete/', views.delete_address, name='delete_address'),
     path('addresses/<int:address_id>/set-default/', views.set_default_address, name='set_default_address'),
     path('api/pincode/<str:pincode>/', views.pincode_lookup, name='pincode_lookup'),
+    path('razorpay/webhook/', views.razorpay_webhook, name='razorpay_webhook'),
     path('payment/<str:order_id>/', views.payment_page, name='payment'),
     path('payment/<str:order_id>/verify/', views.payment_verify, name='payment_verify'),
     path('payment/<str:order_id>/cancel/', views.cancel_payment, name='cancel_payment'),

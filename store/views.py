@@ -29,8 +29,6 @@ def _rate_limit(request, key_suffix, max_calls, period):
     cache.set(key, count + 1, timeout=period)
     return True
 
-logger = logging.getLogger(__name__)
-
 MAX_UPLOAD_SIZE = 8 * 1024 * 1024  # 8 MB
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif'}
 ALLOWED_IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'}
@@ -957,148 +955,43 @@ def checkout(request):
                     is_default=not saved_addresses.exists(),
                 )
 
-        # ── Stock check ──────────────────────────────────────────────────────
+        # ── Create order ─────────────────────────────────────────────────────
         from django.db import transaction
         from django.db.models import F
-        out_of_stock = []
-        for item in cart.items.select_related('product').all():
-            if item.product.track_inventory and item.quantity > item.product.stock:
-                out_of_stock.append((item.product.name, item.product.stock))
-        if out_of_stock:
-            for name, available in out_of_stock:
-                if available <= 0:
-                    messages.error(request, f'"{name}" just went out of stock.')
-                else:
-                    messages.error(request, f'Only {available} left of "{name}".')
-            return redirect('store:cart')
-
-        # ── Create order ─────────────────────────────────────────────────────
-        with transaction.atomic():
-            order = Order.objects.create(
-                user=request.user,
-                full_name=cleaned['full_name'],
-                phone=cleaned['phone'],
-                alternate_phone=cleaned.get('alternate_phone', ''),
-                email=cleaned.get('email') or request.user.email or '',
-                address=cleaned['address'],
-                city=cleaned['city'],
-                state=cleaned['state'],
-                pincode=cleaned['pincode'],
-                payment_method='online',
-                status='awaiting_payment',
-                payment_status='pending',
-                subtotal=cart.subtotal,
-                discount_amount=cart.discount_amount,
-                gift_wrap=cart.gift_wrap,
-                gift_wrap_price=cart.gift_wrap_price if cart.gift_wrap else 0,
-                parcel_charge_total=cart.parcel_charge_total,
-                total=cart.total,
-                coupon_code=cart.coupon.code if cart.coupon else '',
-                notes=cart.notes,
-            )
-            for item in cart.items.all():
-                cust_data = dict(item.customization_data or {})
-                if hasattr(item, 'selected_size') and item.selected_size:
-                    cust_data['selected_size'] = item.selected_size
-                order_item = OrderItem.objects.create(
-                    order=order, product=item.product,
-                    product_name=item.product.name,
-                    quantity=item.quantity, unit_price=item.unit_price,
-                    parcel_charge=item.parcel_charge,
-                    customization_data=cust_data,
-                )
-                if item.product.track_inventory:
-                    Product.objects.filter(pk=item.product_id).update(stock=F('stock') - item.quantity)
-                from django.core.files.storage import default_storage
-                from django.core.files.base import File
-                import os as _os
-                uploaded_photos = item.customization_data.get('uploaded_photos', {})
-                for slot_key, photo_info in uploaded_photos.items():
-                    file_path = photo_info.get('path', '')
-                    if file_path and default_storage.exists(file_path):
-                        try:
-                            with default_storage.open(file_path, 'rb') as f:
-                                fname = _os.path.basename(file_path)
-                                OrderItemImage.objects.create(
-                                    order_item=order_item,
-                                    image=File(f, name=fname),
-                                    slot_label=photo_info.get('label') or slot_key,
-                                )
-                        except Exception:
-                            pass
-            if cart.coupon:
-                cart.coupon.used_count += 1
-                cart.coupon.save()
-            cart.items.all().delete()
-            cart.coupon = None
-            cart.gift_wrap = False
-            cart.notes = ''
-            cart.save()
-        return redirect('store:payment', order_id=order.order_id)
-
-    # ── GET ──────────────────────────────────────────────────────────────────
-    initial = {'full_name': request.user.get_full_name(), 'email': request.user.email}
-    try:
-        initial['phone'] = request.user.profile.phone
-    except Exception:
-        pass
-    form = CheckoutForm(initial=initial)
-    context = {
-        'cart': cart,
-        'form': form,
-        'store_settings': store_s,
-        'saved_addresses': saved_addresses,
-        'indian_states': INDIAN_STATES,
-        'payment_configured': bool(settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET),
-    }
-    return render(request, 'store/checkout.html', context)
-
-
-@login_required
-def _old_checkout_unused(request):
-    cart = get_or_create_cart(request)
-    if cart.item_count == 0:
-        messages.warning(request, 'Your cart is empty.')
-        return redirect('store:cart')
-    store_s = StoreSettings.objects.first()
-    if request.method == 'POST':
-        form = CheckoutForm(request.POST)
-        if form.is_valid():
-            # Re-validate stock at the moment of purchase — a product's stock can
-            # change between "add to cart" and checkout (other customers buying,
-            # admin adjusting stock, etc.), so we check again right before charging.
-            from django.db import transaction
-            from django.db.models import F
-
-            out_of_stock = []
-            for item in cart.items.select_related('product').all():
-                if item.product.track_inventory and item.quantity > item.product.stock:
-                    out_of_stock.append((item.product.name, item.product.stock))
-
-            if out_of_stock:
-                for name, available in out_of_stock:
-                    if available <= 0:
-                        messages.error(request, f'"{name}" just went out of stock. Please remove it from your cart to continue.')
-                    else:
-                        messages.error(request, f'Only {available} left of "{name}". Please update the quantity in your cart.')
-                return redirect('store:cart')
-
-            data = form.cleaned_data
+        class _CheckoutError(Exception):
+            pass
+        try:
             with transaction.atomic():
-                # Order is created now (so stock can be reserved), but payment
-                # is NOT complete yet — payment_status stays 'pending' until
-                # Razorpay confirms the payment in payment_verify(). If payment
-                # fails or is abandoned, stock is restored via order.restore_stock().
+                # Lock the product rows so two simultaneous checkouts can't both
+                # pass the stock check and oversell.
+                cart_items = list(cart.items.select_related('product'))
+                locked = {p.pk: p for p in Product.objects.select_for_update().filter(pk__in=[i.product_id for i in cart_items])}
+                short = []
+                for it in cart_items:
+                    lp = locked.get(it.product_id)
+                    if lp is None:
+                        raise _CheckoutError('An item in your cart is no longer available.')
+                    if lp.track_inventory and it.quantity > lp.stock:
+                        short.append((lp.name, lp.stock))
+                if short:
+                    raise _CheckoutError('\n'.join(
+                        (f'"{n}" just went out of stock.' if a <= 0 else f'Only {a} left of "{n}".') for n, a in short))
+                if cart.coupon_id:
+                    locked_coupon = Coupon.objects.select_for_update().get(pk=cart.coupon_id)
+                    ok, why = locked_coupon.is_valid()
+                    if not ok or cart.subtotal < locked_coupon.min_order_value:
+                        raise _CheckoutError('Your coupon is no longer valid (%s). Please review your cart.' % why)
+                    cart.coupon = locked_coupon
                 order = Order.objects.create(
                     user=request.user,
-                    full_name=data['full_name'],
-                    phone=data['phone'],
-                    alternate_phone=data.get('alternate_phone', ''),
-                    email=data['email'],
-                    address=data['address'],
-                    city=data['city'],
-                    state=data['state'],
-                    pincode=data['pincode'],
+                    full_name=cleaned['full_name'],
+                    phone=cleaned['phone'],
+                    alternate_phone=cleaned.get('alternate_phone', ''),
+                    email=cleaned.get('email') or request.user.email or '',
+                    address=cleaned['address'],
+                    city=cleaned['city'],
+                    state=cleaned['state'],
+                    pincode=cleaned['pincode'],
                     payment_method='online',
                     status='awaiting_payment',
                     payment_status='pending',
@@ -1106,32 +999,24 @@ def _old_checkout_unused(request):
                     discount_amount=cart.discount_amount,
                     gift_wrap=cart.gift_wrap,
                     gift_wrap_price=cart.gift_wrap_price if cart.gift_wrap else 0,
+                    parcel_charge_total=cart.parcel_charge_total,
                     total=cart.total,
                     coupon_code=cart.coupon.code if cart.coupon else '',
                     notes=cart.notes,
                 )
                 for item in cart.items.all():
-                    # Merge selected_size into customization_data for storage
                     cust_data = dict(item.customization_data or {})
                     if hasattr(item, 'selected_size') and item.selected_size:
                         cust_data['selected_size'] = item.selected_size
-
                     order_item = OrderItem.objects.create(
-                        order=order,
-                        product=item.product,
+                        order=order, product=item.product,
                         product_name=item.product.name,
-                        quantity=item.quantity,
-                        unit_price=item.unit_price,
+                        quantity=item.quantity, unit_price=item.unit_price,
+                        parcel_charge=item.parcel_charge,
                         customization_data=cust_data,
                     )
-                    # Atomically decrement stock — F() avoids a read-then-write race
-                    # between two customers checking out the same product at once.
-                    # Skipped for made-to-order items with tracking turned off.
                     if item.product.track_inventory:
-                        Product.objects.filter(pk=item.product_id).update(
-                            stock=F('stock') - item.quantity
-                        )
-                    # Transfer uploaded customization photos to OrderItemImage
+                        Product.objects.filter(pk=item.product_id).update(stock=F('stock') - item.quantity)
                     from django.core.files.storage import default_storage
                     from django.core.files.base import File
                     import os as _os
@@ -1150,28 +1035,32 @@ def _old_checkout_unused(request):
                             except Exception:
                                 pass
                 if cart.coupon:
-                    cart.coupon.used_count += 1
-                    cart.coupon.save()
+                    Coupon.objects.filter(pk=cart.coupon_id).update(used_count=F('used_count') + 1)
                 cart.items.all().delete()
                 cart.coupon = None
                 cart.gift_wrap = False
                 cart.notes = ''
                 cart.save()
-            return redirect('store:payment', order_id=order.order_id)
-    else:
-        initial = {
-            'full_name': request.user.get_full_name(),
-            'email': request.user.email,
-        }
-        try:
-            initial['phone'] = request.user.profile.phone
-        except:
-            pass
-        form = CheckoutForm(initial=initial)
+
+        except _CheckoutError as e:
+            for m in str(e).split('\n'):
+                messages.error(request, m)
+            return redirect('store:cart')
+        return redirect('store:payment', order_id=order.order_id)
+
+    # ── GET ──────────────────────────────────────────────────────────────────
+    initial = {'full_name': request.user.get_full_name(), 'email': request.user.email}
+    try:
+        initial['phone'] = request.user.profile.phone
+    except Exception:
+        pass
+    form = CheckoutForm(initial=initial)
     context = {
         'cart': cart,
         'form': form,
         'store_settings': store_s,
+        'saved_addresses': saved_addresses,
+        'indian_states': INDIAN_STATES,
         'payment_configured': bool(settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET),
     }
     return render(request, 'store/checkout.html', context)
@@ -1346,9 +1235,7 @@ def payment_page(request, order_id):
             order.save(update_fields=['razorpay_order_id'])
         except Exception as e:
             logger.exception('Razorpay order creation failed (order_id=%s)', order.order_id)
-            error_code = f"{type(e).__name__}: {str(e)[:180]}"
             messages.error(request, 'Could not start the payment right now. Please try again in a moment.')
-            messages.error(request, f"Diagnostic code (copy this if it keeps happening): {error_code}")
             return render(request, 'store/payment.html', {
                 'order': order,
                 'razorpay_key_id': '',
@@ -1385,7 +1272,10 @@ def payment_verify(request, order_id):
         return JsonResponse({'success': False, 'message': 'Invalid payment data received.'}, status=400)
 
     # Validate that the razorpay_order_id matches what we stored
-    if order.razorpay_order_id and order.razorpay_order_id != razorpay_order_id:
+    # The payment page always creates the Razorpay order first, so an order
+    # with no stored ID can never legitimately be verified (otherwise a valid
+    # payment from some other, cheaper order could be replayed onto this one).
+    if not order.razorpay_order_id or order.razorpay_order_id != razorpay_order_id:
         logger.warning('razorpay_order_id mismatch for order %s', order_id)
         return JsonResponse({'success': False, 'message': 'Payment order ID mismatch.'}, status=400)
 
@@ -1413,8 +1303,14 @@ def payment_verify(request, order_id):
     return JsonResponse({'success': False, 'message': 'Payment verification failed. Please try again.'}, status=400)
 
 
+def _cross_site(request):
+    return request.headers.get('Sec-Fetch-Site', '') == 'cross-site'
+
+
 def cancel_payment(request, order_id):
     """Customer cancelled before paying — restore cart then go to home."""
+    if _cross_site(request):
+        return redirect('store:home')
     if not request.user.is_authenticated:
         return redirect('store:home')
 
@@ -1434,6 +1330,8 @@ def payment_failed(request, order_id):
     Restores stock + cart items, then renders the failure page.
     No @login_required for same reason as cancel_payment.
     """
+    if _cross_site(request):
+        return redirect('store:cart')
     if not request.user.is_authenticated:
         return redirect('store:cart')
 
@@ -1908,3 +1806,40 @@ def my_favorites(request):
     favorites_qs = Favorite.objects.filter(user=request.user).select_related('product').prefetch_related('product__images')
     products = [f.product for f in favorites_qs if f.product and f.product.is_active]
     return render(request, 'store/my_favorites.html', {'products': products})
+
+
+# ─── RAZORPAY WEBHOOK ────────────────────────────────────────────────────────
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
+@require_POST
+def razorpay_webhook(request):
+    """Server-to-server payment confirmation, so a customer who pays and then
+    closes the browser still gets their order confirmed. Configure in the
+    Razorpay dashboard: URL https://<domain>/razorpay/webhook/, events
+    payment.captured + order.paid, and set RAZORPAY_WEBHOOK_SECRET."""
+    secret = getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '')
+    if not secret:
+        return JsonResponse({'ok': False}, status=503)
+    sig = request.headers.get('X-Razorpay-Signature', '')
+    body = request.body.decode('utf-8')
+    try:
+        import razorpay
+        razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)) \
+            .utility.verify_webhook_signature(body, sig, secret)
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+    try:
+        payload = json.loads(body)
+        event = payload.get('event', '')
+        if event in ('payment.captured', 'order.paid'):
+            ent = payload.get('payload', {})
+            pay = (ent.get('payment') or {}).get('entity', {})
+            rp_order_id = pay.get('order_id') or (ent.get('order') or {}).get('entity', {}).get('id', '')
+            order = Order.objects.filter(razorpay_order_id=rp_order_id).first() if rp_order_id else None
+            if order and int(pay.get('amount', 0)) == int(round(float(order.total) * 100)):
+                _mark_order_paid(order, payment_id=pay.get('id', ''))
+    except Exception:
+        logger.exception('Razorpay webhook processing failed')
+    return JsonResponse({'ok': True})

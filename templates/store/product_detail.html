@@ -571,6 +571,20 @@ function _fmtINR(n) {
   n = Number(n) || 0;
   return '₹' + (Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : n.toFixed(2));
 }
+/* "Buy at" button = unit price of the chosen size x quantity */
+function refreshBuyTotal() {
+  var el = document.getElementById('buyPrice'); if (!el) return;
+  var q = parseInt((document.getElementById('qty') || {}).value, 10);
+  if (!(q >= 1)) q = 1;
+  var unit = (typeof window._unitPrice === 'number') ? window._unitPrice : Number(_BASE_PRICE);
+  el.textContent = _fmtINR(unit * q);
+}
+window.refreshBuyTotal = refreshBuyTotal;
+document.addEventListener('DOMContentLoaded', function() {
+  var q = document.getElementById('qty');
+  if (q) { q.addEventListener('input', refreshBuyTotal); q.addEventListener('change', refreshBuyTotal); }
+  refreshBuyTotal();
+});
 /* price = what the customer pays; mrp = struck-through compare price (0 = none) */
 function applyPrice(price, mrp) {
   price = Number(price) || 0; mrp = Number(mrp) || 0;
@@ -579,7 +593,8 @@ function applyPrice(price, mrp) {
   var set = function(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; };
   var show = function(id, on) { var el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
   set('displayPrice', _fmtINR(price));
-  set('buyPrice', _fmtINR(price));
+  window._unitPrice = price;
+  refreshBuyTotal();
   set('displayMrp', _fmtINR(mrp));
   set('displayOff', '-' + off + '%');
   set('saveBadge', 'SAVE ' + off + '%');
@@ -743,7 +758,8 @@ document.addEventListener('keydown', e => {
 /* ── Qty ─────────────────────────────────────────────────────────────────── */
 function changeQty(d) {
   const inp = document.getElementById('qty');
-  inp.value = Math.max(1, Math.min(parseInt(inp.value) + d, {{ product.available_stock|default:99 }}));
+  inp.value = Math.max(1, Math.min((parseInt(inp.value) || 1) + d, {{ product.available_stock|default:99 }}));
+  refreshBuyTotal();
 }
 
 /* ── Accordion ───────────────────────────────────────────────────────────── */

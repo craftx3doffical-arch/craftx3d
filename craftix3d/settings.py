@@ -24,8 +24,14 @@ if _sys.version_info >= (3, 13):
 # ─────────────────────────────────────────────────────────
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-craftix3d-dev-key-change-in-production')
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-craftix3d-dev-key-local-only'
+    else:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured('SECRET_KEY environment variable is required when DEBUG is False.')
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 
 # Render.com sets this automatically for the app's own domain — add it so the
@@ -214,6 +220,11 @@ STORAGES = {
     },
 }
 
+# Shared cache so rate limits / login lockouts hold across gunicorn workers.
+# (Local dev without a DATABASE_URL keeps the simple in-memory cache.)
+if DB_URL:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.db.DatabaseCache', 'LOCATION': 'django_cache'}}
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Ensure caught exceptions we explicitly log (e.g. a failed photo upload)
@@ -279,6 +290,7 @@ ACCOUNT_ADAPTER = 'store.adapters.CustomAccountAdapter'
 # these from the Razorpay Dashboard → Settings → API Keys.
 RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
+RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET', '')
 
 # ── Order confirmation emails (Brevo HTTPS API) ─────────────────────────────
 # Uses Brevo's REST API over HTTPS rather than SMTP — Render's free tier

@@ -20,3 +20,16 @@ def staff_required(view_func):
 
         return view_func(request, *args, **kwargs)
     return wrapper
+
+
+def admin_required(view_func):
+    """Like staff_required, but only for accounts with the 'admin' role."""
+    @staff_required
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if request.session.get('staff_role') != 'admin':
+            from django.contrib import messages
+            messages.error(request, 'Only admins can do that.')
+            return redirect('manage:dashboard')
+        return view_func(request, *args, **kwargs)
+    return wrapper

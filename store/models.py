@@ -626,8 +626,12 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.order_id:
-            import random
-            self.order_id = f"CX{random.randint(100000, 999999)}"
+            import secrets
+            while True:
+                candidate = f"CX{secrets.randbelow(90000000) + 10000000}"
+                if not Order.objects.filter(order_id=candidate).exists():
+                    self.order_id = candidate
+                    break
         super().save(*args, **kwargs)
 
     def restore_stock(self):

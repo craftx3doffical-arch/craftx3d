@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.contrib import messages
 import json, csv, io
 from datetime import timedelta
-from .decorators import staff_required
+from .decorators import staff_required, admin_required
 from .models import StaffUser
 from store.models import (
     Product, Category, CategoryImage, ProductImage, ProductFAQ,
@@ -311,7 +311,7 @@ def _save_product(request, product=None):
     return product
 
 
-@staff_required
+@admin_required
 @require_POST
 def product_delete(request, pk):
     product = get_object_or_404(Product, pk=pk)
@@ -666,7 +666,7 @@ def coupons_list(request):
     return render(request, 'manage/coupons.html', {'coupons': coupons})
 
 
-@staff_required
+@admin_required
 def coupon_add(request):
     if request.method == 'POST':
         from datetime import datetime
@@ -697,7 +697,7 @@ def coupon_add(request):
     return redirect('manage:coupons')
 
 
-@staff_required
+@admin_required
 @require_POST
 def coupon_delete(request, pk):
     coupon = get_object_or_404(Coupon, pk=pk)
@@ -738,7 +738,7 @@ def customer_block(request, pk):
     return redirect('manage:customers')
 
 
-@staff_required
+@admin_required
 def export_customers(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="customers.csv"'
@@ -1374,7 +1374,7 @@ def staff_delete(request, pk):
 
 
 # ─── SETTINGS ────────────────────────────────────────────────────────────────
-@staff_required
+@admin_required
 def store_settings_view(request):
     settings = StoreSettings.objects.first()
     if not settings:

@@ -383,6 +383,7 @@ function switchImage(url, el) {
 function changeQty(d) {
   var inp = document.getElementById('qty'); if(!inp) return;
   inp.value = Math.max(1, Math.min(parseInt(inp.value||1)+d, parseInt(inp.max)||99));
+  if (typeof refreshBuyTotal === 'function') refreshBuyTotal();
 }
 function toggleAccord(id) {
   var item = document.getElementById(id); if(!item) return;
