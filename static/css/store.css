@@ -5426,3 +5426,44 @@ label.field-invalid {
 .sale-timer-stock { margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); }
 .sale-timer-row + .sale-timer-stock { padding-top: 9px; border-top: 1px dashed #F0C27B; }
 @media (max-width: 420px) { .st-box { min-width: 42px; } .st-box b { font-size: 1.1rem; } .sale-timer { padding: 12px; } }
+
+
+/* ═══ FIXES (v3) ═══════════════════════════════════════════════════════════ */
+
+/* 1) Product cards: every card in a row is the same height and the Buy /
+      Add to Cart button always sits on the same line at the bottom, even
+      when only some products have a rating row. */
+.product-card { display: flex; flex-direction: column; }
+.product-card > a:first-child { display: block; flex: 0 0 auto; }
+.product-card .product-body { flex: 1 1 auto; display: flex; flex-direction: column; }
+.product-card .product-body .btn-add-cart { margin-top: auto; }
+.product-card .product-body .product-price-row { margin-bottom: 12px; }
+
+/* 2) Menu (3-bar) button sits on the LEFT, right after the logo, on mobile */
+@media (max-width: 768px) {
+  .navbar-brand { order: 1; margin-right: 0; }
+  .nav-toggle   { order: 2; margin-left: 2px; margin-right: auto; }
+  .navbar-right { order: 3; }
+}
+
+/* 3) Quantity + Add to Cart + Buy — pinned to the bottom of the screen */
+.pd-sticky-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+  background: #fff; border-top: 1px solid #E2D5BC;
+  box-shadow: 0 -4px 18px rgba(0,0,0,0.10);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+}
+.pd-sticky-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+.pd-sticky-bar .purchase-row { margin: 0; flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; }
+.pd-sticky-bar .pd-buy-row { margin: 0; flex: 1 1 auto; min-width: 0; gap: 10px; }
+.pd-sticky-bar .pd-buy-row .btn-add-to-cart-large { min-height: 46px; padding: 0 10px; font-size: 0.98rem; }
+.pd-sticky-bar .qty-btn:disabled { opacity: .4; cursor: not-allowed; }
+.pd-limit-note { margin-top: 8px; font-size: 0.78rem; color: var(--text-muted); }
+body.has-sticky-buy { padding-bottom: 86px; }
+@media (max-width: 560px) {
+  .pd-sticky-bar { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .pd-sticky-inner { gap: 8px; }
+  .pd-sticky-bar .purchase-row .qty-label { display: none; }
+  .pd-sticky-bar .pd-buy-row { gap: 6px; }
+  .pd-sticky-bar .pd-buy-row .btn-add-to-cart-large { font-size: 0.86rem; min-height: 44px; padding: 0 6px; }
+}

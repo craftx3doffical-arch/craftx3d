@@ -69,6 +69,51 @@ def get_or_create_cart(request):
         return cart
 
 
+class _BuyNowItems:
+    """Minimal stand-in for cart.items holding a single item."""
+    def __init__(self, item):
+        self._item = item
+    def all(self):
+        return [self._item]
+    def select_related(self, *a, **k):
+        return [self._item]
+    def exists(self):
+        return True
+
+
+class BuyNowCart:
+    """A one-item 'cart' for the Buy Now flow. Same read interface the checkout
+    page and order creation use, but it is NOT the customer's real cart, so
+    whatever is sitting in their cart is never charged or touched."""
+    is_buy_now = True
+    coupon = None
+    coupon_id = None
+    gift_wrap = False
+    gift_wrap_price = 0
+    discount_amount = 0
+    notes = ''
+
+    def __init__(self, item):
+        self.item = item
+        self.items = _BuyNowItems(item)
+
+    @property
+    def item_count(self):
+        return 1
+
+    @property
+    def subtotal(self):
+        return self.item.total_price
+
+    @property
+    def parcel_charge_total(self):
+        return self.item.parcel_charge_total
+
+    @property
+    def total(self):
+        return self.subtotal + self.parcel_charge_total
+
+
 # ─── HOME ────────────────────────────────────────────────────────────────────
 def home(request):
     banners = Banner.objects.filter(is_active=True).order_by('display_order')
@@ -390,28 +435,41 @@ def add_to_cart(request, product_id):
         return redirect('store:product_detail', slug=product.slug)
 
     cart = get_or_create_cart(request)
-    quantity = max(1, int(request.POST.get('quantity', 1) or 1))
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    buy_now = request.POST.get('buy_now') == '1'
+    try:
+        quantity = max(1, int(request.POST.get('quantity', 1) or 1))
+    except (ValueError, TypeError):
+        quantity = 1
+
+    def _reject(error, msg):
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error, 'message': msg})
+        messages.warning(request, msg)
+        return redirect('store:product_detail', slug=product.slug)
+
+    # 'Buy Now' is its own purchase: it never merges with what's already in
+    # the cart, so only this product's quantity counts toward the limits.
+    existing_qty = 0 if buy_now else sum(
+        item.quantity for item in cart.items.filter(product=product)
+    )
+
+    # Per-order limit set by the admin when the product was added (e.g. 10).
+    order_limit = product.max_order_quantity or 0
+    if order_limit and existing_qty + quantity > order_limit:
+        left = max(order_limit - existing_qty, 0)
+        if left <= 0:
+            return _reject('limit_reached', f'You can order a maximum of {order_limit} of this product, and you already have {existing_qty} in your cart.')
+        return _reject('limit_reached', f'You can order a maximum of {order_limit} of this product. You can add {left} more.')
 
     # Enforce stock limit — reject instead of silently capping. Skipped
     # entirely for products with inventory tracking turned off.
-    existing_qty = sum(
-        item.quantity for item in cart.items.filter(product=product)
-    )
     if product.track_inventory:
         available = product.available_stock - existing_qty
         if available <= 0:
-            msg = f'Only {product.stock} in stock and you already have {existing_qty} in your cart.'
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'out_of_stock', 'message': msg})
-            messages.warning(request, msg)
-            return redirect('store:product_detail', slug=product.slug)
-
+            return _reject('out_of_stock', f'Only {product.stock} in stock and you already have {existing_qty} in your cart.')
         if quantity > available:
-            msg = f'Only {available} more available (you have {existing_qty} in cart, stock is {product.stock}).'
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'insufficient_stock', 'message': msg})
-            messages.warning(request, msg)
-            return redirect('store:product_detail', slug=product.slug)
+            return _reject('insufficient_stock', f'Only {available} more available (you have {existing_qty} in cart, stock is {product.stock}).')
 
     # Older non-JSON customization types: both require an uploaded photo.
     if product.customization_type in ('miniature', 'photo') and not request.FILES.get('custom_photo'):
@@ -576,6 +634,9 @@ def add_to_cart(request, product_id):
         if size_opt:
             unit_price += size_opt.extra_price
 
+    if buy_now:
+        # Only one 'Buy Now' purchase at a time — drop any earlier unfinished one.
+        CartItem.all_items.filter(cart=cart, buy_now=True).delete()
     cart_item = CartItem.objects.create(
         cart=cart,
         product=product,
@@ -584,6 +645,7 @@ def add_to_cart(request, product_id):
         customization_data=customization_data,
         selected_size=size_label,
         parcel_charge=product.parcel_charge_price if product.show_parcel_charge else 0,
+        buy_now=buy_now,
     )
 
     # Save any uploaded customization photos/logo files to disk.
@@ -648,7 +710,7 @@ def add_to_cart(request, product_id):
         return JsonResponse({
             'success': True,
             'cart_count': cart.item_count,
-            'checkout_url': reverse('store:checkout'),
+            'checkout_url': (reverse('store:checkout') + f'?buy_now={cart_item.pk}') if buy_now else reverse('store:checkout'),
             'product_name': product.name,
             'product_price': float(unit_price),
             'cart_subtotal': float(cart.subtotal),
@@ -679,9 +741,14 @@ def update_cart(request, item_id):
             })
         return redirect('store:cart')
     removed = False
+    limit_msg = ''
     if action == 'increase':
-        item.quantity += 1
-        item.save()
+        cap = item.product.max_per_order
+        if item.quantity + 1 > cap:
+            limit_msg = (f'Only {cap} allowed per order for this product.' if cap else 'This product is out of stock.')
+        else:
+            item.quantity += 1
+            item.save()
     elif action == 'decrease':
         if item.quantity > 1:
             item.quantity -= 1
@@ -703,7 +770,10 @@ def update_cart(request, item_id):
             'cart_parcel_charge': float(cart.parcel_charge_total),
             'cart_total': float(cart.total),
             'cart_count': cart.item_count,
+            'limit_message': limit_msg,
         })
+    if limit_msg:
+        messages.warning(request, limit_msg)
     return redirect('store:cart')
 
 
@@ -893,10 +963,23 @@ def checkout(request):
     # Release anything this customer left unpaid earlier (closed tab, etc.)
     # so stock and their cart are back before we look at the cart.
     expire_stale_unpaid_orders(request=request, user=request.user)
-    cart = get_or_create_cart(request)
-    if cart.item_count == 0:
-        messages.warning(request, 'Your cart is empty.')
-        return redirect('store:cart')
+    real_cart = get_or_create_cart(request)
+    # 'Buy Now': check out ONLY that one product, leaving the cart untouched.
+    buy_now_id = (request.GET.get('buy_now') or request.POST.get('buy_now') or '').strip()
+    buy_now_item = None
+    if buy_now_id:
+        try:
+            buy_now_item = CartItem.all_items.select_related('product').get(
+                pk=int(buy_now_id), cart=real_cart, buy_now=True)
+        except (ValueError, CartItem.DoesNotExist):
+            messages.warning(request, 'That purchase is no longer available. Please choose the product again.')
+            return redirect('store:products')
+        cart = BuyNowCart(buy_now_item)
+    else:
+        cart = real_cart
+        if cart.item_count == 0:
+            messages.warning(request, 'Your cart is empty.')
+            return redirect('store:cart')
     store_s = StoreSettings.objects.first()
     saved_addresses = request.user.saved_addresses.all()
 
@@ -934,6 +1017,7 @@ def checkout(request):
             if not form.is_valid():
                 context = {
                     'cart': cart, 'form': form, 'store_settings': store_s,
+                    'buy_now_id': buy_now_item.pk if buy_now_item else '',
                     'saved_addresses': saved_addresses, 'indian_states': INDIAN_STATES,
                     'payment_configured': bool(settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET),
                 }
@@ -973,6 +1057,8 @@ def checkout(request):
                         raise _CheckoutError('An item in your cart is no longer available.')
                     if lp.track_inventory and it.quantity > lp.stock:
                         short.append((lp.name, lp.stock))
+                    elif lp.max_order_quantity and it.quantity > lp.max_order_quantity:
+                        raise _CheckoutError(f'You can order a maximum of {lp.max_order_quantity} of \"{lp.name}\".')
                 if short:
                     raise _CheckoutError('\n'.join(
                         (f'"{n}" just went out of stock.' if a <= 0 else f'Only {a} left of "{n}".') for n, a in short))
@@ -995,6 +1081,7 @@ def checkout(request):
                     payment_method='online',
                     status='awaiting_payment',
                     payment_status='pending',
+                    is_buy_now=bool(buy_now_item),
                     subtotal=cart.subtotal,
                     discount_amount=cart.discount_amount,
                     gift_wrap=cart.gift_wrap,
@@ -1036,15 +1123,20 @@ def checkout(request):
                                 pass
                 if cart.coupon:
                     Coupon.objects.filter(pk=cart.coupon_id).update(used_count=F('used_count') + 1)
-                cart.items.all().delete()
-                cart.coupon = None
-                cart.gift_wrap = False
-                cart.notes = ''
-                cart.save()
+                if buy_now_item:
+                    buy_now_item.delete()      # the real cart stays exactly as it was
+                else:
+                    cart.items.all().delete()
+                    cart.coupon = None
+                    cart.gift_wrap = False
+                    cart.notes = ''
+                    cart.save()
 
         except _CheckoutError as e:
             for m in str(e).split('\n'):
                 messages.error(request, m)
+            if buy_now_item:
+                return redirect('store:product_detail', slug=buy_now_item.product.slug)
             return redirect('store:cart')
         return redirect('store:payment', order_id=order.order_id)
 
@@ -1058,6 +1150,7 @@ def checkout(request):
     context = {
         'cart': cart,
         'form': form,
+        'buy_now_id': buy_now_item.pk if buy_now_item else '',
         'store_settings': store_s,
         'saved_addresses': saved_addresses,
         'indian_states': INDIAN_STATES,
@@ -1077,6 +1170,8 @@ UNPAID_ORDER_TTL_MINUTES = 20
 def _restore_order_to_cart(order, cart, only_if_empty=False):
     """Put an unpaid order's items back into the cart, keeping size and
     customisation, and merging only into an identical line."""
+    if order.is_buy_now:
+        return   # a 'Buy Now' purchase never came from the cart, so it never goes back into it
     if only_if_empty and cart.items.exists():
         return
     for item in order.items.select_related('product').all():

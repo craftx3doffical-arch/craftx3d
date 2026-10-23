@@ -181,6 +181,7 @@ class Product(models.Model):
     stock = models.IntegerField(default=100)
     track_inventory = models.BooleanField(default=True, help_text='Turn off for made-to-order items with no fixed stock count — always shown as available.')
     low_stock_threshold = models.IntegerField(default=10)
+    max_order_quantity = models.PositiveIntegerField(default=10, help_text='Most units one customer can order at a time (per order / in the cart). 0 = no limit.')
     
     # Flags
     is_active = models.BooleanField(default=True)
@@ -285,6 +286,15 @@ class Product(models.Model):
         if not self.track_inventory:
             return 999999
         return self.stock
+
+    @property
+    def max_per_order(self):
+        """Most units a single customer may order at once: the admin's
+        per-order limit, further capped by the real stock when tracked."""
+        limit = self.max_order_quantity or 0
+        if self.track_inventory:
+            limit = min(limit, self.stock) if limit else self.stock
+        return max(limit, 0) if (limit or self.track_inventory) else 99
 
     @property
     def main_image(self):
@@ -525,7 +535,19 @@ class Cart(models.Model):
         return self.items.count()
 
 
+class CartItemManager(models.Manager):
+    """Default manager: hides 'Buy Now' items so they never show up in the
+    cart, the cart badge or the cart drawer. Use CartItem.all_items to reach them."""
+    def get_queryset(self):
+        return super().get_queryset().filter(buy_now=False)
+
+
 class CartItem(models.Model):
+    # A 'Buy Now' purchase lives here too (so photos/customization reuse the
+    # normal add flow) but is flagged and kept out of the real cart.
+    buy_now = models.BooleanField(default=False)
+    objects = CartItemManager()
+    all_items = models.Manager()
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.IntegerField(default=1)
@@ -594,6 +616,7 @@ class Order(models.Model):
         ('refunded', 'Refunded'),
     ]
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    is_buy_now = models.BooleanField(default=False)   # placed via 'Buy Now' (not from the cart)
     razorpay_order_id = models.CharField(max_length=100, blank=True)
     razorpay_payment_id = models.CharField(max_length=100, blank=True)
     razorpay_signature = models.CharField(max_length=255, blank=True)

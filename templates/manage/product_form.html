@@ -222,8 +222,8 @@
           </div>
           <div class="m-form-group-light" style="margin-top:14px;">
             <label class="m-form-label-light">Free-Packaging Badge Text</label>
-            <input type="text" name="parcel_charge_free_label" class="m-field" value="{{ product.parcel_charge_free_label|default:'Free Parcel & Packaging' }}" placeholder="Free Parcel & Packaging">
-            <p class="m-form-hint">Shown on the product page instead, when the fee above is turned off.</p>
+            <input type="text" name="parcel_charge_free_label" class="m-field" value="{% if product.pk %}{{ product.parcel_charge_free_label }}{% else %}Free Parcel & Packaging{% endif %}" placeholder="Free Parcel & Packaging">
+            <p class="m-form-hint">Shown on the product page instead, when the fee above is turned off. Edit it to any text you like; leave it empty to hide the badge.</p>
           </div>
         </div>
       </div>
@@ -252,6 +252,11 @@
           <div class="m-form-group-light" id="stockQtyGroup" style="margin-top:14px;{% if not product.track_inventory|default:True %}opacity:0.5;{% endif %}">
             <label class="m-form-label-light">Stock Quantity</label>
             <input type="number" name="stock" id="stockQtyInput" class="m-field" value="{{ product.stock|default:0 }}" min="0" placeholder="0" {% if not product.track_inventory|default:True %}readonly{% endif %}>
+          </div>
+          <div class="m-form-group-light" style="margin-top:14px;">
+            <label class="m-form-label-light">Max Quantity Per Order</label>
+            <input type="number" name="max_order_quantity" class="m-field" value="{% if product.pk %}{{ product.max_order_quantity }}{% else %}10{% endif %}" min="0" placeholder="10">
+            <p class="m-form-hint">The most units one customer can buy at a time (cart and Buy Now). E.g. 10 means nobody can order more than 10. Enter 0 for no limit.</p>
           </div>
         </div>
       </div>

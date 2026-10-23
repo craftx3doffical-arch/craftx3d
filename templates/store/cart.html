@@ -206,6 +206,7 @@ function updateCart(itemId, action) {
   }).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(data => {
     _cartPageBusy[itemId] = false;
     if(data.success) {
+      if(data.limit_message && typeof showToast === 'function') showToast('⚠️ ' + data.limit_message, 'error');
       if(action === 'remove' || data.removed || data.already_removed) {
         document.getElementById(`cart-item-${itemId}`)?.remove();
       } else {

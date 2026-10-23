@@ -208,7 +208,8 @@ def _save_product(request, product=None):
     product.parcel_charge_title = data.get('parcel_charge_title', '').strip() or 'Parcel & Packaging Fee'
     pc = data.get('parcel_charge_price', '')
     product.parcel_charge_price = float(pc) if pc else 0
-    product.parcel_charge_free_label = data.get('parcel_charge_free_label', '').strip() or 'Free Parcel & Packaging'
+    # Fully editable: whatever the admin types is saved as-is; leaving it empty hides the badge.
+    product.parcel_charge_free_label = data.get('parcel_charge_free_label', '').strip()[:100]
     product.customization_type = data.get('customization_type', 'none')
     product.description = data.get('description', '')
     product.description_title = data.get('description_title', '').strip() or 'Product Description'
@@ -264,6 +265,11 @@ def _save_product(request, product=None):
     except (ValueError, TypeError):
         product.stock = 0
     product.track_inventory = 'track_inventory' in data
+    # Per-order limit (e.g. 10): the most units one customer can buy at a time. 0 = no limit.
+    try:
+        product.max_order_quantity = max(0, int(data.get('max_order_quantity', 10) or 0))
+    except (ValueError, TypeError):
+        product.max_order_quantity = 10
     product.show_standard_delivery = 'show_standard_delivery' in data
     product.show_express_delivery = 'show_express_delivery' in data
     product.is_active = 'is_active' in data

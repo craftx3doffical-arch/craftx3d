@@ -174,7 +174,7 @@ function initAddToCart() {
       var qty = parseInt(qtyInput.value) || 1;
       var maxQty = parseInt(qtyInput.getAttribute('max') || '9999');
       if (qty > maxQty) {
-        showToast('⚠️ Only ' + maxQty + ' item(s) in stock. Please reduce quantity.', 'error');
+        showToast('⚠️ You can order a maximum of ' + maxQty + ' of this product at a time.', 'error');
         qtyInput.value = maxQty;
         qtyInput.focus();
         return;
@@ -187,8 +187,13 @@ function initAddToCart() {
 
     // 3. Submit via AJAX
     syncSizePrice();
-    if (addBtn) { addBtn.classList.add('btn-locked'); addBtn.textContent = 'Adding…'; }
+    if (addBtn && !goCheckout) { addBtn.classList.add('btn-locked'); addBtn.textContent = 'Adding…'; }
     var formData = new FormData(form);
+    if (goCheckout) formData.set('buy_now', '1');   // buy only THIS product — never touches the cart
+    var _buyBtnEl = document.getElementById('buyNowBtn');
+    var _buyBtnHTML = _buyBtnEl ? _buyBtnEl.innerHTML : '';
+    if (goCheckout && _buyBtnEl) { _buyBtnEl.disabled = true; _buyBtnEl.textContent = 'Please wait…'; }
+    function _restoreBuyBtn() { if (_buyBtnEl) { _buyBtnEl.disabled = false; _buyBtnEl.innerHTML = _buyBtnHTML; if (window.refreshBuyTotal) window.refreshBuyTotal(); } }
 
     // Include dynamically created customization file inputs
     document.querySelectorAll('#customizationFields input[type="file"]').forEach(function(inp) {
@@ -212,9 +217,10 @@ function initAddToCart() {
       return r.json().then(function(data) {
         if (addBtn) { addBtn.innerHTML = 'Add to Cart'; checkRequired(); }
         if (data.success && goCheckout && data.checkout_url) {
-          window.location.href = data.checkout_url;
+          window.location.href = data.checkout_url;   // straight to checkout/payment; button stays locked while the page loads
           return;
         }
+        if (goCheckout) _restoreBuyBtn();
         if (data.success) {
           var badge = document.getElementById('cartBadgeNav');
           if (badge) { badge.textContent = data.cart_count; badge.style.display = 'flex'; }
@@ -245,7 +251,8 @@ function initAddToCart() {
       // "add to cart jumps to the cart page" behaviour reported on mobile when
       // the network hiccups. Instead, re-enable the button and let them retry.
       if (addBtn) { addBtn.classList.remove('btn-locked'); addBtn.innerHTML = 'Add to Cart'; }
-      showToast('⚠️ Network issue — please tap Add to Cart again.', 'error');
+      _restoreBuyBtn();
+      showToast('⚠️ Network issue — please try again.', 'error');
     });
   });
 }
@@ -317,6 +324,7 @@ function updateCart(itemId, action) {
     .then(function(r){ return r.json(); })
     .then(function(data) {
       if (!data.success) return;
+      if (data.limit_message) showToast('⚠️ ' + data.limit_message, 'error');
       if (action === 'remove') {
         var el = document.getElementById('cart-item-'+itemId);
         if (el) { el.style.cssText += 'opacity:0;transition:opacity 0.3s'; setTimeout(function(){ el.remove(); }, 300); }
@@ -1161,6 +1169,7 @@ function drawerUpdateCart(itemId, action) {
   }).then(function(data) {
     _cartBusy[itemId] = false;
     if (!data.success) throw new Error('not ok');
+    if (data.limit_message) showToast('⚠️ ' + data.limit_message, 'error');
     if (action === 'remove' || data.removed || data.already_removed) {
       var el = document.getElementById('drawer-item-' + itemId);
       if (el) el.remove();

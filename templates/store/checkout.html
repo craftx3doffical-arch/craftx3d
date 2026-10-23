@@ -25,7 +25,7 @@
 
     <!-- ── Saved addresses ───────────────────────────────────────── -->
     {% if saved_addresses %}
-    <form method="post" action="{% url 'store:checkout' %}" id="checkoutForm">
+    <form method="post" action="{% url 'store:checkout' %}{% if buy_now_id %}?buy_now={{ buy_now_id }}{% endif %}" id="checkoutForm">
       {% csrf_token %}
 
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
@@ -66,7 +66,7 @@
 
     {% else %}
     <!-- ── No saved addresses: show inline form ─────────────────── -->
-    <form method="post" action="{% url 'store:checkout' %}" id="checkoutForm">
+    <form method="post" action="{% url 'store:checkout' %}{% if buy_now_id %}?buy_now={{ buy_now_id }}{% endif %}" id="checkoutForm">
       {% csrf_token %}
 
       {% if form.errors %}

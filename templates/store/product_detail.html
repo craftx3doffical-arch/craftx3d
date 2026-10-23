@@ -163,14 +163,17 @@
     {% endif %}
 
     <!-- Shipping / parcel bar -->
+    {% if product.show_parcel_charge and product.parcel_charge_price %}
     <div class="pd-ship-bar">
       <svg class="pd-ship-ico" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h13v10H1z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="5.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>
-      {% if product.show_parcel_charge and product.parcel_charge_price %}
       <span>Plus <strong>₹{{ product.parcel_charge_price }} {{ product.parcel_charge_title|default:"Parcel & Packaging Fee" }}</strong> — added at checkout</span>
-      {% else %}
-      <span>{{ product.parcel_charge_free_label|default:"Free Parcel & Packaging" }}</span>
-      {% endif %}
     </div>
+    {% elif product.parcel_charge_free_label %}
+    <div class="pd-ship-bar">
+      <svg class="pd-ship-ico" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h13v10H1z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="5.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>
+      <span>{{ product.parcel_charge_free_label }}</span>
+    </div>
+    {% endif %}
 
     <!-- Add to Cart Form -->
     <form id="addToCartForm" method="post" action="{% url 'store:add_to_cart' product.pk %}" enctype="multipart/form-data">
@@ -235,11 +238,14 @@
 
       <!-- Quantity & Add to Cart -->
       {% if product.is_in_stock %}
+      <!-- Quantity + Add to Cart + Buy: pinned to the bottom of the screen (Flipkart style) -->
+      <div class="pd-sticky-bar" id="pdStickyBar">
+      <div class="pd-sticky-inner">
       <div class="purchase-row">
         <span class="qty-label">Quantity</span>
         <div class="qty-selector">
           <button type="button" class="qty-btn" onclick="changeQty(-1)" aria-label="Decrease quantity">−</button>
-          <input type="number" name="quantity" id="qty" value="1" min="1" {% if product.track_inventory %}max="{{ product.stock }}"{% endif %} class="qty-num" aria-label="Quantity">
+          <input type="number" name="quantity" id="qty" value="1" min="1" max="{{ product.max_per_order }}" inputmode="numeric" class="qty-num" aria-label="Quantity" data-max="{{ product.max_per_order }}">
           <button type="button" class="qty-btn" onclick="changeQty(1)" aria-label="Increase quantity">+</button>
         </div>
       </div>
@@ -252,6 +258,9 @@
         <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy at ₹{{ product.base_price }}</a>
         {% endif %}
       </div>
+      </div><!-- /pd-sticky-inner -->
+      </div><!-- /pd-sticky-bar -->
+      {% if product.max_order_quantity %}<div class="pd-limit-note">Max {{ product.max_order_quantity }} per order</div>{% endif %}
       <div id="cartGateMsg" style="display:none;margin-top:10px;padding:10px 14px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.84rem;color:#856404;font-weight:500;"></div>
       {% else %}
       <div class="pd-coming-soon-wrap">
@@ -756,11 +765,29 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── Qty ─────────────────────────────────────────────────────────────────── */
-function changeQty(d) {
-  const inp = document.getElementById('qty');
-  inp.value = Math.max(1, Math.min((parseInt(inp.value) || 1) + d, {{ product.available_stock|default:99 }}));
+var _MAX_QTY = {{ product.max_per_order|default:1 }};
+function clampQty() {
+  const inp = document.getElementById('qty'); if (!inp) return;
+  var v = parseInt(inp.value) || 1;
+  if (v > _MAX_QTY) {
+    v = _MAX_QTY;
+    if (typeof showToast === 'function') showToast('⚠️ You can order a maximum of ' + _MAX_QTY + ' of this product at a time.', 'error');
+  }
+  inp.value = Math.max(1, v);
+  var plus = document.querySelector('.qty-btn[aria-label="Increase quantity"]');
+  if (plus) plus.disabled = inp.value >= _MAX_QTY;
   refreshBuyTotal();
 }
+function changeQty(d) {
+  const inp = document.getElementById('qty');
+  inp.value = (parseInt(inp.value) || 1) + d;
+  clampQty();
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var q = document.getElementById('qty');
+  if (q) { q.addEventListener('change', clampQty); clampQty(); }
+  if (document.getElementById('pdStickyBar')) document.body.classList.add('has-sticky-buy');
+});
 
 /* ── Accordion ───────────────────────────────────────────────────────────── */
 /* Each section opens/closes on its own (no other section collapses and shifts
