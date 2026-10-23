@@ -206,7 +206,6 @@
         <span class="loved-stars">{% for i in "12345" %}<span class="star-mini{% if forloop.counter <= reviews_avg|round_int %} filled{% endif %}">★</span>{% endfor %}</span>
         <span class="loved-score">{{ reviews_avg }}★</span>
         <span class="loved-count">({{ reviews_total }})</span>
-        <span class="loved-verified">✅ Verified</span>
       </div>
     </div>
 
@@ -223,8 +222,8 @@
           </div>
           <div class="loved-card-body">
             <div class="loved-card-quote">{{ review.title|default:review.body|truncatechars:60 }}</div>
+            <div class="loved-card-name">{{ review.reviewer_name }}</div>
             <div class="review-stars">{% for i in "12345" %}<span style="font-size:1em;color:{% if forloop.counter <= review.rating %}var(--forest,#1B4332){% else %}#ddd{% endif %};">★</span>{% endfor %}</div>
-            <div class="loved-card-name">{{ review.reviewer_name }} <span class="loved-check" title="Verified">✔</span></div>
             {% if review.product %}<div class="loved-card-product">{{ review.product.name|truncatechars:26 }}</div>{% endif %}
           </div>
         </div>
@@ -234,9 +233,6 @@
       <button type="button" class="loved-arrow next" onclick="lovedNav(1)" aria-label="Next reviews">›</button>
     </div>
 
-    <div style="text-align:center;margin-top:32px">
-      <a href="{% url 'store:write_review' %}" class="btn-primary">✍️ Write a Review</a>
-    </div>
   </div>
 </section>
 {% endif %}

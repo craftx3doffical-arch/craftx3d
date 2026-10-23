@@ -210,7 +210,7 @@ function initAddToCart() {
         });
       }
       return r.json().then(function(data) {
-        if (addBtn) { addBtn.innerHTML = '🛒 Add to Cart'; checkRequired(); }
+        if (addBtn) { addBtn.innerHTML = 'Add to Cart'; checkRequired(); }
         if (data.success && goCheckout && data.checkout_url) {
           window.location.href = data.checkout_url;
           return;
@@ -244,7 +244,7 @@ function initAddToCart() {
       // browser to the cart page (a plain POST response), which is exactly the
       // "add to cart jumps to the cart page" behaviour reported on mobile when
       // the network hiccups. Instead, re-enable the button and let them retry.
-      if (addBtn) { addBtn.classList.remove('btn-locked'); addBtn.innerHTML = '🛒 Add to Cart'; }
+      if (addBtn) { addBtn.classList.remove('btn-locked'); addBtn.innerHTML = 'Add to Cart'; }
       showToast('⚠️ Network issue — please tap Add to Cart again.', 'error');
     });
   });

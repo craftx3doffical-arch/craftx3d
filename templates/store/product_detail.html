@@ -233,6 +233,7 @@
       <!-- Quantity & Add to Cart -->
       {% if product.is_in_stock %}
       <div class="purchase-row">
+        <span class="qty-label">Quantity</span>
         <div class="qty-selector">
           <button type="button" class="qty-btn" onclick="changeQty(-1)" aria-label="Decrease">−</button>
           <input type="number" name="quantity" id="qty" value="1" min="1" {% if product.track_inventory %}max="{{ product.stock }}"{% endif %} class="qty-num" style="width:48px;text-align:center;border:none;background:none;font-family:inherit;font-size:1.1rem;font-weight:700;" aria-label="Quantity">
@@ -241,11 +242,11 @@
       </div>
       <div class="pd-buy-row">
         {% if request.user.is_authenticated %}
-        <button type="submit" class="btn-add-to-cart-large pd-btn-cart" id="addCartBtn">🛒 Add to Cart</button>
-        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">⚡ Buy Now</button>
+        <button type="submit" class="btn-add-to-cart-large pd-btn-cart" id="addCartBtn">Add to Cart</button>
+        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">Buy at <span id="buyPrice">₹{{ product.base_price }}</span></button>
         {% else %}
-        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-cart" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">🛒 Add to Cart</a>
-        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">⚡ Buy Now</a>
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-cart" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Add to Cart</a>
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy at ₹{{ product.base_price }}</a>
         {% endif %}
       </div>
       <div id="cartGateMsg" style="display:none;margin-top:10px;padding:10px 14px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.84rem;color:#856404;font-weight:500;"></div>
@@ -398,7 +399,7 @@
         {% for i in "12345" %}<span class="rvs-star{% if forloop.counter <= avg_rating|floatformat:0|add:0 %} filled{% endif %}">★</span>{% endfor %}
         <span class="rvs-score-num">{{ avg_rating|floatformat:2 }} out of 5</span>
       </div>
-      <div class="rvs-score-based">Based on {{ reviews.count }} review{{ reviews.count|pluralize }} <span class="rvs-verified-tick">✔</span></div>
+      <div class="rvs-score-based">Based on {{ reviews.count }} review{{ reviews.count|pluralize }}</div>
     </div>
     <div class="rvs-histogram">
       {% for star, count in rating_counts.items reversed %}
@@ -433,16 +434,15 @@
   <div id="rvsList">
     {% for review in reviews %}
     <div class="rvs-item{% if forloop.counter > 5 %} rvs-hidden{% endif %}" data-rating="{{ review.rating }}" data-ts="{{ review.created_at|date:'U' }}">
-      <div class="rvs-item-top">
-        <span class="rvs-item-stars">{% for i in "12345" %}<span class="rvs-star{% if forloop.counter <= review.rating %} filled{% endif %}">★</span>{% endfor %}</span>
-        <span class="rvs-item-date">{{ review.created_at|date:"m/d/Y" }}</span>
-      </div>
       <div class="rvs-item-who">
         <span class="rvs-avatar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </span>
         <span class="rvs-item-name">{{ review.reviewer_name }}</span>
-        {% if review.user %}<span class="rvs-verified-badge">Verified</span>{% endif %}
+      </div>
+      <div class="rvs-item-top">
+        <span class="rvs-item-stars">{% for i in "12345" %}<span class="rvs-star{% if forloop.counter <= review.rating %} filled{% endif %}">★</span>{% endfor %}</span>
+        <span class="rvs-item-date">{{ review.created_at|date:"m/d/Y" }}</span>
       </div>
       {% if review.title %}<div class="rvs-item-title">{{ review.title }}</div>{% endif %}
       <p class="rvs-item-body">{{ review.body }}</p>
@@ -562,6 +562,8 @@ function updateSizePrice(extra) {
   _sizeExtra = parseFloat(extra) || 0;
   var el = document.getElementById('displayPrice');
   if (el) el.textContent = '₹' + (_BASE_PRICE + _sizeExtra).toFixed(0).replace(/\.0$/, '');
+  var bp = document.getElementById('buyPrice');
+  if (bp) bp.textContent = '₹' + (_BASE_PRICE + _sizeExtra).toFixed(0);
 }
 
 /* ── Main gallery: switch image ─────────────────────────────────────────── */

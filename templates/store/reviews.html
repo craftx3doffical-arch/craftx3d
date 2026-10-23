@@ -35,9 +35,6 @@
       {% endwith %}
       {% endfor %}
     </div>
-    <div style="text-align:center;">
-      <a href="{% url 'store:write_review' %}" class="btn-write-review">✍️ Write a Review</a>
-    </div>
   </div>
 
   <!-- Filters -->
@@ -115,8 +112,7 @@
   <div style="text-align:center;padding:60px 20px;">
     <div style="font-size:3rem;margin-bottom:16px;">✍️</div>
     <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:8px;">No reviews yet</h3>
-    <p style="color:var(--text-muted);margin-bottom:20px;">Be the first to share your experience!</p>
-    <a href="{% url 'store:write_review' %}" class="btn-primary">Write a Review</a>
+    <p style="color:var(--text-muted);margin-bottom:20px;">Customers can review products from My Orders once their order ships.</p>
   </div>
   {% endif %}
 </div>

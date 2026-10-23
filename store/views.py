@@ -183,13 +183,17 @@ def product_detail(request, slug):
 
 
 # ─── REVIEWS ─────────────────────────────────────────────────────────────────
+# A customer can review a product once their order has shipped or been delivered.
+REVIEWABLE_ORDER_STATUSES = ("shipped", "delivered")
+
+
 def _reviewable_products(user):
-    """Products this customer has actually received (a DELIVERED order) and
-    hasn't reviewed yet — Amazon-style "verified purchase" reviews only."""
+    """Products from this customer's shipped/delivered orders that they have not
+    reviewed yet — only real buyers can review."""
     if not user.is_authenticated:
         return Product.objects.none()
     bought = OrderItem.objects.filter(
-        order__user=user, order__status='delivered', product__isnull=False
+        order__user=user, order__status__in=REVIEWABLE_ORDER_STATUSES, product__isnull=False
     ).values_list('product_id', flat=True)
     reviewed = Review.objects.filter(user=user, product__isnull=False).values_list('product_id', flat=True)
     return Product.objects.filter(pk__in=list(bought)).exclude(pk__in=list(reviewed))
@@ -229,7 +233,7 @@ def write_review(request):
     product). Reached from My Orders → order → "Write a review"."""
     products = _reviewable_products(request.user)
     if not products.exists():
-        messages.info(request, 'You can review a product once your order has been delivered. Check My Orders after delivery.')
+        messages.info(request, 'You can review a product once your order has shipped. Check My Orders after you place an order.')
         return redirect('store:my_orders')
 
     def _render(form):
@@ -243,7 +247,7 @@ def write_review(request):
             except (ValueError, TypeError):
                 product_id_int = 0
             if not products.filter(pk=product_id_int).exists():
-                messages.error(request, 'Please choose a product from your delivered orders.')
+                messages.error(request, 'Please choose a product from your orders.')
                 return _render(form)
 
             rating = form.cleaned_data.get('rating')
@@ -1526,7 +1530,7 @@ def order_detail(request, order_id):
     items_data = []
     for item in order.items.all():
         choices, order_images = _normalize_order_item_customization(item)
-        can_rev = bool(order.status == 'delivered' and item.product_id and _can_review(request.user, item.product))
+        can_rev = bool(order.status in REVIEWABLE_ORDER_STATUSES and item.product_id and _can_review(request.user, item.product))
         reviewed = bool(item.product_id and Review.objects.filter(user=request.user, product_id=item.product_id).exists())
         items_data.append({'item': item, 'choices': choices, 'order_images': order_images,
                            'can_review': can_rev, 'reviewed': reviewed})
