@@ -192,7 +192,7 @@ function initAddToCart() {
     if (goCheckout) formData.set('buy_now', '1');   // buy only THIS product — never touches the cart
     var _buyBtnEl = document.getElementById('buyNowBtn');
     var _buyBtnHTML = _buyBtnEl ? _buyBtnEl.innerHTML : '';
-    if (goCheckout && _buyBtnEl) { _buyBtnEl.disabled = true; _buyBtnEl.textContent = 'Please wait…'; }
+    if (goCheckout && _buyBtnEl) { _buyBtnEl.dataset.orig = _buyBtnHTML; _buyBtnEl.disabled = true; _buyBtnEl.textContent = 'Please wait…'; }
     function _restoreBuyBtn() { if (_buyBtnEl) { _buyBtnEl.disabled = false; _buyBtnEl.innerHTML = _buyBtnHTML; if (window.refreshBuyTotal) window.refreshBuyTotal(); } }
 
     // Include dynamically created customization file inputs
@@ -1370,4 +1370,20 @@ document.addEventListener('click', function (e) {
   if (!card) return;
   if (e.target.closest('a, button, input, select, textarea, label')) return;
   window.location.href = card.getAttribute('data-href');
+});
+
+
+// Coming back to the product page with the browser's Back button restores the
+// page exactly as it was left — including the Buy button stuck on "Please wait…".
+// Put the buttons back to normal whenever the page is shown again.
+window.addEventListener('pageshow', function () {
+  var b = document.getElementById('buyNowBtn');
+  if (b && b.dataset.orig) {
+    b.disabled = false;
+    b.innerHTML = b.dataset.orig;
+    delete b.dataset.orig;
+    if (window.refreshBuyTotal) window.refreshBuyTotal();
+  }
+  var a = document.getElementById('addCartBtn');
+  if (a && a.textContent.trim() === 'Adding…') { a.innerHTML = 'Add to Cart'; a.classList.remove('btn-locked'); }
 });
