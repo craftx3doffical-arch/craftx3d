@@ -14,10 +14,8 @@
     <!-- Main image -->
     <div class="product-gallery-main" id="mainImage"
          onclick="{% if product.images.count %}openLightbox(_galleryIdx){% endif %}">
-      {% if product.discount_percent %}
-      <span class="pgal-badge-sale">SALE</span>
-      <span class="pgal-badge-save">SAVE {{ product.discount_percent }}%</span>
-      {% endif %}
+      <span class="pgal-badge-sale" id="saleBadge"{% if not product.discount_percent %} style="display:none"{% endif %}>SALE</span>
+      <span class="pgal-badge-save" id="saveBadge"{% if not product.discount_percent %} style="display:none"{% endif %}>SAVE {{ product.discount_percent }}%</span>
       {% if product.main_image %}
         <img src="{{ product.main_image.image.url }}" alt="{{ product.name }}" id="mainImg">
       {% else %}
@@ -137,23 +135,16 @@
     </div>
     {% endif %}
 
-    <!-- Price -->
-    {% if product.show_mega_deal %}
-    <div class="deal-block">
-      <div class="deal-badge">{{ product.mega_deal_label|default:"Mega Festival Deal" }}</div>
+    <!-- Price — Amazon-style block (updates live when a size is picked) -->
+    <div class="deal-block" id="priceBlock">
+      {% if product.show_mega_deal %}<div class="deal-badge">{{ product.mega_deal_label|default:"Mega Festival Deal" }}</div>{% endif %}
       <div class="deal-price-row">
-        {% if product.discount_percent %}<span class="deal-off">-{{ product.discount_percent }}%</span>{% endif %}
-        <span class="product-price-large" id="displayPrice">₹{{ product.base_price }}</span>
+        <span class="deal-off" id="displayOff"{% if not product.discount_percent %} style="display:none"{% endif %}>-{{ product.discount_percent }}%</span>
+        <span class="product-price-large" id="displayPrice">₹{{ product.base_price|floatformat:"-2" }}</span>
       </div>
-      {% if product.compare_price %}<div class="deal-mrp">M.R.P.: <s>₹{{ product.compare_price }}</s></div>{% endif %}
+      <div class="deal-mrp" id="displayMrpRow"{% if not product.discount_percent %} style="display:none"{% endif %}>M.R.P.: <s id="displayMrp">₹{{ product.compare_price|floatformat:"-2" }}</s></div>
       <div class="deal-tax">Inclusive of all taxes</div>
     </div>
-    {% else %}
-    <div class="price-block">
-      <span class="product-price-large" id="displayPrice">₹{{ product.base_price }}</span>
-      {% if product.compare_price %}<span class="product-price-original">₹{{ product.compare_price }}</span>{% endif %}
-    </div>
-    {% endif %}
 
     <!-- Shipping / parcel bar -->
     <div class="pd-ship-bar">
@@ -177,7 +168,7 @@
           {% for size in product.sizes.all %}
           <label class="size-pill" style="cursor:pointer;">
             <input type="radio" name="selected_size" value="{{ size.label }}" style="display:none;" {% if forloop.first %}checked{% endif %} onchange="updateSizePrice({{ size.extra_price }})">
-            {{ size.label }}{% if size.extra_price %} (+₹{{ size.extra_price }}){% endif %}
+            {{ size.label }}
           </label>
           {% endfor %}
         </div>
@@ -231,15 +222,15 @@
       <div class="purchase-row">
         <span class="qty-label">Quantity</span>
         <div class="qty-selector">
-          <button type="button" class="qty-btn" onclick="changeQty(-1)" aria-label="Decrease">−</button>
-          <input type="number" name="quantity" id="qty" value="1" min="1" {% if product.track_inventory %}max="{{ product.stock }}"{% endif %} class="qty-num" style="width:48px;text-align:center;border:none;background:none;font-family:inherit;font-size:1.1rem;font-weight:700;" aria-label="Quantity">
-          <button type="button" class="qty-btn" onclick="changeQty(1)" aria-label="Increase">+</button>
+          <button type="button" class="qty-btn" onclick="changeQty(-1)" aria-label="Decrease quantity">−</button>
+          <input type="number" name="quantity" id="qty" value="1" min="1" {% if product.track_inventory %}max="{{ product.stock }}"{% endif %} class="qty-num" aria-label="Quantity">
+          <button type="button" class="qty-btn" onclick="changeQty(1)" aria-label="Increase quantity">+</button>
         </div>
       </div>
       <div class="pd-buy-row">
         {% if request.user.is_authenticated %}
         <button type="submit" class="btn-add-to-cart-large pd-btn-cart" id="addCartBtn">Add to Cart</button>
-        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">Buy at <span id="buyPrice">₹{{ product.base_price }}</span></button>
+        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">Buy at <span id="buyPrice">₹{{ product.base_price|floatformat:"-2" }}</span></button>
         {% else %}
         <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-cart" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Add to Cart</a>
         <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy at ₹{{ product.base_price }}</a>
@@ -324,21 +315,21 @@
     <!-- Accordion Sections — each of the 5 staff-added info blocks is its own accordion item -->
     {% for section in product.extra_info_sections %}
     <div class="accordion-item" id="descAccord{{ forloop.counter }}">
-      <button class="accordion-header" onclick="toggleAccord('descAccord{{ forloop.counter }}')" aria-expanded="false">
+      <button type="button" class="accordion-header" onclick="toggleAccord('descAccord{{ forloop.counter }}')" aria-expanded="false">
         {{ section.title }} <span class="accordion-plus">+</span>
       </button>
-      <div class="accordion-body"><div class="accordion-content">
+      <div class="accordion-body"><div class="accordion-inner"><div class="accordion-content">
         <p class="pd-flow-text">{{ section.content|linebreaksbr }}</p>
         {% if section.image %}<img src="{{ section.image.url }}" alt="{{ section.title }}" class="pd-flow-image">{% endif %}
-      </div></div>
+      </div></div></div>
     </div>
     {% endfor %}
     {% for faq in product.faqs.all %}
     <div class="accordion-item" id="faq{{ faq.pk }}">
-      <button class="accordion-header" onclick="toggleAccord('faq{{ faq.pk }}')" aria-expanded="false">
+      <button type="button" class="accordion-header" onclick="toggleAccord('faq{{ faq.pk }}')" aria-expanded="false">
         {{ faq.question }} <span class="accordion-plus">+</span>
       </button>
-      <div class="accordion-body"><div class="accordion-content">{{ faq.answer }}</div></div>
+      <div class="accordion-body"><div class="accordion-inner"><div class="accordion-content">{{ faq.answer }}</div></div></div>
     </div>
     {% endfor %}
 
@@ -550,19 +541,49 @@
 {% block extra_js %}
 <script>
 /* ══ Professional Gallery ══════════════════════════════════════════════════ */
-const _BASE_PRICE   = {{ product.base_price }};
+const _BASE_PRICE   = {{ product.base_price|stringformat:"s" }};
+const _BASE_MRP     = {{ product.compare_price|default_if_none:0|stringformat:"s" }};
 const _galleryUrls  = [{% for img in product.images.all %}'{{ img.image.url }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+/* ProductImage id -> url, used by the colour picker to swap the gallery photo */
+const _IMG_BY_ID    = { {% for img in product.images.all %}"{{ img.pk }}": '{{ img.image.url }}'{% if not forloop.last %},{% endif %}{% endfor %} };
 let _galleryIdx     = 0;
 let _lbIdx          = 0;
-let _sizeExtra      = 0;   // tracks currently selected size's extra price
+let _galleryAutoOff = false;   // true once the colour picker controls the photo
 
-/* ── Size price update (model sizes OR builder sizes) ───────────────────── */
-function updateSizePrice(extra) {
-  _sizeExtra = parseFloat(extra) || 0;
-  var el = document.getElementById('displayPrice');
-  if (el) el.textContent = '₹' + (_BASE_PRICE + _sizeExtra).toFixed(0).replace(/\.0$/, '');
-  var bp = document.getElementById('buyPrice');
-  if (bp) bp.textContent = '₹' + (_BASE_PRICE + _sizeExtra).toFixed(0);
+/* ── Live price block ───────────────────────────────────────────────────── */
+function _fmtINR(n) {
+  n = Number(n) || 0;
+  return '₹' + (Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : n.toFixed(2));
+}
+/* price = what the customer pays; mrp = struck-through compare price (0 = none) */
+function applyPrice(price, mrp) {
+  price = Number(price) || 0; mrp = Number(mrp) || 0;
+  var hasOff = mrp > price && price > 0;
+  var off = hasOff ? Math.round((mrp - price) / mrp * 100) : 0;
+  var set = function(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; };
+  var show = function(id, on) { var el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+  set('displayPrice', _fmtINR(price));
+  set('buyPrice', _fmtINR(price));
+  set('displayMrp', _fmtINR(mrp));
+  set('displayOff', '-' + off + '%');
+  set('saveBadge', 'SAVE ' + off + '%');
+  show('displayMrpRow', hasOff); show('displayOff', hasOff);
+  show('saleBadge', hasOff);     show('saveBadge', hasOff);
+}
+/* Size picked in the customisation builder: the staff fixes a TOTAL price (and an
+   optional M.R.P.) per size, so the customer only ever sees the final amount. */
+function applySizeChoice(price, mrp) { applyPrice(price, mrp); }
+/* Legacy model-based sizes: base price + extra */
+function updateSizePrice(extra) { applyPrice(_BASE_PRICE + (parseFloat(extra) || 0), _BASE_MRP); }
+
+/* ── Colour picker → gallery photo ──────────────────────────────────────── */
+function showColourImage(imageId) {
+  var url = _IMG_BY_ID[String(imageId)];
+  if (!url) return;
+  var idx = _galleryUrls.indexOf(url);
+  if (idx < 0) return;
+  _galleryAutoOff = true; stopGalleryAuto();
+  switchImage(url, document.querySelector('.product-thumb[data-index="' + idx + '"]'), idx, false);
 }
 
 /* ── Main gallery: switch image ─────────────────────────────────────────── */
@@ -605,7 +626,7 @@ function galleryNav(dir, userInitiated) {
 /* ── Auto-scroll: advance through gallery images automatically ──────────── */
 let _galleryAutoTimer = null;
 function startGalleryAuto() {
-  if (_galleryUrls.length < 2) return; // nothing to rotate
+  if (_galleryUrls.length < 2 || _galleryAutoOff) return; // nothing to rotate / colour picker in control
   stopGalleryAuto();
   _galleryAutoTimer = setInterval(() => galleryNav(1, false), 3800);
 }
@@ -710,19 +731,26 @@ function changeQty(d) {
 }
 
 /* ── Accordion ───────────────────────────────────────────────────────────── */
-function toggleAccord(id) {
+/* Each section opens/closes on its own (no other section collapses and shifts
+   the page), the height animates to the real content size, and the clicked
+   header is kept on screen so the customer never loses their place. */
+function toggleAccord(id, silent) {
   const item = document.getElementById(id);
   if (!item) return; // product may not have this accordion — never crash the page script
   const btn  = item.querySelector('.accordion-header');
-  const isOpen = item.classList.contains('open');
-  document.querySelectorAll('.accordion-item.open').forEach(i => {
-    i.classList.remove('open');
-    const h = i.querySelector('.accordion-header');
-    if (h) h.setAttribute('aria-expanded', 'false');
-  });
-  if (!isOpen) { item.classList.add('open'); if (btn) btn.setAttribute('aria-expanded', 'true'); }
+  const open = !item.classList.contains('open');
+  item.classList.toggle('open', open);
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open && !silent) {
+    setTimeout(function() {
+      var r = item.getBoundingClientRect();
+      if (r.bottom > window.innerHeight - 20 || r.top < 70) {
+        window.scrollTo({ top: window.pageYOffset + r.top - 90, behavior: 'smooth' });
+      }
+    }, 330);
+  }
 }
-toggleAccord('descAccord1');
+toggleAccord('descAccord1', true);   // open the first section on load, without scrolling
 
 /* ── Show all reviews ────────────────────────────────────────────────────── */
 function showAllReviews() {

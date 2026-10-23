@@ -1,0 +1,59 @@
+{% extends 'manage/base.html' %}
+{% block title %}Add Review — CraftX3D Staff Portal{% endblock %}
+{% block breadcrumb_parent %}Reviews{% endblock %}
+{% block breadcrumb_current %}Add{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Add Review</h1><p class="page-sub">Add feedback a real customer gave you (WhatsApp, Instagram, in person).</p></div>
+  <a href="{% url 'manage:reviews' %}" class="m-btn m-btn-outline">← Back to Reviews</a>
+</div>
+{% if errors %}
+<div class="m-card" style="border-color:#EF4444;margin-bottom:16px;padding:14px 18px;">
+  {% for e in errors %}<div style="color:#B91C1C;font-size:0.85rem;">⚠ {{ e }}</div>{% endfor %}
+</div>
+{% endif %}
+<form method="post" enctype="multipart/form-data" style="max-width:760px;">
+  {% csrf_token %}
+  <div class="form-section-card">
+    <div class="form-section-header">⭐ Review details</div>
+    <div class="form-section-body">
+      <div class="m-form-row">
+        <div class="m-form-group-light"><label class="m-form-label-light">Customer name <span class="req">*</span></label>
+          <input type="text" name="reviewer_name" class="m-field" required maxlength="100" value="{{ form.reviewer_name|default:'' }}" placeholder="e.g. Priya S."></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Product</label>
+          <select name="product" class="m-field">
+            <option value="">General (no product)</option>
+            {% for p in products %}<option value="{{ p.pk }}"{% if form.product == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <div class="m-form-row" style="margin-top:14px;">
+        <div class="m-form-group-light"><label class="m-form-label-light">Rating <span class="req">*</span></label>
+          <select name="rating" class="m-field">
+            {% for n in "54321" %}<option value="{{ n }}"{% if form.rating == n or not form.rating and n == "5" %} selected{% endif %}>{{ n }} ★</option>{% endfor %}
+          </select></div>
+        <div class="m-form-group-light"><label class="m-form-label-light">Title</label>
+          <input type="text" name="title" class="m-field" maxlength="200" value="{{ form.title|default:'' }}" placeholder="Short headline (optional)"></div>
+      </div>
+      <div class="m-form-group-light" style="margin-top:14px;"><label class="m-form-label-light">Review <span class="req">*</span></label>
+        <textarea name="body" class="m-field m-field-textarea" rows="4" required placeholder="What the customer said">{{ form.body|default:'' }}</textarea></div>
+      <div class="m-form-group-light" style="margin-top:14px;"><label class="m-form-label-light">Photo <span style="font-weight:400;color:var(--m-muted)">(optional)</span></label>
+        <input type="file" name="photo" class="m-field" accept="image/*"></div>
+      <div class="m-form-group-light" style="margin-top:14px;"><label class="m-form-label-light">Our reply <span style="font-weight:400;color:var(--m-muted)">(optional)</span></label>
+        <textarea name="staff_reply" class="m-field m-field-textarea" rows="2" placeholder="Shown under the review">{{ form.staff_reply|default:'' }}</textarea></div>
+      <div class="m-form-row" style="margin-top:14px;">
+        <div class="m-form-group-light"><label class="m-form-label-light">Status</label>
+          <select name="status" class="m-field">
+            <option value="approved"{% if form.status != 'pending' %} selected{% endif %}>Approved — show on the site</option>
+            <option value="pending"{% if form.status == 'pending' %} selected{% endif %}>Pending — keep hidden</option>
+          </select></div>
+        <label class="cb-inline-label" style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:24px;">
+          <input type="checkbox" name="featured_on_home"{% if form.featured_on_home %} checked{% endif %}> Feature on the home page</label>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:16px;display:flex;gap:10px;">
+    <button type="submit" class="m-btn m-btn-primary">Save review</button>
+    <a href="{% url 'manage:reviews' %}" class="m-btn m-btn-outline">Cancel</a>
+  </div>
+</form>
+{% endblock %}

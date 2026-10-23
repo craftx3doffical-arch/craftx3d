@@ -545,7 +545,8 @@ function initCustomizationRenderer() {
         // Show a single circle when the second colour is unnamed and identical
         // (or missing) — reads as one solid colour choice, like "Oak", "Walnut".
         var singleSwatch = !n2 && (!c.color2 || c.color2 === c.color1);
-        html += '<label class="custom-combo-card' + (i === 0 ? ' selected' : '') + '" title="' + label + (c.description ? ' — ' + c.description : '') + '"><input type="radio" name="custom_colour_combo" value="' + label + '" style="display:none"' + (i === 0 ? ' checked' : '') + '>';
+        var imgAttr = c.image_id ? ' data-img="' + c.image_id + '"' : '';
+        html += '<label class="custom-combo-card' + (i === 0 ? ' selected' : '') + '"' + imgAttr + ' title="' + label + (c.description ? ' — ' + c.description : '') + '"><input type="radio" name="custom_colour_combo" value="' + label + '" style="display:none"' + (i === 0 ? ' checked' : '') + '>';
         html += '<div class="custom-combo-swatches"><span class="custom-swatch" style="background:' + c.color1 + '"></span>' + (singleSwatch ? '' : '<span class="custom-swatch" style="background:' + c.color2 + '"></span>') + '</div>';
         html += '<div class="custom-combo-name">' + label + '</div></label>';
       });
@@ -572,21 +573,16 @@ function initCustomizationRenderer() {
       if (!sec.sizes || sec.sizes.length === 0) return;
       html += '<div class="custom-block"><div class="custom-label">' + (sec.title || '📐 Select Size') + '</div><div class="size-pills">';
       sec.sizes.forEach(function(sz, i) {
+        // Staff fix a TOTAL price (+ optional M.R.P.) per size. Older products only
+        // have an "extra" amount, so fall back to base price + extra for those.
+        var total = parseFloat(sz.price) || 0;
         var extra = parseFloat(sz.extra_price) || 0;
+        var mrp   = parseFloat(sz.compare_price) || 0;
         html += '<label class="size-pill' + (i === 0 ? ' active' : '') + '" style="cursor:pointer">' +
-          '<input type="radio" name="custom_size" value="' + sz.label + '" data-extra="' + extra + '" style="display:none"' +
-          (i === 0 ? ' checked' : '') +
-          ' onchange="updateSizePrice(' + extra + '); document.querySelectorAll(\'.size-pill\').forEach(p=>p.classList.remove(\'active\')); this.closest(\'.size-pill\').classList.add(\'active\')">' +
-          sz.label + (extra > 0 ? ' <span style=\'font-size:0.78em;color:var(--teal);\'>+₹' + extra + '</span>' : '') +
-          '</label>';
+          '<input type="radio" name="custom_size" value="' + sz.label + '" data-price="' + total + '" data-mrp="' + mrp + '" data-extra="' + extra + '" style="display:none"' +
+          (i === 0 ? ' checked' : '') + ' onchange="syncSizePrice()">' +
+          sz.label + '</label>';
       });
-      // Set initial price if first size has extra cost
-      if (sec.sizes.length > 0) {
-        var firstExtra = parseFloat(sec.sizes[0].extra_price) || 0;
-        if (firstExtra > 0) {
-          setTimeout(function() { if (typeof updateSizePrice === 'function') updateSizePrice(firstExtra); }, 200);
-        }
-      }
       html += '</div></div>';
     }
 
@@ -726,8 +722,14 @@ function initCustomizationRenderer() {
     card.addEventListener('click', function() {
       document.querySelectorAll('.custom-combo-card').forEach(function(c) { c.classList.remove('selected'); });
       card.classList.add('selected'); var r = card.querySelector('input'); if (r) r.checked = true;
+      // Colour linked to a product photo → show that photo in the gallery
+      if (card.dataset.img && typeof showColourImage === 'function') showColourImage(card.dataset.img);
     });
   });
+  // Pre-selected (first) colour: show its photo straight away, and keep the
+  // gallery from auto-rotating away from the chosen colour.
+  var _firstCombo = document.querySelector('.custom-combo-card.selected[data-img]');
+  if (_firstCombo && typeof showColourImage === 'function') showColourImage(_firstCombo.dataset.img);
   document.querySelectorAll('.custom-colour-chip').forEach(function(chip) {
     chip.addEventListener('click', function() {
       var r = chip.querySelector('input'); if (!r) return;
@@ -742,6 +744,8 @@ function initCustomizationRenderer() {
     });
     if (r.checked) r.closest('.size-pill').classList.add('active');
   });
+  // Show the first size's fixed price straight away
+  try { syncSizePrice(); } catch (e) {}
 }
 
 // Clears everything the customer filled into the customization area after the
@@ -755,12 +759,19 @@ function syncSizePrice() {
   var r = document.querySelector('#addToCartForm input[name="custom_size"]:checked') ||
           document.querySelector('#addToCartForm input[name="selected_size"]:checked');
   if (!r) return;
-  var extra = parseFloat(r.getAttribute('data-extra'));
-  if (isNaN(extra)) {
+  if (r.name === 'custom_size' && typeof applyPrice === 'function' && typeof _BASE_PRICE !== 'undefined') {
+    var total = parseFloat(r.getAttribute('data-price')) || 0;
+    var mrp   = parseFloat(r.getAttribute('data-mrp')) || 0;
+    if (total > 0) {
+      applyPrice(total, mrp);                       // staff-fixed total price + M.R.P.
+    } else {
+      var extra = parseFloat(r.getAttribute('data-extra')) || 0;
+      applyPrice(_BASE_PRICE + extra, typeof _BASE_MRP !== 'undefined' ? _BASE_MRP : 0);
+    }
+  } else if (typeof updateSizePrice === 'function') {
     var m = (r.getAttribute('onchange') || '').match(/updateSizePrice\(([-0-9.]+)\)/);
-    extra = m ? parseFloat(m[1]) : 0;
+    updateSizePrice(m ? parseFloat(m[1]) : 0);
   }
-  if (typeof updateSizePrice === 'function') updateSizePrice(extra || 0);
   var pill = r.closest('.size-pill');
   if (pill) {
     document.querySelectorAll('#addToCartForm .size-pill').forEach(function(p) { p.classList.remove('active'); });

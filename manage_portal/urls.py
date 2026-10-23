@@ -55,6 +55,7 @@ urlpatterns = [
 
     # Reviews
     path('reviews/', views.reviews_list, name='reviews'),
+    path('reviews/add/', views.review_add, name='review_add'),
     path('reviews/<int:pk>/approve/', views.review_approve, name='review_approve'),
     path('reviews/<int:pk>/reject/', views.review_reject, name='review_reject'),
     path('reviews/<int:pk>/delete/', views.review_delete, name='review_delete'),

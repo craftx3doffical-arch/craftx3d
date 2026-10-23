@@ -1752,14 +1752,18 @@ label.field-invalid {
   display: inline-block;
 }
 .accordion-item.open .accordion-plus { transform: rotate(45deg); }
-.accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.38s cubic-bezier(0.4,0,0.2,1); }
-.accordion-item.open .accordion-body { max-height: 1200px; }
+.accordion-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.32s cubic-bezier(0.4,0,0.2,1); }
+.accordion-item.open .accordion-body { grid-template-rows: 1fr; }
+.accordion-inner { overflow: hidden; min-height: 0; }
+.accordion-header:focus-visible { outline: 2px solid var(--forest, #1B4332); outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { .accordion-body { transition: none; } }
 .accordion-content {
-  padding: 4px 4px 18px;
+  padding: 2px 4px 18px;
   color: var(--charcoal);
   font-size: 0.93rem;
   line-height: 1.75;
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 /* ─── REVIEWS PAGE ────────────────────────────────────── */
@@ -3113,6 +3117,7 @@ label.field-invalid {
   .navbar-nav.open .nav-item-reviews    { order: 5; }
   .navbar-nav.open .nav-item-about      { order: 6; }
   .navbar-nav.open .nav-item-help       { order: 7; }
+  .navbar-nav.open .nav-item-custom     { order: 8; }
   .nav-category-mobile-only { display: list-item; }
   .navbar-nav.open .nav-cat-toggle { padding: 11px 14px; border-radius: 10px; font-size: 0.92rem; font-weight: 500; }
   .navbar-nav.open .nav-cat-toggle:hover { background: var(--cream-dark); }
@@ -5367,3 +5372,39 @@ label.field-invalid {
 .ce-step { flex: 1 1 150px; background: #F6F3EC; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; }
 .ce-step b { display: block; font-size: 0.9rem; margin-bottom: 2px; }
 @media (max-width: 600px) { .ce-grid { grid-template-columns: 1fr; } .ce-card { padding: 20px; } }
+
+
+/* ═══ PRODUCT PAGE POLISH (v2) ═══════════════════════════════════════════════ */
+/* Quantity — small, flat stepper */
+.purchase-row { margin: 14px 0 0; gap: 12px; }
+.purchase-row .qty-label { font-size: 0.85rem; font-weight: 600; color: var(--charcoal); }
+.purchase-row .qty-selector { border-radius: 8px; box-shadow: none; border-color: #D9D6CE; }
+.purchase-row .qty-btn { width: 32px; height: 32px; font-size: 1rem; background: #F3F1EC; }
+.purchase-row .qty-num { width: 40px !important; height: 32px; font-size: 0.92rem !important; border-left-color: #D9D6CE !important; border-right-color: #D9D6CE !important; text-align: center; font-family: inherit; }
+@media (max-width: 640px) {
+  .purchase-row .qty-btn { width: 32px; height: 32px; }
+  .purchase-row .qty-num { width: 38px !important; font-size: 0.9rem !important; }
+}
+
+/* Customisation-enquiry strip — slim, one line */
+.pd-custom-link { gap: 8px; margin-top: 10px; padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; line-height: 1.3; border-width: 1px; background: rgba(255,255,255,0.35); }
+.pd-custom-link svg { width: 15px; height: 15px; }
+
+/* Price block — Amazon style */
+.deal-block { gap: 2px; margin-top: 2px; }
+.deal-block .deal-price-row { align-items: flex-start; gap: 8px; }
+.deal-off { font-size: 1.35rem; font-weight: 400; letter-spacing: -0.01em; margin-top: 4px; }
+.deal-block .product-price-large { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.deal-block .deal-mrp { font-size: 0.82rem; margin: 3px 0 0; }
+.deal-block .deal-tax { font-size: 0.78rem; margin-top: 1px; }
+
+/* Size options — compact pills, label only (no add-on prices shown) */
+.size-pills { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+.size-pill { width: auto; min-width: 88px; padding: 9px 18px; font-size: 0.84rem; justify-content: center; text-align: center; border-radius: 10px; box-shadow: none; border-width: 1.5px; }
+.size-pill.active { box-shadow: 0 2px 8px rgba(27,67,50,0.22); }
+
+/* Colour swatches that also swap the product photo */
+.custom-combo-card[data-img] { cursor: pointer; }
+
+/* Nav "Customise" link */
+.nav-item-custom a { white-space: nowrap; }

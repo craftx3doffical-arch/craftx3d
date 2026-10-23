@@ -751,6 +751,59 @@ def reviews_list(request):
 
 
 @staff_required
+def review_add(request):
+    """Staff add a review by hand — e.g. feedback a real customer sent on
+    WhatsApp / Instagram / in person. Saved as approved so it shows straight away."""
+    products = Product.objects.order_by('name')
+    errors = []
+    form = {}
+    if request.method == 'POST':
+        form = request.POST
+        name = form.get('reviewer_name', '').strip()
+        body = form.get('body', '').strip()
+        title = form.get('title', '').strip()
+        product_id = form.get('product', '').strip()
+        try:
+            rating = int(form.get('rating', 5))
+        except (TypeError, ValueError):
+            rating = 0
+        if not name:
+            errors.append('Customer name is required.')
+        if not body:
+            errors.append('Review text is required.')
+        if rating < 1 or rating > 5:
+            errors.append('Rating must be between 1 and 5.')
+        product = None
+        if product_id:
+            product = Product.objects.filter(pk=product_id).first()
+            if not product:
+                errors.append('Please choose a valid product.')
+        photo = request.FILES.get('photo')
+        if photo:
+            from store.views import _validate_uploaded_image
+            ok, msg = _validate_uploaded_image(photo)
+            if not ok:
+                errors.append(msg)
+        if not errors:
+            status = Review.STATUS_APPROVED if form.get('status', 'approved') == 'approved' else Review.STATUS_PENDING
+            review = Review.objects.create(
+                product=product,
+                user=None,
+                reviewer_name=name,
+                rating=rating,
+                title=title or body[:60],
+                body=body,
+                photo=photo,
+                status=status,
+                staff_reply=form.get('staff_reply', '').strip(),
+                featured_on_home=bool(form.get('featured_on_home')) and status == Review.STATUS_APPROVED,
+            )
+            messages.success(request, f'Review by {review.reviewer_name} added.')
+            return redirect('manage:reviews')
+    return render(request, 'manage/review_form.html', {'products': products, 'errors': errors, 'form': form})
+
+
+@staff_required
 @require_POST
 def review_approve(request, pk):
     review = get_object_or_404(Review, pk=pk)

@@ -492,6 +492,10 @@
 
 {% block extra_js %}
 {% load static %}
+<script>
+  // Photos already saved on this product — lets staff link a colour to a photo in the builder
+  window.CB_PRODUCT_IMAGES = [{% if product %}{% for img in product.images.all %}{id: {{ img.pk }}, url: "{{ img.image.url }}"}{% if not forloop.last %},{% endif %}{% endfor %}{% endif %}];
+</script>
 <script src="{% static 'js/customization-builder.js' %}"></script>
 <script>
 // Customization Builder init

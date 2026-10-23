@@ -68,6 +68,7 @@
       {% endif %}
     </li>
     <li class="nav-item-best"><a href="{% url 'store:products' %}?bestseller=1">Bestsellers</a></li>
+    <li class="nav-item-custom"><a href="{% url 'store:custom_enquiry' %}" class="{% if request.resolver_match.url_name == 'custom_enquiry' %}active{% endif %}">Customise</a></li>
     {% if nav_categories %}
     <li class="nav-category-mobile-only nav-cat-toggle-item">
       <button type="button" class="nav-cat-toggle" onclick="this.closest('li').classList.toggle('open')" aria-expanded="false">

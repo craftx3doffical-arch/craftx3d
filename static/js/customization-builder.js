@@ -46,7 +46,12 @@ style.textContent = [
 '.cb-radio{display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer}',
 '.cb-slots-list{display:flex;flex-direction:column}',
 '.cb-combo-row{align-items:flex-start;flex-direction:column}',
-'@media(max-width:640px){.cb-field-grid{grid-template-columns:1fr}.cb-field-grid-4{grid-template-columns:1fr 1fr}.cb-combo-field-grid{grid-template-columns:1fr}}'
+'.cb-img-pick{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}',
+'.cb-img-opt{width:46px;height:46px;border-radius:8px;border:2px solid #E5E7EB;overflow:hidden;cursor:pointer;padding:0;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;font-size:0.62rem;color:#6B7280;font-weight:700}',
+'.cb-img-opt img{width:100%;height:100%;object-fit:cover;display:block}',
+'.cb-img-opt.cb-sel{border-color:#1A9B77;box-shadow:0 0 0 2px rgba(26,155,119,.25)}',
+'.cb-size-grid{display:grid;grid-template-columns:1fr 120px 120px;gap:8px;flex:1;align-items:end}',
+'@media(max-width:640px){.cb-size-grid{grid-template-columns:1fr 1fr}.cb-field-grid{grid-template-columns:1fr}.cb-field-grid-4{grid-template-columns:1fr 1fr}.cb-combo-field-grid{grid-template-columns:1fr}}'
 ].join('');
 document.head.appendChild(style);
 
@@ -262,11 +267,28 @@ CustomizationBuilder.prototype._renderColourCombos = function(s) {
         '<div><label class="cb-label-sm">Colour 2 *</label><div style="display:flex;align-items:center;gap:4px"><input type="color" class="cb-color-input" data-bind="colour_combos.combos.'+i+'.color2" value="' + (c.color2||'#000000') + '"><span class="cb-color-preview" style="background:' + (c.color2||'#000000') + '"></span><input type="text" class="m-field" data-bind="colour_combos.combos.'+i+'.color2_name" value="' + this._esc(c.color2_name||'') + '" placeholder="e.g. Black"></div></div>' +
         '<div><label class="cb-label-sm">Description</label><input type="text" class="m-field" data-bind="colour_combos.combos.'+i+'.description" value="' + this._esc(c.description||'') + '" placeholder="optional"></div>' +
         '<div style="font-size:.72rem;color:#9CA3AF;align-self:end;padding-bottom:8px;">Shown as: <strong>' + this._esc((c.color1_name||'Colour 1') + ' / ' + (c.color2_name||'Colour 2')) + '</strong></div>' +
-      '</div></div></div>';
+      '</div>' + this._renderComboImagePicker(c, i) + '</div></div>';
   }, this).join('');
   return '<div class="cb-field-row"><label class="cb-label">Section Title</label>' +
     '<input type="text" class="m-field" data-bind="colour_combos.title" value="' + this._esc(s.title||'') + '"></div>' +
     rows + '<button type="button" class="cb-add-btn" data-action="add-colour-combo">+ Add Combo</button>';
+};
+
+// Lets staff link a colour to one of the product's own photos — when a customer
+// picks that colour on the product page, the gallery switches to this photo.
+CustomizationBuilder.prototype._renderComboImagePicker = function(c, i) {
+  var imgs = window.CB_PRODUCT_IMAGES || [];
+  var html = '<div style="margin-top:10px"><label class="cb-label-sm">Product photo for this colour <span style="font-weight:400;color:#9CA3AF">(optional — shown when the customer picks it)</span></label>';
+  if (!imgs.length) {
+    return html + '<div style="font-size:.74rem;color:#9CA3AF">Save the product with its photos first, then edit it to link a photo to each colour.</div></div>';
+  }
+  var cur = String(c.image_id || '');
+  html += '<div class="cb-img-pick">';
+  html += '<button type="button" class="cb-img-opt' + (cur ? '' : ' cb-sel') + '" data-action="set-combo-image" data-idx="' + i + '" data-img="" title="No linked photo">None</button>';
+  imgs.forEach(function(im, n) {
+    html += '<button type="button" class="cb-img-opt' + (cur === String(im.id) ? ' cb-sel' : '') + '" data-action="set-combo-image" data-idx="' + i + '" data-img="' + im.id + '" title="Photo ' + (n + 1) + '"><img src="' + im.url + '" alt="Photo ' + (n + 1) + '"></button>';
+  });
+  return html + '</div></div>';
 };
 
 CustomizationBuilder.prototype._renderTextColours = function(s) {
@@ -296,13 +318,18 @@ CustomizationBuilder.prototype._renderTextColours = function(s) {
 
 CustomizationBuilder.prototype._renderSizeOptions = function(s) {
   var rows = (s.sizes||[]).map(function(sz,i) {
+    var legacy = (!sz.price && sz.extra_price) ? '<div style="font-size:.7rem;color:#B45309;margin-top:4px">Old setup: base price + ₹' + sz.extra_price + '. Enter a total price to replace it.</div>' : '';
     return '<div class="cb-item-row"><span class="cb-item-num">'+(i+1)+'</span>' +
-      '<input type="text" class="m-field" data-bind="size_options.sizes.'+i+'.label" value="' + this._esc(sz.label||'') + '" placeholder="e.g. Small">' +
-      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:0.8rem;color:#9CA3AF;white-space:nowrap">₹ Extra</span><input type="number" class="m-field" style="width:80px" data-bind="size_options.sizes.'+i+'.extra_price" value="' + (sz.extra_price||0) + '" min="0"></div>' +
+      '<div style="flex:1"><div class="cb-size-grid">' +
+        '<div><label class="cb-label-sm">Size label</label><input type="text" class="m-field" data-bind="size_options.sizes.'+i+'.label" value="' + this._esc(sz.label||'') + '" placeholder="e.g. 4 inch"></div>' +
+        '<div><label class="cb-label-sm">Price ₹ (total)</label><input type="number" class="m-field" data-bind="size_options.sizes.'+i+'.price" value="' + (sz.price||'') + '" min="0" placeholder="399"></div>' +
+        '<div><label class="cb-label-sm">M.R.P. ₹ (compare)</label><input type="number" class="m-field" data-bind="size_options.sizes.'+i+'.compare_price" value="' + (sz.compare_price||'') + '" min="0" placeholder="699"></div>' +
+      '</div>' + legacy + '</div>' +
       '<button type="button" class="cb-remove-btn" data-action="remove-size" data-idx="'+i+'">✕</button></div>';
   }, this).join('');
   return '<div class="cb-field-row"><label class="cb-label">Section Label</label>' +
     '<input type="text" class="m-field" data-bind="size_options.title" value="' + this._esc(s.title||'Select Size') + '"></div>' +
+    '<div class="cb-info-box">ℹ️ Set the <strong>total price</strong> and <strong>M.R.P.</strong> for each size. Customers only see the final price (no “+₹” add-ons); the price, M.R.P. and % off on the product page update when they pick a size.</div>' +
     rows + '<button type="button" class="cb-add-btn" data-action="add-size">+ Add Size</button>';
 };
 
@@ -462,6 +489,7 @@ CustomizationBuilder.prototype._handleAction = function(action, data) {
     case 'remove-model-option': s.select_model.options.splice(parseInt(data.idx),1); break;
     case 'add-colour-combo': s.colour_combos.combos.push({color1:'#FF6600',color1_name:'',color2:'#000000',color2_name:'',description:''}); break;
     case 'remove-colour-combo': s.colour_combos.combos.splice(parseInt(data.idx),1); break;
+    case 'set-combo-image': { var cc = s.colour_combos.combos[parseInt(data.idx)]; if (cc) { if (data.img) cc.image_id = parseInt(data.img); else delete cc.image_id; } break; }
     case 'add-tc-colour': {
       var si = parseInt(data.slot);
       if (!s.text_colours.slots[si]) s.text_colours.slots[si] = {title:'Text Colour '+(si+1),colours:[]};
@@ -481,7 +509,7 @@ CustomizationBuilder.prototype._handleAction = function(action, data) {
       break;
     }
     case 'remove-tc-colour': s.text_colours.slots[parseInt(data.slot)].colours.splice(parseInt(data.idx),1); break;
-    case 'add-size': s.size_options.sizes.push({label:'',extra_price:0}); break;
+    case 'add-size': s.size_options.sizes.push({label:'',price:0,compare_price:0}); break;
     case 'remove-size': s.size_options.sizes.splice(parseInt(data.idx),1); break;
     case 'add-pack': s.pack_options.packs.push({label:'',min_qty:1,price:0,discount_percent:0}); break;
     case 'remove-pack': s.pack_options.packs.splice(parseInt(data.idx),1); break;
@@ -504,7 +532,7 @@ CustomizationBuilder.prototype._handleAction = function(action, data) {
     'add-photo-slot':'photo', 'remove-photo-slot':'photo',
     'add-text-field':'text_fields', 'remove-text-field':'text_fields',
     'add-model-option':'select_model', 'remove-model-option':'select_model',
-    'add-colour-combo':'colour_combos', 'remove-colour-combo':'colour_combos',
+    'add-colour-combo':'colour_combos', 'remove-colour-combo':'colour_combos', 'set-combo-image':'colour_combos',
     'add-tc-colour':'text_colours', 'remove-tc-colour':'text_colours',
     'add-tc-dual-colour':'text_colours', 'toggle-tc-dual':'text_colours',
     'add-size':'size_options', 'remove-size':'size_options',

@@ -5,6 +5,7 @@
 {% block content %}
 <div class="page-header">
   <div><h1 class="page-title">Customer Reviews</h1><p class="page-sub">{{ reviews.count }} reviews</p></div>
+  <a href="{% url 'manage:review_add' %}" class="m-btn m-btn-primary">＋ Add Review</a>
 </div>
 <div class="tab-filters-wrap" style="display:flex;gap:4px;margin-bottom:20px;">
   <a href="{% url 'manage:reviews' %}" class="tab-filter {% if not status_filter %}active{% endif %}">All</a>

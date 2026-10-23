@@ -471,6 +471,7 @@ def add_to_cart(request, product_id):
     # Build clean human-readable choices from customer's submitted values
     customer_choices = {}
     builder_size_extra = 0
+    builder_size_total = None   # staff-fixed TOTAL price of the chosen size (overrides base + extra)
     if builder_config and isinstance(builder_config, dict):
         sections = builder_config.get('sections', {})
         section_order = builder_config.get('section_order', list(sections.keys()))
@@ -515,7 +516,12 @@ def add_to_cart(request, product_id):
                         if sz.get('label') == val:
                             try:
                                 from decimal import Decimal, InvalidOperation
-                                builder_size_extra = Decimal(str(sz.get('extra_price') or 0))
+                                _total = Decimal(str(sz.get('price') or 0))
+                                if _total > 0:
+                                    builder_size_total = _total
+                                else:
+                                    # Older products only store an "extra" amount on top of base price.
+                                    builder_size_extra = Decimal(str(sz.get('extra_price') or 0))
                             except (TypeError, ValueError, InvalidOperation):
                                 builder_size_extra = 0
                             break
@@ -565,7 +571,7 @@ def add_to_cart(request, product_id):
 
     customization_data = {'choices': customer_choices}
 
-    unit_price = product.base_price + builder_size_extra
+    unit_price = builder_size_total if builder_size_total is not None else product.base_price + builder_size_extra
     size_label = request.POST.get('selected_size', '')
     if size_label:
         size_opt = product.sizes.filter(label=size_label).first()
