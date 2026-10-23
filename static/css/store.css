@@ -5470,3 +5470,20 @@ label.field-invalid {
   .pd-sticky-bar .pd-buy-row .btn-add-to-cart-large { font-size: 0.86rem; min-height: 44px; padding: 0 6px; }
 }
 .pd-stage .product-detail-layout { margin-bottom: 24px; }
+
+/* Buy bar sits under the RIGHT column only (matching the product details),
+   not across the whole page. On phones the layout is one column, so it is full width. */
+@media (min-width: 769px) {
+  .pd-sticky-bar {
+    max-width: 1100px; margin: 0 auto; box-sizing: border-box;
+    padding: 0 24px 10px;
+    background: transparent; border-top: 0; box-shadow: none;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 48px;
+    pointer-events: none;                 /* empty left side never blocks clicks */
+  }
+  .pd-sticky-inner {
+    grid-column: 2; max-width: none; margin: 0; pointer-events: auto;
+    background: #fff; border: 1px solid #E2D5BC; border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12); padding: 10px 12px;
+  }
+}
