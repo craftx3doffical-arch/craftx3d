@@ -5447,8 +5447,11 @@ label.field-invalid {
 }
 
 /* 3) Quantity + Add to Cart + Buy — pinned to the bottom of the screen */
+.pd-stage { position: relative; }
+/* Sticks to the bottom of the screen while the customer is looking at the product,
+   then simply rests in its normal place once the description section ends. */
 .pd-sticky-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+  position: sticky; bottom: 0; z-index: 90;
   background: #fff; border-top: 1px solid #E2D5BC;
   box-shadow: 0 -4px 18px rgba(0,0,0,0.10);
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
@@ -5459,7 +5462,6 @@ label.field-invalid {
 .pd-sticky-bar .pd-buy-row .btn-add-to-cart-large { min-height: 46px; padding: 0 10px; font-size: 0.98rem; }
 .pd-sticky-bar .qty-btn:disabled { opacity: .4; cursor: not-allowed; }
 .pd-limit-note { margin-top: 8px; font-size: 0.78rem; color: var(--text-muted); }
-body.has-sticky-buy { padding-bottom: 86px; }
 @media (max-width: 560px) {
   .pd-sticky-bar { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
   .pd-sticky-inner { gap: 8px; }
@@ -5467,3 +5469,4 @@ body.has-sticky-buy { padding-bottom: 86px; }
   .pd-sticky-bar .pd-buy-row { gap: 6px; }
   .pd-sticky-bar .pd-buy-row .btn-add-to-cart-large { font-size: 0.86rem; min-height: 44px; padding: 0 6px; }
 }
+.pd-stage .product-detail-layout { margin-bottom: 24px; }

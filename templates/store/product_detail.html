@@ -7,6 +7,7 @@
   <a href="{% url 'store:products' %}" style="font-size:0.85rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:20px;">← Back to Products</a>
 </div>
 
+<div class="pd-stage">
 <div class="product-detail-layout">
   <!-- ══ Professional Gallery ══ -->
   <div class="product-gallery-wrap">
@@ -238,28 +239,6 @@
 
       <!-- Quantity & Add to Cart -->
       {% if product.is_in_stock %}
-      <!-- Quantity + Add to Cart + Buy: pinned to the bottom of the screen (Flipkart style) -->
-      <div class="pd-sticky-bar" id="pdStickyBar">
-      <div class="pd-sticky-inner">
-      <div class="purchase-row">
-        <span class="qty-label">Quantity</span>
-        <div class="qty-selector">
-          <button type="button" class="qty-btn" onclick="changeQty(-1)" aria-label="Decrease quantity">−</button>
-          <input type="number" name="quantity" id="qty" value="1" min="1" max="{{ product.max_per_order }}" inputmode="numeric" class="qty-num" aria-label="Quantity" data-max="{{ product.max_per_order }}">
-          <button type="button" class="qty-btn" onclick="changeQty(1)" aria-label="Increase quantity">+</button>
-        </div>
-      </div>
-      <div class="pd-buy-row">
-        {% if request.user.is_authenticated %}
-        <button type="submit" class="btn-add-to-cart-large pd-btn-cart" id="addCartBtn">Add to Cart</button>
-        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">Buy at <span id="buyPrice">₹{{ product.base_price|floatformat:"-2" }}</span></button>
-        {% else %}
-        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-cart" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Add to Cart</a>
-        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy at ₹{{ product.base_price }}</a>
-        {% endif %}
-      </div>
-      </div><!-- /pd-sticky-inner -->
-      </div><!-- /pd-sticky-bar -->
       {% if product.max_order_quantity %}<div class="pd-limit-note">Max {{ product.max_order_quantity }} per order</div>{% endif %}
       <div id="cartGateMsg" style="display:none;margin-top:10px;padding:10px 14px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.84rem;color:#856404;font-weight:500;"></div>
       {% else %}
@@ -376,7 +355,33 @@
     </div>
     {% endif %}
   </div>
-</div>
+</div><!-- /product-detail-layout -->
+      {% if product.is_in_stock %}
+      <!-- Quantity + Add to Cart + Buy: pinned to the bottom of the screen while browsing the product,
+     and rests in normal position once the description ends (Flipkart style) -->
+      <div class="pd-sticky-bar" id="pdStickyBar">
+      <div class="pd-sticky-inner">
+      <div class="purchase-row">
+        <span class="qty-label">Quantity</span>
+        <div class="qty-selector">
+          <button type="button" class="qty-btn" onclick="changeQty(-1)" aria-label="Decrease quantity">−</button>
+          <input type="number" form="addToCartForm" name="quantity" id="qty" value="1" min="1" max="{{ product.max_per_order }}" inputmode="numeric" class="qty-num" aria-label="Quantity" data-max="{{ product.max_per_order }}">
+          <button type="button" class="qty-btn" onclick="changeQty(1)" aria-label="Increase quantity">+</button>
+        </div>
+      </div>
+      <div class="pd-buy-row">
+        {% if request.user.is_authenticated %}
+        <button type="submit" form="addToCartForm" class="btn-add-to-cart-large pd-btn-cart" id="addCartBtn">Add to Cart</button>
+        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">Buy at <span id="buyPrice">₹{{ product.base_price|floatformat:"-2" }}</span></button>
+        {% else %}
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-cart" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Add to Cart</a>
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy at ₹{{ product.base_price }}</a>
+        {% endif %}
+      </div>
+      </div><!-- /pd-sticky-inner -->
+      </div><!-- /pd-sticky-bar -->
+      {% endif %}
+</div><!-- /pd-stage -->
 
 <!-- ══ PHOTOS FROM REVIEWS ══════════════════════════════════════════════ -->
 {% if reviews %}
@@ -786,7 +791,6 @@ function changeQty(d) {
 document.addEventListener('DOMContentLoaded', function() {
   var q = document.getElementById('qty');
   if (q) { q.addEventListener('change', clampQty); clampQty(); }
-  if (document.getElementById('pdStickyBar')) document.body.classList.add('has-sticky-buy');
 });
 
 /* ── Accordion ───────────────────────────────────────────────────────────── */
