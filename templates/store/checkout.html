@@ -47,7 +47,7 @@
               📞 {{ addr.phone }}
             </div>
           </div>
-          <a href="{% url 'store:edit_address' addr.id %}?next={% url 'store:checkout' %}"
+          <a href="{% url 'store:edit_address' addr.id %}?next={{ checkout_next|urlencode:'' }}"
              onclick="event.stopPropagation();"
              style="font-size:0.8rem;color:var(--teal);font-weight:600;flex-shrink:0;text-decoration:none;">Edit</a>
         </label>
@@ -55,7 +55,7 @@
       </div>
 
       <!-- Add new address link -->
-      <a href="{% url 'store:add_address' %}?next={% url 'store:checkout' %}"
+      <a href="{% url 'store:add_address' %}?next={{ checkout_next|urlencode:'' }}"
          style="display:flex;align-items:center;gap:8px;padding:14px 16px;border:1.5px dashed var(--cream-border);border-radius:var(--radius);font-weight:600;font-size:0.88rem;color:var(--teal);text-decoration:none;transition:border-color 0.2s;margin-bottom:20px;">
         <span style="font-size:1.2rem;">+</span> Add a new delivery address
       </a>

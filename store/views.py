@@ -864,9 +864,9 @@ def add_address(request):
             is_default=request.POST.get('is_default') == 'on',
         )
         addr.save()
-        next_url = request.POST.get('next') or request.GET.get('next') or ''
+        next_url = _safe_next_url(request, request.POST.get('next') or request.GET.get('next') or '')
         messages.success(request, 'Address saved!')
-        if next_url and next_url.startswith('/'):
+        if next_url:
             return redirect(next_url)
         return redirect('store:manage_addresses')
 
@@ -901,9 +901,9 @@ def edit_address(request, address_id):
         address.pincode = request.POST.get('pincode', '').strip()
         address.is_default = request.POST.get('is_default') == 'on'
         address.save()
-        next_url = request.POST.get('next') or request.GET.get('next') or ''
+        next_url = _safe_next_url(request, request.POST.get('next') or request.GET.get('next') or '')
         messages.success(request, 'Address updated!')
-        if next_url and next_url.startswith('/'):
+        if next_url:
             return redirect(next_url)
         return redirect('store:manage_addresses')
 
@@ -980,6 +980,8 @@ def checkout(request):
         if cart.item_count == 0:
             messages.warning(request, 'Your cart is empty.')
             return redirect('store:cart')
+    # Where "Add / Edit address" should come back to — keeps the Buy Now item (never the cart).
+    checkout_return_url = reverse('store:checkout') + (f'?buy_now={buy_now_item.pk}' if buy_now_item else '')
     store_s = StoreSettings.objects.first()
     saved_addresses = request.user.saved_addresses.all()
 
@@ -1018,6 +1020,7 @@ def checkout(request):
                 context = {
                     'cart': cart, 'form': form, 'store_settings': store_s,
                     'buy_now_id': buy_now_item.pk if buy_now_item else '',
+                    'checkout_next': checkout_return_url,
                     'saved_addresses': saved_addresses, 'indian_states': INDIAN_STATES,
                     'payment_configured': bool(settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET),
                 }
@@ -1151,6 +1154,7 @@ def checkout(request):
         'cart': cart,
         'form': form,
         'buy_now_id': buy_now_item.pk if buy_now_item else '',
+        'checkout_next': checkout_return_url,
         'store_settings': store_s,
         'saved_addresses': saved_addresses,
         'indian_states': INDIAN_STATES,

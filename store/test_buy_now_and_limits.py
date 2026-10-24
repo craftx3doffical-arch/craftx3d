@@ -132,3 +132,28 @@ class LoggedOutBuyPriceTests(Base):
         self.client.logout()
         r = self.client.get(f'/products/{self.a.slug}/')
         self.assertContains(r, 'id="buyPrice"')
+
+
+class BuyNowAddressTests(Base):
+    def _url(self):
+        self.add(self.a, 2)                                   # something in the cart too
+        return self.add(self.b, 1, buy_now=True).json()['checkout_url']
+
+    def test_address_links_keep_the_buy_now_item(self):
+        url = self._url()
+        r = self.client.get(url)
+        self.assertContains(r, 'next=%2Fcheckout%2F%3Fbuy_now%3D')
+
+    def test_saving_an_address_returns_to_buy_now_checkout_not_the_cart(self):
+        url = self._url()
+        r = self.client.post('/addresses/add/', dict(
+            full_name='A B', phone='9500000000', address_line1='1 St', city='Salem',
+            state='Tamil Nadu', pincode='635601', next=url))
+        self.assertRedirects(r, url, fetch_redirect_response=False)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_external_next_is_ignored(self):
+        r = self.client.post('/addresses/add/', dict(
+            full_name='A B', phone='9500000000', address_line1='1 St', city='Salem',
+            state='Tamil Nadu', pincode='635601', next='//evil.example.com/'))
+        self.assertEqual(r['Location'], '/addresses/')
