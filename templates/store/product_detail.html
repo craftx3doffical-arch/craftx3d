@@ -177,7 +177,7 @@
     {% endif %}
 
     <!-- Add to Cart Form -->
-    <form id="addToCartForm" method="post" action="{% url 'store:add_to_cart' product.pk %}" enctype="multipart/form-data">
+    <form id="addToCartForm" method="post" action="{% url 'store:add_to_cart' product.pk %}" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
 
       <!-- Size Options -->
