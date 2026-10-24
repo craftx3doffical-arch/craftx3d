@@ -485,6 +485,33 @@ def orders_list(request):
 
 
 @staff_required
+@require_POST
+def sync_payments(request):
+    """Look at recent orders that are NOT marked paid and ask Razorpay whether the
+    customer really paid. Any that were are confirmed and appear in Orders."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from store.views import _confirm_if_paid
+    cutoff = timezone.now() - timedelta(days=14)
+    qs = (Order.objects.filter(payment_status__in=['pending', 'failed'], created_at__gte=cutoff)
+          .exclude(razorpay_order_id='').order_by('-created_at')[:100])
+    recovered, unknown = 0, 0
+    for order in qs:
+        result = _confirm_if_paid(order, request=None)
+        if result:
+            recovered += 1
+        elif result is None:
+            unknown += 1
+    if recovered:
+        messages.success(request, f'Recovered {recovered} paid order(s) — they are now in your Orders list.')
+    else:
+        messages.info(request, 'Checked Razorpay: no missing paid orders found.')
+    if unknown:
+        messages.warning(request, f'{unknown} order(s) could not be checked (Razorpay unreachable). Try again in a minute.')
+    return redirect('manage:orders')
+
+
+@staff_required
 def order_detail_manage(request, order_id):
     order = get_object_or_404(Order, order_id=order_id)
     ORDER_STEPS = [

@@ -8,7 +8,13 @@
     <h1 class="page-title">Orders</h1>
     <p class="page-sub">{{ orders.count }} orders total</p>
   </div>
-  <a href="{% url 'manage:export_orders' %}" class="m-btn m-btn-outline">⬇ Export CSV</a>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <form method="post" action="{% url 'manage:sync_payments' %}" style="margin:0;" onsubmit="this.querySelector('button').textContent='Checking…';">
+      {% csrf_token %}
+      <button type="submit" class="m-btn m-btn-outline" title="Ask Razorpay about recent unpaid orders and recover any that were actually paid">🔄 Sync payments</button>
+    </form>
+    <a href="{% url 'manage:export_orders' %}" class="m-btn m-btn-outline">⬇ Export CSV</a>
+  </div>
 </div>
 
 <!-- Tab Filters -->

@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Avg, Count, Q
 from django.core.cache import cache   # used for simple rate limiting
 from django.utils import timezone
@@ -1266,6 +1267,52 @@ def _mark_order_paid(order, payment_id='', signature='', request=None):
     return True
 
 
+def _razorpay_paid_payment(order, client=None):
+    """Ask Razorpay whether this order was really paid.
+    Returns (known, payment): known=False means Razorpay could not be reached, so
+    nobody should assume 'unpaid'. payment is the captured/authorized payment or None."""
+    if not (settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET and order.razorpay_order_id):
+        return True, None            # never reached Razorpay → nothing was paid
+    try:
+        if client is None:
+            import razorpay
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        pays = client.order.payments(order.razorpay_order_id).get('items', [])
+    except Exception:
+        logger.exception('Could not check Razorpay for order %s', order.order_id)
+        return False, None
+    ok = next((p for p in pays if p.get('status') in ('captured', 'authorized')), None)
+    return True, ok
+
+
+def _confirm_if_paid(order, request=None, client=None):
+    """True  → Razorpay says it was paid (the order is now confirmed).
+       False → not paid.   None → could not check (do NOT cancel in that case)."""
+    known, pay = _razorpay_paid_payment(order, client)
+    if not known:
+        return None
+    if pay:
+        _mark_order_paid(order, payment_id=pay.get('id', ''), request=request)
+        return True
+    return False
+
+
+def _heal_recent_orders(request, limit=5):
+    """Safety net: the customer's recent unpaid/cancelled orders that Razorpay actually
+    received money for (browser closed, UPI app switch, ...) are confirmed here."""
+    cutoff = timezone.now() - timedelta(days=3)
+    qs = (Order.objects.filter(user=request.user, payment_status__in=['pending', 'failed'],
+                               created_at__gte=cutoff)
+          .exclude(razorpay_order_id='').order_by('-created_at')[:limit])
+    for order in qs:
+        if not cache.add(f'rzp_heal:{order.pk}', 1, timeout=300):
+            continue                 # checked in the last 5 minutes
+        try:
+            _confirm_if_paid(order, request=request)
+        except Exception:
+            logger.exception('Healing order %s failed', order.order_id)
+
+
 def expire_stale_unpaid_orders(request=None, user=None, minutes=UNPAID_ORDER_TTL_MINUTES):
     """Cancel unpaid orders older than `minutes`. Before cancelling, ask Razorpay
     whether the customer actually paid (e.g. paid, then closed the browser before
@@ -1357,6 +1404,7 @@ def payment_page(request, order_id):
         'order': order,
         'razorpay_key_id': settings.RAZORPAY_KEY_ID,
         'amount_paise': int(round(float(order.total) * 100)),
+        'callback_url': request.build_absolute_uri(reverse('store:payment_callback', args=[order.order_id])),
     })
 
 
@@ -1415,6 +1463,36 @@ def payment_verify(request, order_id):
     return JsonResponse({'success': False, 'message': 'Payment verification failed. Please try again.'}, status=400)
 
 
+@csrf_exempt
+@require_POST
+def payment_callback(request, order_id):
+    """Razorpay posts the payment result here when the customer pays in redirect mode
+    (used on phones, where the page is often unloaded while a UPI app is open).
+    The browser's login cookie is not sent on this cross-site POST, so nothing is
+    trusted except the signed payload: the signature must verify."""
+    pid = request.POST.get('razorpay_payment_id', '').strip()
+    oid = request.POST.get('razorpay_order_id', '').strip()
+    sig = request.POST.get('razorpay_signature', '').strip()
+    order = Order.objects.filter(order_id=order_id).first()
+
+    if order and pid and oid and sig and order.razorpay_order_id == oid \
+            and settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+        try:
+            import razorpay
+            razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)) \
+                .utility.verify_payment_signature({
+                    'razorpay_order_id': oid, 'razorpay_payment_id': pid, 'razorpay_signature': sig})
+            _mark_order_paid(order, payment_id=pid, signature=sig)
+            return redirect('store:order_placed', order_id=order.order_id)
+        except Exception:
+            logger.warning('Callback signature check failed for order %s', order_id)
+    if order:
+        # No valid signature (declined / cancelled). The failed page asks Razorpay
+        # before it cancels anything, so a real payment is never lost.
+        return redirect(reverse('store:payment_failed', args=[order.order_id]) + '?reason=failed')
+    return redirect('store:home')
+
+
 def _cross_site(request):
     return request.headers.get('Sec-Fetch-Site', '') == 'cross-site'
 
@@ -1432,6 +1510,14 @@ def cancel_payment(request, order_id):
         return redirect('store:home')
 
     if order.payment_status != 'paid':
+        # The window can close right after a successful payment (UPI app switch, slow
+        # network...). Ask Razorpay first so a paid order is never thrown away.
+        paid = _confirm_if_paid(order, request=request)
+        if paid:
+            return redirect('store:order_placed', order_id=order.order_id)
+        if paid is None:
+            messages.info(request, "We're confirming your payment with the bank. Check My Orders in a minute.")
+            return redirect('store:my_orders')
         _cancel_unpaid_order(order, cart=get_or_create_cart(request))
 
     return redirect('store:home')
@@ -1456,8 +1542,13 @@ def payment_failed(request, order_id):
     cart_restored = False
 
     if order.payment_status != 'paid':
-        _cancel_unpaid_order(order, cart=get_or_create_cart(request))
-        cart_restored = True
+        paid = _confirm_if_paid(order, request=request)
+        if paid:
+            return redirect('store:order_placed', order_id=order.order_id)
+        if paid is False:
+            _cancel_unpaid_order(order, cart=get_or_create_cart(request))
+            cart_restored = True
+        # paid is None → Razorpay unreachable: leave the order alone; it is re-checked later.
 
     return render(request, 'store/payment_failed.html', {
         'order': order,
@@ -1478,6 +1569,7 @@ def order_placed(request, order_id):
 @login_required
 def my_orders(request):
     expire_stale_unpaid_orders(request=request, user=request.user)
+    _heal_recent_orders(request)
     # Show all real orders: paid (active, shipped, delivered, admin-cancelled)
     # AND payment-failed cancellations so customer can see what happened.
     # Only hide 'awaiting_payment' drafts (incomplete checkout, no payment attempted).

@@ -32,6 +32,7 @@ urlpatterns = [
 
     # Orders
     path('orders/', views.orders_list, name='orders'),
+    path('orders/sync-payments/', views.sync_payments, name='sync_payments'),
     path('orders/<str:order_id>/', views.order_detail_manage, name='order_detail'),
     path('orders/<str:order_id>/resend-email/', views.resend_order_email, name='resend_order_email'),
     path('orders/<str:order_id>/invoice/', views.order_invoice, name='order_invoice'),

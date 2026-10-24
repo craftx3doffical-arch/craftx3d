@@ -30,6 +30,7 @@ urlpatterns = [
     path('razorpay/webhook/', views.razorpay_webhook, name='razorpay_webhook'),
     path('payment/<str:order_id>/', views.payment_page, name='payment'),
     path('payment/<str:order_id>/verify/', views.payment_verify, name='payment_verify'),
+    path('payment/<str:order_id>/callback/', views.payment_callback, name='payment_callback'),
     path('payment/<str:order_id>/cancel/', views.cancel_payment, name='cancel_payment'),
     path('payment/<str:order_id>/failed/', views.payment_failed, name='payment_failed'),
     path('order-placed/<str:order_id>/', views.order_placed, name='order_placed'),

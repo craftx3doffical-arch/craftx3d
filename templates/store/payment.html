@@ -242,6 +242,13 @@
       }
     };
 
+    // On phones the page is often unloaded while a UPI app is open, so the JS handler
+    // never runs. Redirect mode posts the signed result to our server instead.
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      options.redirect = true;
+      options.callback_url = '{{ callback_url|escapejs }}';
+    }
+
     var rzp = new Razorpay(options);
 
     rzp.on('payment.failed', function () {
