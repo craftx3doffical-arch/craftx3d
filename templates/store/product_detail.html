@@ -372,10 +372,10 @@
       <div class="pd-buy-row">
         {% if request.user.is_authenticated %}
         <button type="submit" form="addToCartForm" class="btn-add-to-cart-large pd-btn-cart" id="addCartBtn">Add to Cart</button>
-        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">Buy at <span id="buyPrice">₹{{ product.base_price|floatformat:"-2" }}</span></button>
+        <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">Buy Now<span id="buyPrice" hidden>₹{{ product.base_price|floatformat:"-2" }}</span></button>
         {% else %}
         <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-cart" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Add to Cart</a>
-        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy at <span id="buyPrice">₹{{ product.base_price|floatformat:"-2" }}</span></a>
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy Now<span id="buyPrice" hidden>₹{{ product.base_price|floatformat:"-2" }}</span></a>
         {% endif %}
       </div>
       </div><!-- /pd-sticky-inner -->
