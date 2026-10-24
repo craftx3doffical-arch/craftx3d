@@ -505,6 +505,7 @@ def add_to_cart(request, product_id):
         sections = builder_config.get('sections', {})
         section_order = builder_config.get('section_order', list(sections.keys()))
         missing = []
+        missing_photos = []
 
         for key in section_order:
             sec = sections.get(key, {})
@@ -514,7 +515,7 @@ def add_to_cart(request, product_id):
             if key == 'photo':
                 for i, slot in enumerate(sec.get('slots', [])):
                     if slot.get('required') and not request.FILES.get(f'custom_photo_{i}'):
-                        missing.append(slot.get('label') or f'Photo {i + 1}')
+                        missing_photos.append(slot.get('label') or f'Photo {i + 1}')
 
             elif key == 'text_fields':
                 for i, field in enumerate(sec.get('fields', [])):
@@ -531,8 +532,14 @@ def add_to_cart(request, product_id):
                     if not request.POST.get('pers_line_0', '').strip():
                         missing.append((sec.get('title') or 'Personalisation') + ' text')
 
-        if missing:
+        if missing_photos:
+            message = 'Please upload the photo: ' + ', '.join(missing_photos)
+            if missing:
+                message += '. Also complete: ' + ', '.join(missing)
+            missing = missing_photos + missing
+        elif missing:
             message = 'Please complete: ' + ', '.join(missing)
+        if missing:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'message': message, 'missing_fields': missing}, status=400)
             messages.error(request, message)
