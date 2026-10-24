@@ -850,6 +850,44 @@ def toggle_gift_wrap(request):
 
 
 # ─── SAVED ADDRESS VIEWS ─────────────────────────────────────────────────────
+def _safe_next_url(request, url):
+    """Return `url` only if it is a safe, same-site redirect target, else ''.
+    (Was referenced by add_address/edit_address but never defined -> NameError -> HTTP 500
+    right after the address was saved.)"""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    url = (url or '').strip()
+    if url and url_has_allowed_host_and_scheme(
+            url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return url
+    return ''
+
+
+def _address_fields_from_post(request):
+    """Read, trim and validate address fields. Returns (data, error_message)."""
+    g = lambda k: (request.POST.get(k) or '').strip()
+    data = {
+        'full_name': g('full_name')[:120],
+        'phone': normalize_phone(g('phone')),
+        'alternate_phone': normalize_phone(g('alternate_phone')),
+        'address_line1': g('address_line1')[:250],
+        'address_line2': g('address_line2')[:250],
+        'landmark': g('landmark')[:200],
+        'city': g('city')[:100],
+        'state': g('state')[:100],
+        'pincode': ''.join(ch for ch in g('pincode') if ch.isdigit())[:10],
+        'is_default': request.POST.get('is_default') == 'on',
+    }
+    if not data['full_name']:
+        return data, 'Please enter the full name.'
+    if len(data['phone']) != 10:
+        return data, 'Please enter a valid 10-digit phone number.'
+    if not data['address_line1']:
+        return data, 'Please enter the house / flat / building details.'
+    if not data['city'] or not data['state']:
+        return data, 'Please enter the city and state.'
+    if len(data['pincode']) != 6:
+        return data, 'Please enter a valid 6-digit pincode.'
+    return data, ''
 @login_required
 def manage_addresses(request):
     """List all saved delivery addresses for the logged-in user."""
@@ -864,19 +902,11 @@ def manage_addresses(request):
 def add_address(request):
     """Add a new saved delivery address."""
     if request.method == 'POST':
-        addr = SavedAddress(
-            user=request.user,
-            full_name=request.POST.get('full_name', '').strip(),
-            phone=request.POST.get('phone', '').strip(),
-            alternate_phone=request.POST.get('alternate_phone', '').strip(),
-            address_line1=request.POST.get('address_line1', '').strip(),
-            address_line2=request.POST.get('address_line2', '').strip(),
-            landmark=request.POST.get('landmark', '').strip(),
-            city=request.POST.get('city', '').strip(),
-            state=request.POST.get('state', '').strip(),
-            pincode=request.POST.get('pincode', '').strip(),
-            is_default=request.POST.get('is_default') == 'on',
-        )
+        data, error = _address_fields_from_post(request)
+        if error:
+            messages.error(request, error)
+            return redirect(request.get_full_path())
+        addr = SavedAddress(user=request.user, **data)
         addr.save()
         next_url = _safe_next_url(request, request.POST.get('next') or request.GET.get('next') or '')
         messages.success(request, 'Address saved!')
@@ -904,16 +934,12 @@ def edit_address(request, address_id):
     """Edit an existing saved address."""
     address = get_object_or_404(SavedAddress, id=address_id, user=request.user)
     if request.method == 'POST':
-        address.full_name = request.POST.get('full_name', '').strip()
-        address.phone = request.POST.get('phone', '').strip()
-        address.alternate_phone = request.POST.get('alternate_phone', '').strip()
-        address.address_line1 = request.POST.get('address_line1', '').strip()
-        address.address_line2 = request.POST.get('address_line2', '').strip()
-        address.landmark = request.POST.get('landmark', '').strip()
-        address.city = request.POST.get('city', '').strip()
-        address.state = request.POST.get('state', '').strip()
-        address.pincode = request.POST.get('pincode', '').strip()
-        address.is_default = request.POST.get('is_default') == 'on'
+        data, error = _address_fields_from_post(request)
+        if error:
+            messages.error(request, error)
+            return redirect(request.get_full_path())
+        for k, v in data.items():
+            setattr(address, k, v)
         address.save()
         next_url = _safe_next_url(request, request.POST.get('next') or request.GET.get('next') or '')
         messages.success(request, 'Address updated!')
