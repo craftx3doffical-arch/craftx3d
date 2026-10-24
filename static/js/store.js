@@ -164,7 +164,14 @@ function initAddToCart() {
         scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
         if (typeof firstEmpty.focus === 'function' && firstEmpty.type !== 'file') firstEmpty.focus();
       }
-      showToast('⚠️ Please fill the required field(s) highlighted below before adding to cart.', 'error');
+      var missingPhoto = Array.from(form.querySelectorAll('input[type="file"][required]')).some(function(f) {
+        return !isFieldValid(f);
+      });
+      if (missingPhoto) {
+        showToast('📸 Please upload the photo before adding to cart or buying.', 'error');
+      } else {
+        showToast('⚠️ Please fill the required field(s) highlighted below before adding to cart.', 'error');
+      }
       return;
     }
 
