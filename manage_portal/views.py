@@ -1216,12 +1216,16 @@ def export_custom_enquiries(request):
 @require_POST
 def enquiry_update_status(request, pk):
     enquiry = get_object_or_404(Enquiry, pk=pk)
-    enquiry.status = request.POST.get('status', enquiry.status)
-    note = request.POST.get('note', '')
-    if note:
-        enquiry.staff_note = note
+    new_status = request.POST.get('status')
+    if new_status is not None:
+        if new_status not in dict(Enquiry.STATUS_CHOICES):
+            return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
+        enquiry.status = new_status
+    # 'note' is sent whenever the note box is saved — an empty note clears it.
+    if 'note' in request.POST:
+        enquiry.staff_note = request.POST.get('note', '')
     enquiry.save()
-    return JsonResponse({'success': True})
+    return JsonResponse({'success': True, 'status': enquiry.status})
 
 
 @staff_required

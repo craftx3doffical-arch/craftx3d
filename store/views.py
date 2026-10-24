@@ -19,9 +19,19 @@ logger = logging.getLogger(__name__)
 
 # ─── Simple rate-limiter using Django's cache backend ────────────────────────
 # Usage: rate_limit(request, key, max_calls, period_seconds) → True if allowed
+def _client_ip(request):
+    """The visitor's real IP. Behind Render's proxy REMOTE_ADDR is the proxy itself, so
+    without this every anonymous visitor shared ONE rate-limit bucket."""
+    meta = request.META
+    ip = (meta.get('HTTP_CF_CONNECTING_IP') or '').strip()
+    if not ip:
+        ip = (meta.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
+    return ip or meta.get('REMOTE_ADDR', 'anon')
+
+
 def _rate_limit(request, key_suffix, max_calls, period):
     """Return True if the request is within the rate limit, False if exceeded."""
-    uid  = request.user.pk if request.user.is_authenticated else request.META.get('REMOTE_ADDR', 'anon')
+    uid  = request.user.pk if request.user.is_authenticated else _client_ip(request)
     key  = f'rl:{key_suffix}:{uid}'
     count = cache.get(key, 0)
     if count >= max_calls:
@@ -358,12 +368,15 @@ def custom_enquiry(request):
     """Public form: ask for a customised version of a product (or a custom idea)."""
     if request.method == 'POST':
         form = CustomEnquiryForm(request.POST, request.FILES)
-        if not _rate_limit(request, 'custom_enquiry', 5, 600):
-            messages.error(request, 'Too many requests. Please try again in a few minutes.')
-        elif form.is_valid():
-            form.save()
-            messages.success(request, "Thanks! Your customization request has been sent. We'll contact you within 24 hours.")
-            return redirect('store:custom_enquiry')
+        # Only a VALID submission uses up the allowance, so typos / validation errors
+        # never lock a customer out.
+        if form.is_valid():
+            if not _rate_limit(request, 'custom_enquiry', 10, 600):
+                messages.error(request, 'Too many requests. Please try again in a few minutes.')
+            else:
+                form.save()
+                messages.success(request, "Thanks! Your customization request has been sent. We'll contact you within 24 hours.")
+                return redirect('store:custom_enquiry')
     else:
         initial = {}
         pid = request.GET.get('product', '')
