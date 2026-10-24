@@ -125,3 +125,10 @@ class FreeParcelTextTests(Base):
         Product.objects.filter(pk=self.a.pk).update(parcel_charge_free_label='')
         r = self.client.get(f'/products/{self.a.slug}/')
         self.assertNotContains(r, 'pd-ship-bar')
+
+
+class LoggedOutBuyPriceTests(Base):
+    def test_logged_out_buy_button_has_live_price_span(self):
+        self.client.logout()
+        r = self.client.get(f'/products/{self.a.slug}/')
+        self.assertContains(r, 'id="buyPrice"')

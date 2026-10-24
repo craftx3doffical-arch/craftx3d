@@ -5487,3 +5487,7 @@ label.field-invalid {
     box-shadow: 0 6px 20px rgba(0,0,0,0.12); padding: 10px 12px;
   }
 }
+
+/* Lightbox / video overlay: above everything (header, buy bar); buy bar hidden while open */
+.pgal-lightbox { z-index: 100000; background: rgba(0,0,0,0.96); }
+body.lightbox-open .pd-sticky-bar { display: none; }

@@ -375,7 +375,7 @@
         <button type="button" class="btn-add-to-cart-large pd-btn-buy" id="buyNowBtn">Buy at <span id="buyPrice">₹{{ product.base_price|floatformat:"-2" }}</span></button>
         {% else %}
         <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-cart" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Add to Cart</a>
-        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy at ₹{{ product.base_price }}</a>
+        <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn-add-to-cart-large pd-btn-buy" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;">Buy at <span id="buyPrice">₹{{ product.base_price|floatformat:"-2" }}</span></a>
         {% endif %}
       </div>
       </div><!-- /pd-sticky-inner -->
@@ -701,11 +701,24 @@ function stopGalleryAuto() {
 })();
 
 /* ── Lightbox open / close ──────────────────────────────────────────────── */
+/* The lightbox / video overlay live inside the sticky gallery column, which traps
+   position:fixed children (they only covered that column and showed a ghost second
+   image, with the buy bar floating on top). Re-parent them to <body> so they cover
+   the whole screen in every browser. */
+function _liftOverlaysToBody() {
+  ['pgalLightbox', 'pgalVideoOverlay'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.parentNode !== document.body) document.body.appendChild(el);
+  });
+}
+document.addEventListener('DOMContentLoaded', _liftOverlaysToBody);
 function openLightbox(startIdx) {
+  _liftOverlaysToBody();
   const lb = document.getElementById('pgalLightbox');
   if (!lb) return;
   stopGalleryAuto();
   lb.classList.add('open');
+  document.body.classList.add('lightbox-open');
   document.body.style.overflow = 'hidden';
   lightboxSetImg(_galleryUrls[startIdx] || _galleryUrls[0], startIdx,
     document.querySelector(`.pgal-lightbox-thumb[data-index="${startIdx}"]`));
@@ -717,6 +730,7 @@ function closeLightbox() {
   const lb = document.getElementById('pgalLightbox');
   if (!lb || !lb.classList.contains('open')) return;
   lb.classList.remove('open');
+  document.body.classList.remove('lightbox-open');
   document.body.style.overflow = '';
   startGalleryAuto();
   // If the current history state is our lightbox state, pop it back
@@ -730,6 +744,7 @@ window.addEventListener('popstate', function(e) {
   const lb = document.getElementById('pgalLightbox');
   if (lb && lb.classList.contains('open')) {
     lb.classList.remove('open');
+    document.body.classList.remove('lightbox-open');
     document.body.style.overflow = '';
     startGalleryAuto();
     // Don't call closeLightbox() — popstate already handled the history pop
