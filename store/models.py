@@ -859,6 +859,9 @@ class Enquiry(models.Model):
     TYPE_CHOICES = [(TYPE_GENERAL, 'General'), (TYPE_CUSTOMIZATION, 'Customization')]
     enquiry_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_GENERAL, db_index=True)
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='enquiries')
+    # A customization request can now cover several products at once. `product`
+    # above stays as the first pick (and holds the product on older requests).
+    products = models.ManyToManyField('Product', blank=True, related_name='multi_enquiries')
     quantity = models.PositiveIntegerField(null=True, blank=True)
     budget = models.CharField(max_length=100, blank=True)
     staff_note = models.TextField(blank=True)
@@ -871,6 +874,18 @@ class Enquiry(models.Model):
 
     def __str__(self):
         return f"{self.full_name} - {self.subject}"
+
+    @property
+    def all_products(self):
+        """Every product on this request (falls back to the old single product)."""
+        items = list(self.products.all())
+        if not items and self.product_id:
+            items = [self.product]
+        return items
+
+    @property
+    def product_names(self):
+        return ', '.join(p.name for p in self.all_products)
 
 
 class Banner(models.Model):

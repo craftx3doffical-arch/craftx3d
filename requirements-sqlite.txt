@@ -10,3 +10,7 @@ PyJWT==2.9.0
 cryptography==43.0.1
 django-cloudinary-storage==0.3.0
 cloudinary==1.40.0
+
+# ── TLS trust store (eMudhra CA compromise, Oct 2026) ───
+# Must be >= 2026.10.19. requests/razorpay/cloudinary use certifi's own bundle.
+certifi>=2026.10.19

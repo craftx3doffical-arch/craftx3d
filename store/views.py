@@ -382,7 +382,7 @@ def custom_enquiry(request):
         initial = {}
         pid = request.GET.get('product', '')
         if pid.isdigit():
-            initial['product'] = int(pid)
+            initial['product'] = int(pid)   # preselects it in the multi-product picker
         if request.user.is_authenticated:
             initial['full_name'] = request.user.get_full_name()
             initial['email'] = request.user.email
@@ -391,7 +391,11 @@ def custom_enquiry(request):
             except Exception:
                 pass
         form = CustomEnquiryForm(initial=initial)
-    return render(request, 'store/custom_enquiry.html', {'form': form})
+    if form.is_bound:
+        selected = [str(v) for v in request.POST.getlist('products') or request.POST.getlist('product') if v]
+    else:
+        selected = [str(form.initial['product'])] if form.initial.get('product') else []
+    return render(request, 'store/custom_enquiry.html', {'form': form, 'selected_products': selected})
 
 
 # ─── CART ────────────────────────────────────────────────────────────────────
@@ -1797,10 +1801,11 @@ def register(request):
         elif form.is_valid():
             data = form.cleaned_data
             names = data['full_name'].split(' ', 1)
-            # Phone number is the login (username); email is optional.
+            # Email address is the login (username) and is required.
+            email = data['email'].strip().lower()
             user = User.objects.create_user(
-                username=data['phone'],
-                email=data.get('email', ''),
+                username=email,
+                email=email,
                 password=data['password'],
                 first_name=names[0],
                 last_name=names[1] if len(names) > 1 else '',
@@ -1808,7 +1813,7 @@ def register(request):
             # The post_save signal on User already created a blank UserProfile;
             # just fill in the phone number they gave us.
             UserProfile.objects.update_or_create(user=user, defaults={'phone': data['phone']})
-            user = authenticate(request, username=data['phone'], password=data['password'])
+            user = authenticate(request, username=email, password=data['password'])
             login(request, user)
             messages.success(request, f"Welcome to CraftiX 3D, {user.first_name}!")
             return redirect('store:home')
@@ -1818,8 +1823,9 @@ def register(request):
 
 
 def _find_users_by_identifier(identifier):
-    """Login id can be a 10-digit phone number (new) or an email (accounts
-    created before phone login existed). Returns candidate User objects."""
+    """Login id is the account's email address. A 10-digit phone number is still
+    accepted quietly so accounts created during the phone-login period keep
+    working. Returns candidate User objects."""
     identifier = (identifier or '').strip()
     if '@' in identifier:
         return list(User.objects.filter(email__iexact=identifier, is_active=True)[:5])
@@ -1843,7 +1849,7 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect('store:home')
     if request.method == 'POST':
-        identifier = (request.POST.get('phone') or request.POST.get('email') or '').strip()
+        identifier = (request.POST.get('email') or request.POST.get('phone') or '').strip()
         password = request.POST.get('password', '')
 
         from django.core.cache import cache
@@ -1864,7 +1870,7 @@ def login_view(request):
             return redirect(_safe_next(request))
         else:
             cache.set(lockout_key, fail_count + 1, 900)
-            messages.error(request, 'Invalid phone number or password.')
+            messages.error(request, 'Invalid email or password.')
     return render(request, 'store/login.html')
 
 
@@ -1902,7 +1908,7 @@ def forgot_password(request):
                 )
                 send_password_reset_email(user, reset_url)
 
-        messages.success(request, "If an account exists with that phone number or email and has an email on file, we've sent a password reset link. No email on your account? Contact support.")
+        messages.success(request, "If an account exists with that email address, we've sent a password reset link.")
         return redirect('store:login')
 
     return render(request, 'store/forgot_password.html')

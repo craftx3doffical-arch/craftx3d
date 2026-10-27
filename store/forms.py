@@ -16,7 +16,8 @@ def normalize_phone(raw):
 class CustomerRegistrationForm(forms.Form):
     full_name = forms.CharField(max_length=200, widget=forms.TextInput(attrs={'placeholder': 'Full Name'}))
     phone = forms.CharField(max_length=20, widget=forms.TextInput(attrs={'placeholder': 'Phone Number'}))
-    email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={'placeholder': 'Email (optional)'}))
+    email = forms.EmailField(max_length=150, required=True, error_messages={'required': 'Email address is required.'},
+                             widget=forms.EmailInput(attrs={'placeholder': 'Email (this is your login)'}))
     password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': 'Password'}))
     confirm_password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': 'Confirm Password'}))
 
@@ -29,10 +30,11 @@ class CustomerRegistrationForm(forms.Form):
         return phone
 
     def clean_email(self):
-        email = (self.cleaned_data.get('email') or '').strip()
+        email = (self.cleaned_data.get('email') or '').strip().lower()
         if not email:
-            return ''
-        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("Email address is required.")
+        if (User.objects.filter(email__iexact=email).exists()
+                or User.objects.filter(username__iexact=email).exists()):
             from allauth.socialaccount.models import SocialAccount
             if SocialAccount.objects.filter(user__email__iexact=email, provider='google').exists():
                 raise forms.ValidationError("This email is already registered via Google. Please use \"Continue with Google\" to sign in instead.")
@@ -88,17 +90,21 @@ class EnquiryForm(forms.ModelForm):
 class CustomEnquiryForm(forms.ModelForm):
     """Customer's product customization request — saved as an Enquiry of type
     'customization' and shown on its own page in the staff portal."""
-    product = forms.ModelChoiceField(
+    # One or many products. Leave empty for "not sure / my own idea".
+    products = forms.ModelMultipleChoiceField(
         queryset=Product.objects.filter(is_active=True), required=False,
-        empty_label='Not sure / my own idea',
     )
 
     class Meta:
         model = Enquiry
-        fields = ['full_name', 'phone', 'email', 'product', 'quantity', 'budget', 'message', 'image']
+        fields = ['full_name', 'phone', 'email', 'products', 'quantity', 'budget', 'message', 'image']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, data=None, *args, **kwargs):
+        # Older clients/links send a single `product` — treat it as a one-item `products`.
+        if data is not None and 'products' not in data and data.get('product'):
+            data = data.copy()
+            data.setlist('products', [data.get('product')]) if hasattr(data, 'setlist') else data.update({'products': [data.get('product')]})
+        super().__init__(data, *args, **kwargs)
         self.fields['email'].required = False   # phone is the main contact; email is optional
 
     def clean_phone(self):
@@ -115,10 +121,14 @@ class CustomEnquiryForm(forms.ModelForm):
 
     def save(self, commit=True):
         obj = super().save(commit=False)
+        chosen = list(self.cleaned_data.get('products') or [])
+        obj.product = chosen[0] if chosen else None
         obj.enquiry_type = Enquiry.TYPE_CUSTOMIZATION
-        obj.subject = 'Customization: ' + (obj.product.name if obj.product_id else 'custom idea')
+        label = ', '.join(p.name for p in chosen) if chosen else 'custom idea'
+        obj.subject = ('Customization: ' + label)[:200]
         if commit:
             obj.save()
+            self._save_m2m()      # stores every selected product
         return obj
 
 

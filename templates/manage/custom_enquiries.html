@@ -52,7 +52,8 @@
             {% if e.email %}<div style="font-size:0.72rem;color:var(--m-muted);">{{ e.email }}</div>{% endif %}
           </td>
           <td>
-            <div style="font-size:0.85rem;font-weight:600;">{% if e.product %}{{ e.product.name|truncatechars:34 }}{% else %}Custom idea{% endif %}</div>
+            {% for p in e.all_products %}<div style="font-size:0.85rem;font-weight:600;">{{ p.name|truncatechars:34 }}</div>{% empty %}<div style="font-size:0.85rem;font-weight:600;">Custom idea</div>{% endfor %}
+            {% if e.all_products|length > 1 %}<span class="ce-pill" style="background:#FFF4DD;color:#8A5A00;">{{ e.all_products|length }} products</span>{% endif %}
             <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap;">
               {% if e.quantity %}<span class="ce-pill">Qty {{ e.quantity }}</span>{% endif %}
               {% if e.budget %}<span class="ce-pill">{{ e.budget }}</span>{% endif %}
@@ -83,7 +84,7 @@
                 <dt>Name</dt><dd>{{ e.full_name }}</dd>
                 <dt>Phone</dt><dd><a href="tel:{{ e.phone }}">{{ e.phone }}</a></dd>
                 {% if e.email %}<dt>Email</dt><dd>{{ e.email }}</dd>{% endif %}
-                <dt>Product</dt><dd>{% if e.product %}{{ e.product.name }}{% else %}Custom idea{% endif %}</dd>
+                <dt>Product{% if e.all_products|length > 1 %}s{% endif %}</dt><dd>{% for p in e.all_products %}{{ p.name }}{% if not forloop.last %}<br>{% endif %}{% empty %}Custom idea{% endfor %}</dd>
                 {% if e.quantity %}<dt>Quantity</dt><dd>{{ e.quantity }}</dd>{% endif %}
                 {% if e.budget %}<dt>Budget</dt><dd>{{ e.budget }}</dd>{% endif %}
                 <dt>Received</dt><dd>{{ e.created_at|date:"d M Y, h:i A" }}</dd>

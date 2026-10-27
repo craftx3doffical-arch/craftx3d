@@ -1,6 +1,12 @@
 {% extends 'store/base.html' %}
 {% block title %}Customization Enquiry — CraftX3D{% endblock %}
 {% block content %}
+<style>
+  .ce-products{display:flex;flex-wrap:wrap;gap:8px;max-height:220px;overflow:auto;padding:4px 2px;}
+  .ce-prod{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border:1.5px solid var(--border,#E5E7EB);border-radius:999px;font-size:0.84rem;cursor:pointer;background:#fff;}
+  .ce-prod input{accent-color:var(--forest,#1A4332);}
+  .ce-prod:has(input:checked){border-color:var(--forest,#1A4332);background:rgba(26,67,50,.08);font-weight:600;}
+</style>
 
 <div style="background:linear-gradient(135deg,var(--forest) 0%,var(--forest-light) 100%);padding:44px 24px;color:#fff;text-align:center;">
   <div class="container">
@@ -46,11 +52,12 @@
             <input type="email" id="ce_email" name="email" class="form-input" placeholder="your@email.com" value="{{ form.email.value|default:'' }}">
           </div>
           <div class="form-group full">
-            <label class="form-label" for="ce_product">Which product?</label>
-            <select id="ce_product" name="product" class="form-input">
-              <option value="">Not sure / my own idea</option>
-              {% for p in form.fields.product.queryset %}<option value="{{ p.pk }}" {% if form.product.value|stringformat:"s" == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
-            </select>
+            <label class="form-label">Which products? <span style="color:var(--text-muted);font-weight:400;">(tick one or more — or none if it's your own idea)</span></label>
+            <div class="ce-products">
+              {% for p in form.fields.products.queryset %}
+              <label class="ce-prod"><input type="checkbox" name="products" value="{{ p.pk }}" {% if p.pk|stringformat:"s" in selected_products %}checked{% endif %}><span>{{ p.name }}</span></label>
+              {% endfor %}
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="ce_qty">Quantity</label>

@@ -25,7 +25,7 @@
       Continue with Google
     </a>
 
-    <div class="divider"><hr><span>or register with phone number</span><hr></div>
+    <div class="divider"><hr><span>or register with email</span><hr></div>
 
     {% if form.errors %}
     <div class="alert alert-error" style="margin-bottom:16px;flex-direction:column;gap:4px;align-items:flex-start;">
@@ -47,24 +47,24 @@
       </div>
 
       <div class="form-group">
+        <label class="form-label" for="email">Email Address <span style="color:var(--red)">*</span></label>
+        <div class="input-icon-wrap">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="email" name="email" class="form-input"
+                 value="{{ form.email.value|default:'' }}"
+                 placeholder="your@email.com (this is your login)" autocomplete="email" required>
+        </div>
+        <div style="font-size:0.74rem;color:var(--text-muted);margin-top:4px;">You'll sign in with this email. We also send order emails and password-reset links here.</div>
+      </div>
+
+      <div class="form-group">
         <label class="form-label" for="phone">Phone Number <span style="color:var(--red)">*</span></label>
         <div class="input-icon-wrap">
           <span class="phone-prefix">🇮🇳 +91</span>
           <input type="tel" id="phone" name="phone" class="form-input input-with-prefix"
                  value="{{ form.phone.value|default:'' }}"
-                 placeholder="10-digit number (this is your login)" maxlength="10" inputmode="numeric" required>
+                 placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" required>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="email">Email Address <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
-        <div class="input-icon-wrap">
-          <span class="input-icon">✉️</span>
-          <input type="email" id="email" name="email" class="form-input"
-                 value="{{ form.email.value|default:'' }}"
-                 placeholder="your@email.com">
-        </div>
-        <div style="font-size:0.74rem;color:var(--text-muted);margin-top:4px;">Add it to get order emails and password-reset links.</div>
       </div>
 
       <div class="form-group">

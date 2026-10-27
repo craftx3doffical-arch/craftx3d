@@ -1206,7 +1206,7 @@ def enquiries_list(request):
 def custom_enquiries_list(request):
     status_filter = request.GET.get('status', 'all')
     search = request.GET.get('q', '').strip()
-    base = Enquiry.objects.filter(enquiry_type=Enquiry.TYPE_CUSTOMIZATION).select_related('product')
+    base = Enquiry.objects.filter(enquiry_type=Enquiry.TYPE_CUSTOMIZATION).select_related('product').prefetch_related('products')
     counts = {
         'all': base.count(),
         'new': base.filter(status='new').count(),
@@ -1217,7 +1217,7 @@ def custom_enquiries_list(request):
     if status_filter in ('new', 'in_progress', 'resolved'):
         qs = qs.filter(status=status_filter)
     if search:
-        qs = qs.filter(Q(full_name__icontains=search) | Q(phone__icontains=search) | Q(message__icontains=search) | Q(product__name__icontains=search))
+        qs = qs.filter(Q(full_name__icontains=search) | Q(phone__icontains=search) | Q(message__icontains=search) | Q(product__name__icontains=search) | Q(products__name__icontains=search)).distinct()
     return render(request, 'manage/custom_enquiries.html', {
         'enquiries': qs, 'status_filter': status_filter, 'counts': counts, 'search': search,
     })
@@ -1232,8 +1232,8 @@ def export_custom_enquiries(request):
     def safe(v):
         v = '' if v is None else str(v)
         return "'" + v if v[:1] in ('=', '+', '-', '@') else v
-    for e in Enquiry.objects.filter(enquiry_type=Enquiry.TYPE_CUSTOMIZATION).select_related('product'):
-        writer.writerow([safe(e.full_name), safe(e.phone), safe(e.email), safe(e.product.name if e.product else ''),
+    for e in Enquiry.objects.filter(enquiry_type=Enquiry.TYPE_CUSTOMIZATION).select_related('product').prefetch_related('products'):
+        writer.writerow([safe(e.full_name), safe(e.phone), safe(e.email), safe(e.product_names),
                          e.quantity or '', safe(e.budget), safe(e.message), e.status, safe(e.staff_note),
                          e.created_at.strftime('%d/%m/%Y %H:%M')])
     return response

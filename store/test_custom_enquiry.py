@@ -72,3 +72,51 @@ class StaffPortalEnquiryTests(TestCase):
         self.assertEqual(r.status_code, 400)
         self.e.refresh_from_db()
         self.assertEqual(self.e.status, 'new')
+
+
+class MultiProductEnquiryTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        cat = Category.objects.create(name='Idols', slug='idols')
+        self.a = Product.objects.create(name='Peacock Vel', slug='peacock-vel', category=cat, base_price=599)
+        self.b = Product.objects.create(name='Moon Lamp', slug='moon-lamp', category=cat, base_price=799)
+        self.c = Product.objects.create(name='Twist Vase', slug='twist-vase', category=cat, base_price=399)
+        self.staff = StaffUser.objects.create(username='boss', role='admin')
+        self.staff.set_password('x'); self.staff.save()
+        s = self.client.session
+        s['staff_logged_in'] = True; s['staff_id'] = self.staff.pk; s['staff_role'] = 'admin'
+        s.save()
+
+    def test_several_products_are_saved_and_shown_in_the_portal(self):
+        r = self.client.post('/custom-enquiry/', dict(GOOD, products=[self.a.pk, self.b.pk, self.c.pk]))
+        self.assertEqual(r.status_code, 302)
+        e = Enquiry.objects.get()
+        self.assertEqual({p.pk for p in e.products.all()}, {self.a.pk, self.b.pk, self.c.pk})
+        self.assertIn(e.product, (self.a, self.b, self.c))   # first pick kept for older code
+        for name in ('Peacock Vel', 'Moon Lamp', 'Twist Vase'):
+            self.assertIn(name, e.subject)
+        page = self.client.get('/manage/customization-enquiries/')
+        for name in ('Peacock Vel', 'Moon Lamp', 'Twist Vase'):
+            self.assertContains(page, name)
+        self.assertContains(page, '3 products')
+
+    def test_portal_search_finds_a_request_by_any_of_its_products(self):
+        self.client.post('/custom-enquiry/', dict(GOOD, products=[self.a.pk, self.b.pk]))
+        r = self.client.get('/manage/customization-enquiries/?q=Moon')
+        self.assertContains(r, 'Ravi')
+
+    def test_no_product_still_works(self):
+        r = self.client.post('/custom-enquiry/', GOOD)
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(Enquiry.objects.get().all_products, [])
+
+    def test_form_page_preselects_product_from_link(self):
+        r = self.client.get(f'/custom-enquiry/?product={self.b.pk}')
+        self.assertContains(r, f'value="{self.b.pk}" checked')
+
+    def test_csv_export_lists_all_products(self):
+        self.client.post('/custom-enquiry/', dict(GOOD, products=[self.a.pk, self.b.pk]))
+        r = self.client.get('/manage/export/customization-enquiries/')
+        body = r.content.decode()
+        self.assertIn('Peacock Vel', body)
+        self.assertIn('Moon Lamp', body)
