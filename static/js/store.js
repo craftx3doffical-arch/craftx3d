@@ -1331,7 +1331,7 @@ function initScrollReveal() {
   if (!('IntersectionObserver' in window)) return;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-  var selectors = '.product-card, .yml-card, .fp-card, .review-card, .rvs-item, .cflow-card';
+  var selectors = '.product-card, .yml-card, .find-piece-grid .fp-card, .review-card, .rvs-item, .cflow-card';
   var els = Array.prototype.slice.call(document.querySelectorAll(selectors));
   if (!els.length) return;
 
@@ -1389,3 +1389,105 @@ window.addEventListener('pageshow', function () {
   var a = document.getElementById('addCartBtn');
   if (a && a.textContent.trim() === 'Adding…') { a.innerHTML = 'Add to Cart'; a.classList.remove('btn-locked'); }
 });
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CATEGORY MARQUEE — single row, auto-scrolls right → left, endless loop.
+   Pauses on hover/touch/drag; user can still swipe or drag manually.
+══════════════════════════════════════════════════════════════════════════ */
+(function initCategoryMarquee() {
+  function setup() {
+    var box = document.getElementById('fpMarquee');
+    if (!box) return;
+    var track = box.querySelector('.fp-marquee-track');
+    var originals = Array.prototype.slice.call(track.children);
+    if (!originals.length) return;
+
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var loopW = 0, pos = 0, paused = false, dragging = false, resumeT = null;
+    var SPEED = 40; // px per second
+
+    function build() {
+      Array.prototype.slice.call(track.querySelectorAll('[data-clone]')).forEach(function (n) { n.remove(); });
+      var gap = parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap) || 0;
+      var setW = originals.reduce(function (s, el) { return s + el.offsetWidth + gap; }, 0);
+      if (!setW) return;
+      loopW = setW;
+      var copies = Math.ceil(box.clientWidth / setW) + 1;
+      for (var c = 0; c < copies; c++) {
+        originals.forEach(function (el) {
+          var cl = el.cloneNode(true);
+          cl.setAttribute('data-clone', '1');
+          cl.setAttribute('aria-hidden', 'true');
+          cl.setAttribute('tabindex', '-1');
+          track.appendChild(cl);
+        });
+      }
+    }
+
+    function pauseBriefly() {
+      paused = true;
+      clearTimeout(resumeT);
+      resumeT = setTimeout(function () { paused = false; }, 1800);
+    }
+
+    build();
+    if (reduce) return; // keep it a normal swipeable row
+
+    var last = performance.now();
+    function tick(now) {
+      var dt = Math.min(now - last, 64) / 1000;
+      last = now;
+      if (!paused && !dragging && loopW) {
+        pos += SPEED * dt;
+        if (pos >= loopW) pos -= loopW;
+        box.scrollLeft = pos;
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // keep position in sync when the user scrolls manually, and wrap seamlessly
+    box.addEventListener('scroll', function () {
+      if (!paused && !dragging) return;
+      pos = box.scrollLeft;
+      if (pos >= loopW) { pos -= loopW; box.scrollLeft = pos; }
+      else if (pos <= 0 && loopW) { pos += loopW; box.scrollLeft = pos; }
+    }, { passive: true });
+
+    box.addEventListener('mouseenter', function () { paused = true; });
+    box.addEventListener('mouseleave', function () { if (!dragging) paused = false; });
+    box.addEventListener('touchstart', function () { paused = true; clearTimeout(resumeT); }, { passive: true });
+    box.addEventListener('touchend', pauseBriefly, { passive: true });
+    box.addEventListener('touchcancel', pauseBriefly, { passive: true });
+    box.addEventListener('wheel', pauseBriefly, { passive: true });
+
+    // mouse drag (desktop)
+    var startX = 0, startS = 0, moved = false;
+    box.addEventListener('mousedown', function (e) {
+      dragging = true; moved = false; startX = e.pageX; startS = box.scrollLeft;
+      box.classList.add('is-dragging');
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      var dx = e.pageX - startX;
+      if (Math.abs(dx) > 4) moved = true;
+      box.scrollLeft = startS - dx;
+    });
+    window.addEventListener('mouseup', function () {
+      if (!dragging) return;
+      dragging = false; box.classList.remove('is-dragging');
+      pos = box.scrollLeft;
+    });
+    box.addEventListener('click', function (e) { if (moved) { e.preventDefault(); moved = false; } }, true);
+    box.addEventListener('dragstart', function (e) { e.preventDefault(); });
+
+    var rt;
+    window.addEventListener('resize', function () {
+      clearTimeout(rt);
+      rt = setTimeout(function () { pos = 0; box.scrollLeft = 0; build(); }, 200);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();

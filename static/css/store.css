@@ -5492,3 +5492,30 @@ label.field-invalid {
 /* Lightbox / video overlay: above everything (header, buy bar); buy bar hidden while open */
 .pgal-lightbox { z-index: 100000; background: rgba(0,0,0,0.96); }
 body.lightbox-open .pd-sticky-bar { display: none; }
+
+
+/* ═══ "Find Your Piece" — single-row marquee, scrolls right → left ═══ */
+.fp-marquee {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  cursor: grab;
+  padding: 6px 0 14px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
+}
+.fp-marquee::-webkit-scrollbar { display: none; }
+.fp-marquee.is-dragging { cursor: grabbing; user-select: none; }
+.fp-marquee-track { display: flex; flex-wrap: nowrap; gap: 20px; width: max-content; }
+.fp-marquee .fp-card {
+  flex: 0 0 auto;
+  width: 280px;
+  aspect-ratio: 1 / 1.02;
+}
+.fp-marquee .fp-card-shop { opacity: 1; transform: none; } /* Shop pill always visible */
+@media (max-width: 640px) {
+  .fp-marquee-track { gap: 14px; }
+  .fp-marquee .fp-card { width: 200px; }
+  .fp-marquee { -webkit-mask-image: none; mask-image: none; }
+}

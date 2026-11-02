@@ -47,7 +47,8 @@
       <div class="section-eyebrow-line"><span>Shop By Category</span></div>
       <h2 class="section-title">Find Your Piece</h2>
     </div>
-    <div class="find-piece-grid">
+    <div class="fp-marquee" id="fpMarquee" aria-label="Categories, scrolling">
+    <div class="fp-marquee-track">
       {% for cat in categories %}
       <a href="{% url 'store:products' %}?category={{ cat.slug }}" class="fp-card" aria-label="Shop {{ cat.name }}">
         <div class="fp-card-img">
@@ -58,6 +59,7 @@
         <span class="fp-card-shop">Shop <span class="fp-card-arrow">→</span></span>
       </a>
       {% endfor %}
+    </div>
     </div>
   </div>
 </section>
